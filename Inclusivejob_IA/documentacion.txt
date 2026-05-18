@@ -1,0 +1,6 @@
+====================Instalcion ==========================
+npm install -g pnpm // para usar el comando pnpm es seguro ya investigue 
+
+pnpm setup
+
+pnpm install // pa las dependecias chiquillos 
