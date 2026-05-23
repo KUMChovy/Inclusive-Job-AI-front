@@ -4,3 +4,8 @@ npm install -g pnpm // para usar el comando pnpm es seguro ya investigue
 pnpm setup
 
 pnpm install // pa las dependecias chiquillos 
+sieste no les crea la carpeta de node_modules ejecuten esto
+
+pnpm add react-router-dom
+
+ya con eso jala si o si 
