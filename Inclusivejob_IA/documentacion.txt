@@ -9,3 +9,5 @@ sieste no les crea la carpeta de node_modules ejecuten esto
 pnpm add react-router-dom
 
 ya con eso jala si o si 
+
+pnpm add lucide-react //pa' que instalen el lucide-react con los íconos usados en el perfil chiquillos
