@@ -10,4 +10,8 @@ pnpm add react-router-dom
 
 ya con eso jala si o si 
 
+<<<<<<< HEAD
   {/*{ to: '/admin/configuracion', label: 'Configuración', icon: Settings },*/} ignorar 
+=======
+pnpm add lucide-react //pa' que instalen el lucide-react con los íconos usados en el perfil chiquillos
+>>>>>>> 8ae41ced5014a4e973f282067692ba80c9e1759b
