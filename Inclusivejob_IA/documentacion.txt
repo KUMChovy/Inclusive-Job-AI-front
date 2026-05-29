@@ -9,3 +9,5 @@ sieste no les crea la carpeta de node_modules ejecuten esto
 pnpm add react-router-dom
 
 ya con eso jala si o si 
+
+  {/*{ to: '/admin/configuracion', label: 'Configuración', icon: Settings },*/} ignorar 

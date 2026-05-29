@@ -1,0 +1,254 @@
+
+// ============================================================
+// SIDEBAR REUTILIZABLE PARA PORTALES (Reclutador / Postulante)
+//
+// Props:
+//   theme      → objeto de tema (reclutadorTheme | postulantTheme)
+//   navItems   → array de { to, label, icon, badge? }
+//   user       → { nombre, rol, avatar? }
+//   collapsed  → boolean
+//   onToggle   → () => void
+//   mobileOpen → boolean
+//   onMobileClose → () => void
+// ============================================================
+
+import { NavLink } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, X, LogOut } from 'lucide-react';
+
+export default function PortalSidebar({
+  theme,
+  navItems = [],
+  user = {},
+  collapsed,
+  onToggle,
+  mobileOpen,
+  onMobileClose,
+}) {
+  const t = theme;
+
+  return (
+    <>
+      {/* Overlay mobile */}
+      {mobileOpen && (
+        <div
+          onClick={onMobileClose}
+          aria-hidden="true"
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(2px)',
+            zIndex: 30,
+          }}
+          className="lg:hidden"
+        />
+      )}
+
+      <aside
+        role="navigation"
+        aria-label="Menú principal"
+        style={{
+          position: 'fixed',
+          top: 0, left: 0,
+          height: '100%',
+          width: collapsed ? '68px' : '256px',
+          zIndex: 40,
+          display: 'flex',
+          flexDirection: 'column',
+          background: t.sidebar,
+          borderRight: `1px solid ${t.sidebarBorder}`,
+          transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',
+          overflowX: 'hidden',
+        }}
+        className={mobileOpen ? '' : '-translate-x-full lg:translate-x-0'}
+      >
+        {/* ── Logo / Header ── */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          height: '64px',
+          padding: collapsed ? '0 12px' : '0 16px',
+          borderBottom: `1px solid ${t.sidebarBorder}`,
+          flexShrink: 0,
+        }}>
+          {/* Ícono/Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+            <div style={{
+              width: '36px', height: '36px', flexShrink: 0,
+              borderRadius: '10px',
+              background: t.gradient,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: t.gradientGlow,
+              fontSize: '16px', color: '#fff', fontWeight: 700,
+              letterSpacing: '-0.5px',
+            }}>
+              IJ
+            </div>
+            {!collapsed && (
+              <div style={{ overflow: 'hidden' }}>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap' }}>
+                  Inclusive <span style={{ color: t.accent }}>Job IA</span>
+                </p>
+                <p style={{ margin: 0, fontSize: '11px', color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {t.name}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Botones de control */}
+          {!collapsed && (
+            <>
+              <button onClick={onMobileClose} aria-label="Cerrar menú"
+                style={btnStyle(t)} className="lg:hidden">
+                <X size={16} />
+              </button>
+              <button onClick={onToggle} aria-label="Colapsar menú"
+                style={btnStyle(t)} className="hidden lg:flex">
+                <ChevronLeft size={16} />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* ── Navegación ── */}
+        <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 8px' }}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {navItems.map(({ to, label, icon: Icon, badge }) => (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  end={to.split('/').length <= 2}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: collapsed ? '10px 0' : '9px 12px',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    borderRadius: '10px',
+                    textDecoration: 'none',
+                    fontSize: '13.5px',
+                    fontWeight: isActive ? 600 : 400,
+                    color: isActive ? t.navActiveText : t.textSecondary,
+                    background: isActive ? t.navActive : 'transparent',
+                    border: `1px solid ${isActive ? t.navActiveBorder : 'transparent'}`,
+                    transition: 'all 0.15s',
+                    position: 'relative',
+                  })}
+                  title={collapsed ? label : undefined}
+                  aria-label={label}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon size={18} style={{ flexShrink: 0, color: isActive ? t.accent : t.textSecondary }} />
+                      {!collapsed && (
+                        <>
+                          <span style={{ flex: 1, truncate: 'true', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {label}
+                          </span>
+                          {badge !== undefined && badge > 0 && (
+                            <span style={{
+                              background: t.accent,
+                              color: '#fff',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '1px 7px',
+                              borderRadius: '999px',
+                              minWidth: '20px',
+                              textAlign: 'center',
+                            }}>
+                              {badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* ── Usuario / Footer ── */}
+        <div style={{
+          borderTop: `1px solid ${t.sidebarBorder}`,
+          padding: collapsed ? '12px 8px' : '12px 12px',
+          flexShrink: 0,
+        }}>
+          {!collapsed ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Avatar name={user.nombre || 'U'} theme={t} size={34} />
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {user.nombre || 'Usuario'}
+                </p>
+                <p style={{ margin: 0, fontSize: '11px', color: t.textMuted, textTransform: 'capitalize' }}>
+                  {user.rol || t.name}
+                </p>
+              </div>
+              <button aria-label="Cerrar sesión" style={{ ...btnStyle(t), flexShrink: 0 }}>
+                <LogOut size={15} />
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <Avatar name={user.nombre || 'U'} theme={t} size={34} />
+            </div>
+          )}
+        </div>
+
+        {/* Expand button cuando collapsed */}
+        {collapsed && (
+          <button
+            onClick={onToggle}
+            aria-label="Expandir menú"
+            style={{
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              padding: '10px', margin: '8px',
+              borderRadius: '8px', border: `1px solid ${t.border}`,
+              background: 'transparent', cursor: 'pointer',
+              color: t.textMuted, transition: 'all 0.15s',
+            }}
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
+      </aside>
+    </>
+  );
+}
+
+// ── Avatar helper ─────────────────────────────────────────────
+function Avatar({ name, theme: t, size = 34 }) {
+  const initials = name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: t.accentSoft,
+      border: `2px solid ${t.accentBorder}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.35, fontWeight: 700,
+      color: t.accent, flexShrink: 0,
+    }}>
+      {initials}
+    </div>
+  );
+}
+
+// ── Estilo botones icon ────────────────────────────────────────
+function btnStyle(t) {
+  return {
+    background: 'none', border: 'none',
+    cursor: 'pointer', padding: '6px',
+    borderRadius: '8px', color: t.textMuted,
+    display: 'flex', alignItems: 'center',
+    transition: 'color 0.15s, background 0.15s',
+  };
+}
