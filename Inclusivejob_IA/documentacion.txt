@@ -15,3 +15,13 @@ ya con eso jala si o si
 =======
 pnpm add lucide-react //pa' que instalen el lucide-react con los íconos usados en el perfil chiquillos
 >>>>>>> 8ae41ced5014a4e973f282067692ba80c9e1759b
+
+
+=================== Por si ocupan comandos git son estos xd ==========================
+
+- git clone (link de cualquiera de los 2 enlaces ya sea front o back)
+- cd (direcctorio donde hayan clonado sus archivos )
+- git add . (agrega todos los cambios que hayan hecho)
+- git commit -m "nombre commit" (le dan nombre a sus cambios)
+- git push (sube sus cambios)
+- git pull (recibir cambios realizados a tu computadora xd)(siempre abras tu archivo ejecuta el pull)
