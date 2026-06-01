@@ -50,26 +50,190 @@ export default function Formulario() {
           alignItems: 'center',
           fontFamily:
             "'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-          background: "linear-gradient(180deg, #F8FBFF 0%, #EFF6FF 55%, #DBEAFE 100%)",
+          background: "linear-gradient(180deg, #F8FBFF 0%, #EFF6FF 35%, #93C5FD 65%, #203361 100%)",
         }}
       >
 
-        
+
+        {/* CÍRCULOS DECORATIVOS DEL FONDO */}
         {/* CÍRCULOS DECORATIVOS DEL FONDO */}
         <div
           style={{
             position: 'absolute',
-            top: '-120px',
-            right: '-110px',
-            width: '360px',
-            height: '360px',
-            borderRadius: '999px',
-            background: "rgba(37, 99, 235, 0.10)",
-            border: "1px solid rgba(37, 99, 235, 0.20)",
-            opacity: 0.9,
+            inset: 0,
+            overflow: 'hidden',
             pointerEvents: 'none',
+            zIndex: 0,
           }}
-        />
+        >
+          {/* CÍRCULO GRANDE SUPERIOR DERECHO */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '-140px',
+              right: '-120px',
+              width: '390px',
+              height: '390px',
+              borderRadius: '999px',
+              background: 'rgba(37, 99, 235, 0.12)',
+              border: '1px solid rgba(37, 99, 235, 0.20)',
+              filter: 'blur(1px)',
+            }}
+          />
+
+          {/* CÍRCULO GRANDE IZQUIERDO */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '190px',
+              left: '-170px',
+              width: '350px',
+              height: '350px',
+              borderRadius: '999px',
+              background: 'rgba(14, 165, 233, 0.13)',
+              border: '1px solid rgba(14, 165, 233, 0.22)',
+            }}
+          />
+
+          {/* HALO CENTRAL DIFUMINADO */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '38%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '620px',
+              height: '620px',
+              borderRadius: '999px',
+              background: 'rgba(37, 99, 235, 0.07)',
+              filter: 'blur(18px)',
+              opacity: 0.75,
+            }}
+          />
+
+          {/* CÍRCULO INFERIOR DERECHO */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '80px',
+              right: '55px',
+              width: '240px',
+              height: '240px',
+              borderRadius: '999px',
+              background: 'rgba(37, 99, 235, 0.08)',
+              border: `1px solid ${t.accentBorder}`,
+            }}
+          />
+
+          {/* CÍRCULO INFERIOR CENTRAL */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '-150px',
+              left: '35%',
+              width: '340px',
+              height: '340px',
+              borderRadius: '999px',
+              background: 'rgba(255, 255, 255, 0.65)',
+              border: `1px solid ${t.accentBorder}`,
+            }}
+          />
+
+          {/* CÍRCULO PEQUEÑO SUPERIOR IZQUIERDO */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '95px',
+              left: '90px',
+              width: '82px',
+              height: '82px',
+              borderRadius: '999px',
+              background: 'rgba(37, 99, 235, 0.07)',
+              border: '1px solid rgba(37, 99, 235, 0.18)',
+            }}
+          />
+
+          {/* CÍRCULO PEQUEÑO MEDIO DERECHO */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '42%',
+              right: '13%',
+              width: '96px',
+              height: '96px',
+              borderRadius: '999px',
+              background: 'rgba(14, 165, 233, 0.09)',
+              border: '1px solid rgba(14, 165, 233, 0.18)',
+            }}
+          />
+
+          {/* CÍRCULO OUTLINE GRANDE */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '52%',
+              left: '8%',
+              width: '190px',
+              height: '190px',
+              borderRadius: '999px',
+              background: 'transparent',
+              border: '1px solid rgba(37, 99, 235, 0.14)',
+            }}
+          />
+
+          {/* CÍRCULO OUTLINE PEQUEÑO */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '32%',
+              right: '28%',
+              width: '64px',
+              height: '64px',
+              borderRadius: '999px',
+              background: 'transparent',
+              border: '1px solid rgba(14, 165, 233, 0.20)',
+            }}
+          />
+
+          {/* CÍRCULO MINI 1 */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '28%',
+              left: '24%',
+              width: '28px',
+              height: '28px',
+              borderRadius: '999px',
+              background: 'rgba(37, 99, 235, 0.18)',
+            }}
+          />
+
+          {/* CÍRCULO MINI 2 */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '18%',
+              left: '16%',
+              width: '38px',
+              height: '38px',
+              borderRadius: '999px',
+              background: 'rgba(14, 165, 233, 0.16)',
+            }}
+          />
+
+          {/* CÍRCULO MINI 3 */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '18%',
+              right: '34%',
+              width: '32px',
+              height: '32px',
+              borderRadius: '999px',
+              background: 'rgba(37, 99, 235, 0.12)',
+            }}
+          />
+        </div>
 
         <div
           style={{
@@ -261,24 +425,24 @@ export default function Formulario() {
             }}
           >
             {[
-              
- {
-    label: 'Experiencia',
-    value: 'Valorada',
-    desc: 'Tomamos en cuenta tu trayectoria'
-  },
 
-              
-{
-    label: 'Perfil laboral',
-    value: 'Inicial',
-    desc: 'Datos clave para conocer tus necesidades'
-  },
-  {
-    label: 'Ajustes requeridos',
-    value: 'Personalizados',
-    desc: 'Información para adaptar oportunidades'
-  },
+              {
+                label: 'Experiencia',
+                value: 'Valorada',
+                desc: 'Tomamos en cuenta tu trayectoria'
+              },
+
+
+              {
+                label: 'Perfil laboral',
+                value: 'Inicial',
+                desc: 'Datos clave para conocer tus necesidades'
+              },
+              {
+                label: 'Ajustes requeridos',
+                value: 'Personalizados',
+                desc: 'Información para adaptar oportunidades'
+              },
 
             ].map((item) => (
               <div

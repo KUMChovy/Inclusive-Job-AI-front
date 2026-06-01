@@ -28,6 +28,7 @@ import ReclutadorDashboard from './pages/Reclutador/Reclutadordashboard.jsx';
 // ── Postulante ───────────────────────────────────────────────
 import PostulanteDashboard from './pages/Postulante/Postulantedashboard.jsx';
 import Formulario          from './pages/Postulante/formulario.jsx';
+import Verificacion        from './pages/Postulante/Verificacion.jsx';
 
 
 function App() {
@@ -69,7 +70,7 @@ function App() {
           ================================================================ */}
       <Route path="/postulante" element={<PostulanteDashboard />} />
       <Route path="/formulario" element={<Formulario />} />
-
+      <Route path="/verificacion" element={<Verificacion />} />
       {/* <Route path="/postulante/vacantes"        element={<PostulanteVacantes />} /> */}
     
 
