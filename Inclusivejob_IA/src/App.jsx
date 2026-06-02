@@ -6,6 +6,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Home        from './pages/Home.jsx';
 import LoginAdmin  from './pages/Admin/LoginAdmin.jsx';
 import Vista from './pages/Reclutador/vista.jsx';
+import Login from './pages/Ingresar.jsx';
+import Registro from './pages/Registro.jsx';
 
 // ── Admin ────────────────────────────────────────────────────
 import AdminLayout    from './assets/Componentes/Admin/AdminLayout.jsx';
@@ -39,6 +41,8 @@ function App() {
       <Route path="/"            element={<Home />} />
       <Route path="/login-admin" element={<LoginAdmin />} />
       <Route path='/Vista' element={<Vista/>}/>
+      <Route path='/login' element={<Login/>}/>
+      <Route path='/registro' element={<Registro/>}/>
 
       {/* ================================================================
           ADMIN 
