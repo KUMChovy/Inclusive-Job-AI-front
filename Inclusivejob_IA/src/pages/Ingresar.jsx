@@ -13,6 +13,7 @@ const Registro = () => {
   }, []);
 
   return (  
+  <>
     <div
       style={{
         ...styles.container,
@@ -134,6 +135,60 @@ const Registro = () => {
         </div>
       </div>
     </div>
+
+    {/* ================= MODAL ================= */}
+    {openModal && (
+      <div className="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6">
+        <div
+          onClick={() => setOpenModal(false)}
+          className="absolute inset-0 bg-indigo-950/35 backdrop-blur-md"
+        />
+
+        <div className="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
+          <button
+            type="button"
+            onClick={() => setOpenModal(false)}
+            className="absolute top-4 right-4"
+          >
+            ✕
+          </button>
+
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 overflow-hidden rounded-2xl mb-4">
+              <img
+                src="/logo.webp"
+                alt="Logo"
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <h1 className="text-2xl font-bold">
+              Recuperar contraseña
+            </h1>
+
+            <p className="text-gray-600 mt-3">
+              Hemos enviado un código a tu correo electrónico.
+            </p>
+
+            <div className="flex gap-2 mt-6">
+              {[1, 2, 3, 4, 5, 6].map((item) => (
+                <input
+                  key={item}
+                  type="text"
+                  maxLength={1}
+                  className="w-12 h-12 text-center border rounded-xl"
+                />
+              ))}
+            </div>
+
+            <button className="w-full mt-6 bg-indigo-700 text-white py-3 rounded-xl">
+              Verificar código
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 };
 
