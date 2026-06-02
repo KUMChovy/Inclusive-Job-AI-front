@@ -162,25 +162,21 @@ const Registro = () => {
               />
             </div>
 
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-gray-600 mt-3">
               Recuperar contraseña
             </h1>
 
             <p className="text-gray-600 mt-3">
-              Hemos enviado un código a tu correo electrónico.
+              Enviaremos un código de verificación a este correo, si coincide con una cuenta de InclusiveJob IA existente.
             </p>
 
-            <div className="flex gap-2 mt-6">
-              {[1, 2, 3, 4, 5, 6].map((item) => (
-                <input
-                  key={item}
-                  type="text"
-                  maxLength={1}
-                  className="w-12 h-12 text-center border rounded-xl"
-                />
-              ))}
+            <div className="w-full mt-6">
+              <input
+                type="email"
+                placeholder="Ingresa tu correo electrónico"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-indigo-600"
+              />
             </div>
-
             <button className="w-full mt-6 bg-indigo-700 text-white py-3 rounded-xl">
               Verificar código
             </button>
