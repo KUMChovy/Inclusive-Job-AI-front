@@ -90,10 +90,13 @@ export default function Verificacion() {
               {/* LOGO TEMPORAL */}
               <div className="flex flex-col items-center text-center mb-8">
 
-                <div className="w-16 h-16 bg-white/75 backdrop-blur-md rounded-2xl shadow-md border border-white/80 flex items-center justify-center p-2 mb-4">
-                  <span className="text-indigo-800 font-bold text-xl">
-                    IJ
-                  </span>
+
+                <div className="w-16 h-16 bg-white/75 backdrop-blur-md rounded-2xl shadow-md border border-white/80 overflow-hidden mb-4">
+                  <img
+                    src="/logo.webp"
+                    alt="Logo"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
 
                 {/* ICONO DECORATIVO */}

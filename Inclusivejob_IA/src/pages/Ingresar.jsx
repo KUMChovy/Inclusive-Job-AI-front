@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 
 const Registro = () => {
   const [isMobile, setIsMobile] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 900px)");
@@ -11,7 +12,7 @@ const Registro = () => {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  return (
+  return (  
     <div
       style={{
         ...styles.container,
@@ -90,9 +91,19 @@ const Registro = () => {
 
             {/* Recuperar contraseña */}
             <p style={styles.loginText}>
-              <a href="/registro" style={styles.loginLink}>
+              <button
+                type="button"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#4f46e5",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+                onClick={() => setOpenModal(true)}
+              >
                 ¿Has olvidado tu contraseña?
-              </a>
+              </button>
             </p>
 
             {/* DIVIDER */}

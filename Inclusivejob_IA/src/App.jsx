@@ -8,6 +8,7 @@ import LoginAdmin  from './pages/Admin/LoginAdmin.jsx';
 import Vista from './pages/Reclutador/vista.jsx';
 import Login from './pages/Ingresar.jsx';
 import Registro from './pages/Registro.jsx';
+import Verificacion from './pages/Verificacion.jsx';
 
 // ── Admin ────────────────────────────────────────────────────
 import AdminLayout    from './assets/Componentes/Admin/AdminLayout.jsx';
@@ -30,7 +31,6 @@ import ReclutadorDashboard from './pages/Reclutador/Reclutadordashboard.jsx';
 // ── Postulante ───────────────────────────────────────────────
 import PostulanteDashboard from './pages/Postulante/Postulantedashboard.jsx';
 import Formulario          from './pages/Postulante/formulario.jsx';
-import Verificacion        from './pages/Postulante/Verificacion.jsx';
 
 
 function App() {
@@ -43,6 +43,7 @@ function App() {
       <Route path='/Vista' element={<Vista/>}/>
       <Route path='/login' element={<Login/>}/>
       <Route path='/registro' element={<Registro/>}/>
+      <Route path="/verificacion" element={<Verificacion />} />
 
       {/* ================================================================
           ADMIN 
@@ -74,7 +75,6 @@ function App() {
           ================================================================ */}
       <Route path="/postulante" element={<PostulanteDashboard />} />
       <Route path="/formulario" element={<Formulario />} />
-      <Route path="/verificacion" element={<Verificacion />} />
       {/* <Route path="/postulante/vacantes"        element={<PostulanteVacantes />} /> */}
     
 
