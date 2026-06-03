@@ -89,7 +89,7 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             <img
-              src=""
+              src="/logo.webp"
               alt="Logo InclusiveJobIA"
               className="w-10 h-10 object-contain bg-white rounded p-1"
             />
