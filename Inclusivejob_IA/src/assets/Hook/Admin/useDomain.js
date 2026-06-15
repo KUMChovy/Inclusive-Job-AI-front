@@ -1,16 +1,23 @@
-// Hooks específicos por dominio - conectados a los endpoints PHP
+// src/assets/Hook/Admin/useDomain.js
+// Hooks específicos por dominio — conectados a los endpoints PHP reales
 import { useFetch, useApiAction } from './useApi';
 import { ENDPOINTS } from './apiAdmin';
 
 // ─── DASHBOARD ───────────────────────────────────────────────
+
 export function useDashboardStats() {
-  return useFetch(ENDPOINTS.dashboard.stats);
-}
-export function useVacantesRecientes() {
-  return useFetch(ENDPOINTS.dashboard.vacantesRecientes);
-}
-export function useEmpresasPendientesDash() {
-  return useFetch(ENDPOINTS.dashboard.empresasPendientes);
+  const { data, loading, error, refetch } = useFetch(ENDPOINTS.dashboard.stats);
+  const stats = data?.data ?? data ?? null;
+
+  return {
+    stats,
+    actividadMensual:   stats?.actividad_mensual ?? [],
+    ultimasVacantes:    stats?.ultimas_vacantes ?? [],
+    empresasPendientes: stats?.empresas_pendientes_lista ?? [],
+    loading,
+    error,
+    refetch,
+  };
 }
 
 // ─── EMPRESAS ────────────────────────────────────────────────
@@ -23,9 +30,10 @@ export function useEmpresaDetalle(id) {
 export function useEmpresaAcciones() {
   const { execute, loading, error } = useApiAction();
   return {
-    aprobar: (id) => execute(ENDPOINTS.empresas.aprobar(id), 'PUT'),
-    rechazar: (id, motivo) => execute(ENDPOINTS.empresas.rechazar(id), 'PUT', { motivo }),
-    suspender: (id) => execute(ENDPOINTS.empresas.suspender(id), 'PUT'),
+    aprobar:   (id)        => execute(ENDPOINTS.empresas.aprobar(id),   'POST'),
+    rechazar:  (id, motivo)=> execute(ENDPOINTS.empresas.rechazar(id),  'POST', { motivo }),
+    suspender: (id)        => execute(ENDPOINTS.empresas.suspender(id), 'POST'),
+    reactivar: (id)        => execute(ENDPOINTS.empresas.reactivar(id), 'POST'),
     loading,
     error,
   };
@@ -41,8 +49,8 @@ export function useUsuarioDetalle(id) {
 export function useUsuarioAcciones() {
   const { execute, loading, error } = useApiAction();
   return {
-    suspender: (id) => execute(ENDPOINTS.usuarios.suspender(id), 'PUT'),
-    reactivar: (id) => execute(ENDPOINTS.usuarios.reactivar(id), 'PUT'),
+    suspender: (id) => execute(ENDPOINTS.usuarios.suspender(id), 'POST'),
+    reactivar: (id) => execute(ENDPOINTS.usuarios.reactivar(id), 'POST'),
     loading,
     error,
   };
@@ -58,8 +66,8 @@ export function useVacanteDetalle(id) {
 export function useVacanteAcciones() {
   const { execute, loading, error } = useApiAction();
   return {
-    cerrar: (id) => execute(ENDPOINTS.vacantes.cerrar(id), 'PUT'),
-    eliminar: (id) => execute(ENDPOINTS.vacantes.eliminar(id), 'DELETE'),
+    cerrar:   (id) => execute(ENDPOINTS.vacantes.cerrar(id),   'POST'),
+    eliminar: (id) => execute(ENDPOINTS.vacantes.eliminar(id), 'POST'),
     loading,
     error,
   };
@@ -72,6 +80,14 @@ export function usePostulaciones(params = '') {
 export function usePostulacionDetalle(id) {
   return useFetch(id ? ENDPOINTS.postulaciones.detail(id) : null);
 }
+export function usePostulacionAcciones() {
+  const { execute, loading, error } = useApiAction();
+  return {
+    actualizarEstado: (id, estado) => execute(ENDPOINTS.postulaciones.actualizarEstado(id), 'POST', { estado }),
+    loading,
+    error,
+  };
+}
 
 // ─── DISCAPACIDADES ──────────────────────────────────────────
 export function useDiscapacidades() {
@@ -80,9 +96,9 @@ export function useDiscapacidades() {
 export function useDiscapacidadAcciones() {
   const { execute, loading, error } = useApiAction();
   return {
-    crear: (data) => execute(ENDPOINTS.discapacidades.create, 'POST', data),
-    editar: (id, data) => execute(ENDPOINTS.discapacidades.update(id), 'PUT', data),
-    eliminar: (id) => execute(ENDPOINTS.discapacidades.delete(id), 'DELETE'),
+    crear:    (data)     => execute(ENDPOINTS.discapacidades.create,     'POST', data),
+    editar:   (id, data) => execute(ENDPOINTS.discapacidades.update(id), 'POST', data),
+    eliminar: (id)       => execute(ENDPOINTS.discapacidades.delete(id), 'POST'),
     loading,
     error,
   };
@@ -95,8 +111,8 @@ export function useReportes(params = '') {
 export function useReporteAcciones() {
   const { execute, loading, error } = useApiAction();
   return {
-    ignorar: (id) => execute(ENDPOINTS.reportes.ignorar(id), 'PUT'),
-    eliminarVacante: (id) => execute(ENDPOINTS.reportes.eliminarVacante(id), 'DELETE'),
+    ignorar:         (id) => execute(ENDPOINTS.reportes.ignorar(id),        'POST'),
+    eliminarVacante: (id) => execute(ENDPOINTS.reportes.eliminarVacante(id), 'POST'),
     loading,
     error,
   };

@@ -1,93 +1,209 @@
 // src/pages/Admin/Reportes.jsx
-import { useState, useMemo } from 'react';
-import { X, Trash2 } from 'lucide-react';
-import { PageHeader, Badge, Button, SearchBar } from '../../assets/Componentes/Admin/UI';
+import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, Flag, RefreshCw, Trash2, X } from 'lucide-react';
+
+import {
+  PageHeader, Badge, Button, SearchBar, FilterTabs, ErrorBanner,
+} from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
 import { useSearch, usePagination } from '../../assets/Hook/Admin/useApi';
-import { confirmDelete, confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
+import { useReporteAcciones, useReportes } from '../../assets/Hook/Admin/useDomain';
+import {
+  confirmDelete, confirmAction, successAlert, errorAlert,
+} from '../../assets/Componentes/Admin/alerts';
 
-const MOCK_REPORTES = [
-  { id: 1, vacante: 'Desarrollador Frontend', empresa: 'Tech Solutions SA', usuario: 'ana.garcia@email.com',  motivo: 'Contenido discriminatorio hacia personas con discapacidad visual',  fecha_reporte: '2026-05-20' },
-  { id: 2, vacante: 'Soporte Técnico',         empresa: 'HelpDesk Pro',       usuario: 'carlos.rl@email.com',  motivo: 'Requisitos físicos excluyentes sin justificación',                   fecha_reporte: '2026-05-19' },
-  { id: 3, vacante: 'Analista de Datos',       empresa: 'DataCorp MX',        usuario: 'mhernandez@email.com', motivo: 'Información de salario engañosa',                                    fecha_reporte: '2026-05-18' },
-  { id: 4, vacante: 'QA Engineer',             empresa: 'Tech Solutions SA',  usuario: 'jlopez@email.com',     motivo: 'Vacante duplicada',                                                 fecha_reporte: '2026-05-17' },
+const LIMITE = 15;
+
+const ESTADO_BADGE = {
+  activa: 'success',
+  cerrada: 'default',
+  eliminada: 'danger',
+};
+
+const FILTROS = [
+  { value: 'todas', label: 'Todas' },
+  { value: 'activa', label: 'Activas' },
+  { value: 'cerrada', label: 'Cerradas' },
+  { value: 'eliminada', label: 'Eliminadas' },
 ];
 
+function safeDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('es-MX');
+}
+
+function getReporteId(row) {
+  return row.id_reporte ?? row.id;
+}
+
+function getVacanteId(row) {
+  return row.id_vacante;
+}
+
+function getVacante(row) {
+  return row.vacante ?? row.titulo_puesto ?? 'Sin titulo';
+}
+
+function getEmpresa(row) {
+  return row.empresa ?? row.nombre_empresas ?? '-';
+}
+
+function getUsuario(row) {
+  return row.usuario ?? row.correo ?? '-';
+}
+
 export default function Reportes() {
-  const { query, setQuery, debouncedQuery } = useSearch();
-  const { page, goToPage, reset } = usePagination(1, 10);
-  const [reportes, setReportes] = useState(MOCK_REPORTES);
+  const navigate = useNavigate();
+  const { query, setQuery, debouncedQuery } = useSearch(400);
+  const { page, goToPage, reset } = usePagination(1, LIMITE);
+  const [filtro, setFiltro] = useState('todas');
   const [actionLoading, setActionLoading] = useState(null);
 
-  const filtered = useMemo(() => {
-    if (!debouncedQuery) return reportes;
-    const q = debouncedQuery.toLowerCase();
-    return reportes.filter(
-      (r) => r.vacante.toLowerCase().includes(q) || r.empresa.toLowerCase().includes(q) || r.usuario.toLowerCase().includes(q),
-    );
-  }, [reportes, debouncedQuery]);
+  const buildParams = useCallback(() => {
+    const params = new URLSearchParams();
+    if (filtro !== 'todas') params.set('estado', filtro);
+    if (debouncedQuery) params.set('buscar', debouncedQuery);
+    params.set('pagina', String(page));
+    params.set('limite', String(LIMITE));
+    return `&${params.toString()}`;
+  }, [debouncedQuery, filtro, page]);
 
-  const LIMIT = 10;
-  const paginated = filtered.slice((page - 1) * LIMIT, page * LIMIT);
+  const { data, loading, error, refetch } = useReportes(buildParams());
+  const { ignorar, eliminarVacante } = useReporteAcciones();
 
-  const removeReporte = (id) => setReportes((prev) => prev.filter((r) => r.id !== id));
+  const payload = data?.data ?? data ?? {};
+  const reportes = payload.reportes ?? (Array.isArray(payload) ? payload : []);
+  const total = Number(payload.total ?? reportes.length);
 
   const handleIgnorar = async (row) => {
+    const id = getReporteId(row);
+    const vacante = getVacante(row);
+
     const ok = await confirmAction({
       title: 'Ignorar reporte',
-      html: `<span>El reporte sobre <strong style="color:#fff">"${row.vacante}"</strong> será descartado. La vacante permanecerá activa.</span>`,
+      html: `<span>El reporte sobre <strong style="color:#fff">"${vacante}"</strong> sera descartado. La vacante permanecera activa.</span>`,
       confirmText: 'Ignorar',
       confirmColor: '#475569',
       icon: 'info',
     });
     if (!ok) return;
-    setActionLoading(row.id);
+
+    setActionLoading(id);
     try {
-      removeReporte(row.id);
-      await successAlert('Reporte ignorado', 'El reporte fue descartado.');
+      await ignorar(id);
+      await refetch();
+      successAlert('Reporte ignorado', 'El reporte fue descartado.');
     } catch {
-      await errorAlert('Error', 'No se pudo ignorar el reporte.');
+      errorAlert('Error', 'No se pudo ignorar el reporte.');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleEliminarVacante = async (row) => {
-    const ok = await confirmDelete(`la vacante "${row.vacante}"`);
+    const id = getReporteId(row);
+    const vacante = getVacante(row);
+
+    const ok = await confirmDelete(`la vacante "${vacante}"`);
     if (!ok) return;
-    setActionLoading(row.id);
+
+    setActionLoading(id);
     try {
-      removeReporte(row.id);
-      await successAlert('Vacante eliminada', `"${row.vacante}" fue eliminada de la plataforma.`);
+      await eliminarVacante(id);
+      await refetch();
+      successAlert('Vacante eliminada', `"${vacante}" fue eliminada de la plataforma.`);
     } catch {
-      await errorAlert('Error', 'No se pudo eliminar la vacante.');
+      errorAlert('Error', 'No se pudo eliminar la vacante.');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const COLS = [
-    { key: 'vacante',  label: 'Vacante',           render: (v) => <span className="text-white font-medium">{v}</span> },
-    { key: 'empresa',  label: 'Empresa'             },
-    { key: 'usuario',  label: 'Usuario reportante', render: (v) => <span className="text-xs text-slate-400">{v}</span> },
+  const columns = [
     {
-      key: 'motivo', label: 'Motivo',
-      render: (v) => <span className="text-sm text-slate-300 line-clamp-2 max-w-xs" title={v}>{v}</span>,
+      key: 'vacante',
+      label: 'Vacante',
+      render: (_, row) => <span className="text-white font-medium">{getVacante(row)}</span>,
     },
-    { key: 'fecha_reporte', label: 'Fecha', render: (v) => new Date(v).toLocaleDateString('es-MX') },
     {
-      key: 'acciones', label: 'Acciones',
+      key: 'empresa',
+      label: 'Empresa',
+      render: (_, row) => getEmpresa(row),
+    },
+    {
+      key: 'usuario',
+      label: 'Usuario reportante',
       render: (_, row) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" title="Ignorar reporte" loading={actionLoading === row.id} onClick={() => handleIgnorar(row)} aria-label="Ignorar">
-            <X size={14} />
-          </Button>
-          <Button variant="danger" size="sm" title="Eliminar vacante" loading={actionLoading === row.id} onClick={() => handleEliminarVacante(row)} aria-label="Eliminar vacante">
-            <Trash2 size={14} />
-          </Button>
+        <div className="min-w-0">
+          <p className="text-sm text-slate-300 truncate">{row.usuario_nombre || '-'}</p>
+          <p className="text-xs text-slate-500 truncate">{getUsuario(row)}</p>
         </div>
       ),
+    },
+    {
+      key: 'motivo',
+      label: 'Motivo',
+      render: (value) => (
+        <span className="text-sm text-slate-300 line-clamp-2 max-w-xs" title={value}>
+          {value || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'estado_vacante',
+      label: 'Estado vacante',
+      render: (value) => <Badge variant={ESTADO_BADGE[value] ?? 'default'}>{value || '-'}</Badge>,
+    },
+    {
+      key: 'fecha_reporte',
+      label: 'Fecha',
+      render: (value) => safeDate(value),
+    },
+    {
+      key: 'acciones',
+      label: 'Acciones',
+      render: (_, row) => {
+        const id = getReporteId(row);
+        const isLoading = actionLoading === id;
+
+        return (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Ver vacante"
+              onClick={() => navigate(`/admin/vacantes/${getVacanteId(row)}`)}
+              aria-label="Ver vacante"
+            >
+              <Eye size={14} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Ignorar reporte"
+              loading={isLoading}
+              onClick={() => handleIgnorar(row)}
+              aria-label="Ignorar reporte"
+            >
+              <X size={14} />
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              title="Eliminar vacante"
+              loading={isLoading}
+              onClick={() => handleEliminarVacante(row)}
+              aria-label="Eliminar vacante"
+            >
+              <Trash2 size={14} />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -96,22 +212,49 @@ export default function Reportes() {
       <PageHeader
         title="Reportes de Vacantes"
         description="Modera las vacantes reportadas por usuarios de la plataforma"
-        action={
-          reportes.length > 0 && (
-            <Badge variant="warning">{reportes.length} pendientes</Badge>
-          )
-        }
+        action={(
+          <div className="flex items-center gap-3">
+            <span className="text-slate-400 text-sm flex items-center gap-1">
+              <Flag size={15} /> {total} reportes
+            </span>
+            <Button variant="ghost" size="sm" onClick={refetch} disabled={loading}>
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              {loading ? 'Cargando...' : 'Actualizar'}
+            </Button>
+          </div>
+        )}
       />
 
-      <SearchBar
-        value={query}
-        onChange={(v) => { setQuery(v); reset(); }}
-        placeholder="Buscar por vacante, empresa o usuario..."
-        className="sm:w-96"
+      <ErrorBanner message={error} />
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <SearchBar
+          value={query}
+          onChange={(value) => { setQuery(value); reset(); }}
+          placeholder="Buscar por vacante, empresa, usuario o motivo..."
+          className="sm:w-96"
+        />
+        <FilterTabs
+          options={FILTROS}
+          value={filtro}
+          onChange={(value) => { setFiltro(value); reset(); }}
+        />
+      </div>
+
+      <Table
+        columns={columns}
+        data={reportes}
+        loading={loading}
+        emptyMessage="No hay reportes de vacantes con los filtros aplicados."
+        caption="Reportes de vacantes"
       />
 
-      <Table columns={COLS} data={paginated} loading={false} emptyMessage="No hay reportes pendientes. ¡Todo en orden!" caption="Reportes de vacantes" />
-      <Pagination total={filtered.length} page={page} limit={LIMIT} onPageChange={goToPage} />
+      <Pagination
+        total={total}
+        page={page}
+        limit={LIMITE}
+        onPageChange={goToPage}
+      />
     </div>
   );
 }

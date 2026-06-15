@@ -1,6 +1,6 @@
 
 
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 
 // ── Páginas públicas ─────────────────────────────────────────
 import Home        from './pages/Home.jsx';
@@ -20,6 +20,7 @@ import UsuarioPerfil  from './pages/Admin/Usuarioperfil.jsx';
 import Vacantes       from './pages/Admin/Vacantes.jsx';
 import VacanteDetalle from './pages/Admin/Vacantedetalle.jsx';
 import Postulaciones  from './pages/Admin/Postulaciones.jsx';
+import PostulacionDetalle from './pages/Admin/Postulaciondetalle.jsx';
 import Discapacidades from './pages/Admin/Discapacidades.jsx';
 import Reportes       from './pages/Admin/Reportes.jsx';
 // import Configuracion from './pages/Admin/Configuracion.jsx';
@@ -58,6 +59,7 @@ function App() {
         <Route path="vacantes"       element={<Vacantes />} />
         <Route path="vacantes/:id"   element={<VacanteDetalle />} />
         <Route path="postulaciones"  element={<Postulaciones />} />
+        <Route path="postulaciones/:id" element={<PostulacionDetalle />} />
         <Route path="discapacidades" element={<Discapacidades />} />
         <Route path="reportes"       element={<Reportes />} />
         {/* <Route path="configuracion" element={<Configuracion />} /> */}

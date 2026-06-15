@@ -1,141 +1,273 @@
 // src/pages/Admin/Vacantes.jsx
-import { useState, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, XCircle, Trash2 } from 'lucide-react';
-import { PageHeader, Badge, Button, SearchBar, FilterTabs, Select } from '../../assets/Componentes/Admin/UI';
+import { Briefcase, Eye, RefreshCw, Trash2, XCircle } from 'lucide-react';
+
+import {
+  PageHeader, Badge, Button, SearchBar, FilterTabs, Select, ErrorBanner,
+} from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
 import { useSearch, usePagination } from '../../assets/Hook/Admin/useApi';
+import { useVacanteAcciones, useVacantes } from '../../assets/Hook/Admin/useDomain';
 import { confirmDelete, confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
 
-const MOCK_VACANTES = [
-  { id: 1, titulo: 'Desarrollador Frontend', empresa: 'Tech Solutions SA',  modalidad: 'Remoto',     salario_min: 15000, salario_max: 25000, estado: 'activa',   fecha_publicacion: '2026-05-10' },
-  { id: 2, titulo: 'Analista de Datos',       empresa: 'DataCorp MX',        modalidad: 'Híbrido',    salario_min: 18000, salario_max: 30000, estado: 'activa',   fecha_publicacion: '2026-05-12' },
-  { id: 3, titulo: 'Diseñador UX/UI',         empresa: 'CreativeHub CDMX',   modalidad: 'Presencial', salario_min: 12000, salario_max: 20000, estado: 'activa',   fecha_publicacion: '2026-05-15' },
-  { id: 4, titulo: 'Soporte Técnico',         empresa: 'HelpDesk Pro',       modalidad: 'Remoto',     salario_min: 10000, salario_max: 14000, estado: 'cerrada',  fecha_publicacion: '2026-05-01' },
-  { id: 5, titulo: 'QA Engineer',             empresa: 'Tech Solutions SA',  modalidad: 'Híbrido',    salario_min: 20000, salario_max: 32000, estado: 'activa',   fecha_publicacion: '2026-05-08' },
-  { id: 6, titulo: 'PM de Producto',          empresa: 'DataCorp MX',        modalidad: 'Presencial', salario_min: 25000, salario_max: 40000, estado: 'eliminada',fecha_publicacion: '2026-04-20' },
-];
-
-const ESTADO_BADGE = { activa: 'success', cerrada: 'default', eliminada: 'danger' };
+const ESTADO_BADGE = {
+  activa: 'success',
+  cerrada: 'default',
+  eliminada: 'danger',
+};
 
 const FILTROS = [
   { value: 'todas', label: 'Todas' },
-  { value: 'activa',    label: 'Activas'    },
-  { value: 'cerrada',   label: 'Cerradas'   },
+  { value: 'activa', label: 'Activas' },
+  { value: 'cerrada', label: 'Cerradas' },
   { value: 'eliminada', label: 'Eliminadas' },
 ];
 
 const MODALIDADES = [
-  { value: 'todas',       label: 'Todas las modalidades' },
-  { value: 'Remoto',      label: 'Remoto'      },
-  { value: 'Híbrido',     label: 'Híbrido'     },
-  { value: 'Presencial',  label: 'Presencial'  },
+  { value: 'todas', label: 'Todas las modalidades' },
+  { value: 'Remoto', label: 'Remoto' },
+  { value: 'Híbrido', label: 'Híbrido' },
+  { value: 'Presencial', label: 'Presencial' },
 ];
+
+const LIMITE = 15;
+
+function safeDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('es-MX');
+}
+
+function formatMoney(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  if (Number.isNaN(number)) return null;
+  return `$${number.toLocaleString('es-MX')}`;
+}
+
+function formatSalary(row) {
+  const min = formatMoney(row.salario_min);
+  const max = formatMoney(row.salario_max);
+  if (min && max) return `${min} - ${max}`;
+  return min || max || '-';
+}
+
+function getVacanteId(row) {
+  return row.id_vacante ?? row.id;
+}
+
+function getTitulo(row) {
+  return row.titulo_puesto ?? row.titulo ?? 'Sin titulo';
+}
+
+function getEmpresa(row) {
+  return row.empresa ?? row.nombre_empresas ?? row.nombre_empresa ?? '-';
+}
 
 export default function Vacantes() {
   const navigate = useNavigate();
-  const { query, setQuery, debouncedQuery } = useSearch();
-  const { page, goToPage, reset } = usePagination(1, 10);
-  const [filtro, setFiltro]       = useState('todas');
+
+  const { query, setQuery, debouncedQuery } = useSearch(400);
+  const { page, goToPage, reset } = usePagination(1, LIMITE);
+  const [filtro, setFiltro] = useState('todas');
   const [modalidad, setModalidad] = useState('todas');
-  const [vacantes, setVacantes]   = useState(MOCK_VACANTES);
   const [actionLoading, setActionLoading] = useState(null);
 
-  const filtered = useMemo(() => {
-    let list = vacantes;
-    if (filtro !== 'todas')    list = list.filter((v) => v.estado === filtro);
-    if (modalidad !== 'todas') list = list.filter((v) => v.modalidad === modalidad);
-    if (debouncedQuery) {
-      const q = debouncedQuery.toLowerCase();
-      list = list.filter((v) => v.titulo.toLowerCase().includes(q) || v.empresa.toLowerCase().includes(q));
-    }
-    return list;
-  }, [vacantes, filtro, modalidad, debouncedQuery]);
+  const buildParams = useCallback(() => {
+    const params = new URLSearchParams();
+    if (filtro !== 'todas') params.set('estado', filtro);
+    if (modalidad !== 'todas') params.set('modalidad', modalidad);
+    if (debouncedQuery) params.set('buscar', debouncedQuery);
+    params.set('pagina', String(page));
+    params.set('limite', String(LIMITE));
+    return `&${params.toString()}`;
+  }, [filtro, modalidad, debouncedQuery, page]);
 
-  const LIMIT = 10;
-  const paginated = filtered.slice((page - 1) * LIMIT, page * LIMIT);
+  const { data, loading, error, refetch } = useVacantes(buildParams());
+  const { cerrar, eliminar } = useVacanteAcciones();
 
-  const updateEstado = (id, estado) =>
-    setVacantes((prev) => prev.map((v) => v.id === id ? { ...v, estado } : v));
+  const payload = data?.data ?? data ?? {};
+  const vacantes = payload.vacantes ?? (Array.isArray(payload) ? payload : []);
+  const total = Number(payload.total ?? vacantes.length);
 
   const handleCerrar = async (row) => {
+    const id = getVacanteId(row);
+    const titulo = getTitulo(row);
+
     const ok = await confirmAction({
       title: 'Cerrar vacante',
-      html: `<span>La vacante <strong style="color:#fff">"${row.titulo}"</strong> dejará de recibir postulaciones.</span>`,
+      html: `<span>La vacante <strong style="color:#fff">"${titulo}"</strong> dejara de recibir postulaciones.</span>`,
       confirmText: 'Cerrar vacante',
       confirmColor: '#475569',
       icon: 'warning',
     });
     if (!ok) return;
-    setActionLoading(row.id);
+
+    setActionLoading(id);
     try {
-      updateEstado(row.id, 'cerrada');
-      await successAlert('Vacante cerrada', `"${row.titulo}" ya no recibe postulaciones.`);
+      await cerrar(id);
+      await refetch();
+      successAlert('Vacante cerrada', `"${titulo}" ya no recibe postulaciones.`);
     } catch {
-      await errorAlert('Error', 'No se pudo cerrar la vacante.');
+      errorAlert('Error', 'No se pudo cerrar la vacante.');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleEliminar = async (row) => {
-    const ok = await confirmDelete(`"${row.titulo}"`);
+    const id = getVacanteId(row);
+    const titulo = getTitulo(row);
+
+    const ok = await confirmDelete(`"${titulo}"`);
     if (!ok) return;
-    setActionLoading(row.id);
+
+    setActionLoading(id);
     try {
-      setVacantes((prev) => prev.filter((v) => v.id !== row.id));
-      await successAlert('Eliminada', `La vacante ha sido eliminada.`);
+      await eliminar(id);
+      await refetch();
+      successAlert('Eliminada', 'La vacante ha sido eliminada.');
     } catch {
-      await errorAlert('Error', 'No se pudo eliminar la vacante.');
+      errorAlert('Error', 'No se pudo eliminar la vacante.');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const COLS = [
-    { key: 'titulo',   label: 'Título', sortable: true, render: (v) => <span className="font-medium text-white">{v}</span> },
-    { key: 'empresa',  label: 'Empresa' },
-    { key: 'modalidad',label: 'Modalidad', render: (v) => <Badge variant="info">{v}</Badge> },
-    { key: 'salario',  label: 'Salario',   render: (_, row) => `$${row.salario_min?.toLocaleString()} – $${row.salario_max?.toLocaleString()}` },
-    { key: 'estado',   label: 'Estado',    render: (v) => <Badge variant={ESTADO_BADGE[v]}>{v}</Badge> },
-    { key: 'fecha_publicacion', label: 'Publicación', render: (v) => new Date(v).toLocaleDateString('es-MX') },
+  const columns = [
     {
-      key: 'acciones', label: 'Acciones',
-      render: (_, row) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/vacantes/${row.id}`)} aria-label="Ver">
-            <Eye size={14} />
-          </Button>
-          {row.estado === 'activa' && (
-            <Button variant="secondary" size="sm" loading={actionLoading === row.id} onClick={() => handleCerrar(row)} aria-label="Cerrar">
-              <XCircle size={14} />
+      key: 'titulo_puesto',
+      label: 'Titulo',
+      sortable: true,
+      render: (_, row) => <span className="font-medium text-white">{getTitulo(row)}</span>,
+    },
+    {
+      key: 'empresa',
+      label: 'Empresa',
+      render: (_, row) => getEmpresa(row),
+    },
+    {
+      key: 'modalidad',
+      label: 'Modalidad',
+      render: (value) => <Badge variant="info">{value || '-'}</Badge>,
+    },
+    {
+      key: 'salario',
+      label: 'Salario',
+      render: (_, row) => formatSalary(row),
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      render: (value) => <Badge variant={ESTADO_BADGE[value] ?? 'default'}>{value || '-'}</Badge>,
+    },
+    {
+      key: 'fecha_publicacion',
+      label: 'Publicacion',
+      render: (value) => safeDate(value),
+    },
+    {
+      key: 'acciones',
+      label: 'Acciones',
+      render: (_, row) => {
+        const id = getVacanteId(row);
+        const isLoading = actionLoading === id;
+
+        return (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/admin/vacantes/${id}`)}
+              aria-label="Ver detalle"
+            >
+              <Eye size={14} />
             </Button>
-          )}
-          <Button variant="danger" size="sm" loading={actionLoading === row.id} onClick={() => handleEliminar(row)} aria-label="Eliminar">
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      ),
+
+            {row.estado === 'activa' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={isLoading}
+                onClick={() => handleCerrar(row)}
+                aria-label="Cerrar vacante"
+              >
+                <XCircle size={14} />
+              </Button>
+            )}
+
+            <Button
+              variant="danger"
+              size="sm"
+              loading={isLoading}
+              onClick={() => handleEliminar(row)}
+              aria-label="Eliminar vacante"
+            >
+              <Trash2 size={14} />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
   return (
     <div className="space-y-5 w-full">
       <PageHeader
-        title="Gestión de Vacantes"
+        title="Gestion de Vacantes"
         description="Visualiza y administra todas las vacantes publicadas"
-        action={<span className="text-slate-400 text-sm">{filtered.length} vacantes</span>}
+        action={
+          <div className="flex items-center gap-3">
+            <span className="text-slate-400 text-sm flex items-center gap-1">
+              <Briefcase size={15} /> {total} vacantes
+            </span>
+            <Button variant="ghost" size="sm" onClick={refetch} disabled={loading}>
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              {loading ? 'Cargando...' : 'Actualizar'}
+            </Button>
+          </div>
+        }
       />
 
+      <ErrorBanner message={error} />
+
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-        <SearchBar value={query} onChange={(v) => { setQuery(v); reset(); }} placeholder="Buscar por título o empresa..." className="sm:w-72" />
-        <FilterTabs options={FILTROS} value={filtro} onChange={(v) => { setFiltro(v); reset(); }} />
-        <Select value={modalidad} onChange={(v) => { setModalidad(v); reset(); }} options={MODALIDADES} className="sm:w-48" />
+        <SearchBar
+          value={query}
+          onChange={(value) => { setQuery(value); reset(); }}
+          placeholder="Buscar por titulo o empresa..."
+          className="sm:w-80"
+        />
+        <FilterTabs
+          options={FILTROS}
+          value={filtro}
+          onChange={(value) => { setFiltro(value); reset(); }}
+        />
+        <Select
+          value={modalidad}
+          onChange={(value) => { setModalidad(value); reset(); }}
+          options={MODALIDADES}
+          className="sm:w-52"
+        />
       </div>
 
-      <Table columns={COLS} data={paginated} loading={false} emptyMessage="No se encontraron vacantes." caption="Vacantes registradas" />
-      <Pagination total={filtered.length} page={page} limit={LIMIT} onPageChange={goToPage} />
+      <Table
+        columns={columns}
+        data={vacantes}
+        loading={loading}
+        emptyMessage="No se encontraron vacantes con los filtros aplicados."
+        caption="Vacantes registradas"
+      />
+
+      <Pagination
+        total={total}
+        page={page}
+        limit={LIMITE}
+        onPageChange={goToPage}
+      />
     </div>
   );
 }

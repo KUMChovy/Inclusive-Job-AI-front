@@ -1,70 +1,60 @@
-// ============================================================
-// CONFIGURACIÓN BASE DE LA API
-// Cambia BASE_URL al dominio de tu API PHP
-// ============================================================
-export const BASE_URL = 'https://tu-api.com/api';
+// src/assets/Hook/Admin/apiAdmin.js
+
+
+export const BASE_URL = 'http://localhost/back/Modelo/Administrador';
 
 export const ENDPOINTS = {
-  // AUTH
-  login: `${BASE_URL}/auth/login`,
-  logout: `${BASE_URL}/auth/logout`,
 
-  // DASHBOARD
+  // ── Dashboard ──────────────────────────────────────────────
   dashboard: {
-    stats: `${BASE_URL}/admin/dashboard/stats`,
-    vacantesRecientes: `${BASE_URL}/admin/dashboard/vacantes-recientes`,
-    empresasPendientes: `${BASE_URL}/admin/dashboard/empresas-pendientes`,
-    vacantasPorMes: `${BASE_URL}/admin/dashboard/vacantes-por-mes`,
-    usuariosPorMes: `${BASE_URL}/admin/dashboard/usuarios-por-mes`,
+    stats: `${BASE_URL}/admin.php?accion=stats`,
   },
 
-  // EMPRESAS
+  // ── Empresas ───────────────────────────────────────────────
   empresas: {
-    list: `${BASE_URL}/admin/empresas`,
-    detail: (id) => `${BASE_URL}/admin/empresas/${id}`,
-    aprobar: (id) => `${BASE_URL}/admin/empresas/${id}/aprobar`,
-    rechazar: (id) => `${BASE_URL}/admin/empresas/${id}/rechazar`,
-    suspender: (id) => `${BASE_URL}/admin/empresas/${id}/suspender`,
-    reclutadores: (id) => `${BASE_URL}/admin/empresas/${id}/reclutadores`,
-    vacantes: (id) => `${BASE_URL}/admin/empresas/${id}/vacantes`,
+    list:      `${BASE_URL}/empresas.php?accion=listar`,
+    detail:    (id) => `${BASE_URL}/empresas.php?accion=detalle&id=${id}`,
+    aprobar:   (id) => `${BASE_URL}/empresas.php?accion=aprobar&id=${id}`,
+    rechazar:  (id) => `${BASE_URL}/empresas.php?accion=rechazar&id=${id}`,
+    suspender: (id) => `${BASE_URL}/empresas.php?accion=suspender&id=${id}`,
+    reactivar: (id) => `${BASE_URL}/empresas.php?accion=reactivar&id=${id}`,
   },
 
-  // USUARIOS
+  // ── Usuarios ───────────────────────────────────────────────
   usuarios: {
-    list: `${BASE_URL}/admin/usuarios`,
-    detail: (id) => `${BASE_URL}/admin/usuarios/${id}`,
-    suspender: (id) => `${BASE_URL}/admin/usuarios/${id}/suspender`,
-    reactivar: (id) => `${BASE_URL}/admin/usuarios/${id}/reactivar`,
+    list:      `${BASE_URL}/usuarios.php?accion=listar`,
+    detail:    (id) => `${BASE_URL}/usuarios.php?accion=detalle&id=${id}`,
+    suspender: (id) => `${BASE_URL}/usuarios.php?accion=suspender&id=${id}`,
+    reactivar: (id) => `${BASE_URL}/usuarios.php?accion=reactivar&id=${id}`,
   },
 
-  // VACANTES
+  // ── Vacantes ───────────────────────────────────────────────
   vacantes: {
-    list: `${BASE_URL}/admin/vacantes`,
-    detail: (id) => `${BASE_URL}/admin/vacantes/${id}`,
-    cerrar: (id) => `${BASE_URL}/admin/vacantes/${id}/cerrar`,
-    eliminar: (id) => `${BASE_URL}/admin/vacantes/${id}`,
-    postulaciones: (id) => `${BASE_URL}/admin/vacantes/${id}/postulaciones`,
+    list:     `${BASE_URL}/vacantes.php?accion=listar`,
+    detail:   (id) => `${BASE_URL}/vacantes.php?accion=detalle&id=${id}`,
+    cerrar:   (id) => `${BASE_URL}/vacantes.php?accion=cerrar&id=${id}`,
+    eliminar: (id) => `${BASE_URL}/vacantes.php?accion=eliminar&id=${id}`,
   },
 
-  // POSTULACIONES
+  // ── Postulaciones ──────────────────────────────────────────
   postulaciones: {
-    list: `${BASE_URL}/admin/postulaciones`,
-    detail: (id) => `${BASE_URL}/admin/postulaciones/${id}`,
+    list:             `${BASE_URL}/postulaciones.php?accion=listar`,
+    detail:           (id) => `${BASE_URL}/postulaciones.php?accion=detalle&id=${id}`,
+    actualizarEstado: (id) => `${BASE_URL}/postulaciones.php?accion=actualizar_estado&id=${id}`,
   },
 
-  // DISCAPACIDADES
+  // ── Discapacidades ─────────────────────────────────────────
   discapacidades: {
-    list: `${BASE_URL}/admin/discapacidades`,
-    create: `${BASE_URL}/admin/discapacidades`,
-    update: (id) => `${BASE_URL}/admin/discapacidades/${id}`,
-    delete: (id) => `${BASE_URL}/admin/discapacidades/${id}`,
+    list:   `${BASE_URL}/discapacidades.php?accion=listar`,
+    create: `${BASE_URL}/discapacidades.php?accion=crear`,
+    update: (id) => `${BASE_URL}/discapacidades.php?accion=editar&id=${id}`,
+    delete: (id) => `${BASE_URL}/discapacidades.php?accion=eliminar&id=${id}`,
   },
 
-  // REPORTES
+  // ── Reportes ───────────────────────────────────────────────
   reportes: {
-    list: `${BASE_URL}/admin/reportes`,
-    detail: (id) => `${BASE_URL}/admin/reportes/${id}`,
-    ignorar: (id) => `${BASE_URL}/admin/reportes/${id}/ignorar`,
-    eliminarVacante: (id) => `${BASE_URL}/admin/reportes/${id}/eliminar-vacante`,
+    list:           `${BASE_URL}/reportes.php?accion=listar`,
+    ignorar:        (id) => `${BASE_URL}/reportes.php?accion=ignorar&id=${id}`,
+    eliminarVacante:(id) => `${BASE_URL}/reportes.php?accion=eliminar_vacante&id=${id}`,
   },
 };
