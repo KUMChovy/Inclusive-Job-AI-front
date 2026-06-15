@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Rp from "../components/Rp";
 
 const Registro = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -71,119 +72,58 @@ const Registro = () => {
           <p style={styles.subtitle}>ingresa a InclusiJobIA</p>
 
           {/* FORMULARIO */}
-          <form style={styles.form}>
-            <input
-              type="email"
-              placeholder="Correo electrónico"
-              style={styles.input}
-            />
+                      <div style={styles.form}>
+                        <input
+                          type="email"
+                          placeholder="Correo electrónico"
+                          style={styles.input}
+                        />
 
-            <input
-              type="password"
-              placeholder="Contraseña"
-              style={styles.input}
-            />
+                        <input
+                          type="password"
+                          placeholder="Contraseña"
+                          style={styles.input}
+                        />
 
+                        {/* BOTÓN */}
+                        <button type="submit" style={styles.registerBtn}>
+                          Ingresar
+                        </button>
 
-            {/* BOTÓN */}
-            <button type="submit" style={styles.registerBtn}>
-              Ingresar
-            </button>
+                        {/* RECUPERAR CONTRASEÑA */}
+                        <Rp />
 
-            {/* Recuperar contraseña */}
-            <p style={styles.loginText}>
-              <button
-                type="button"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#4f46e5",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-                onClick={() => setOpenModal(true)}
-              >
-                ¿Has olvidado tu contraseña?
-              </button>
-            </p>
+                        {/* DIVIDER */}
+                        <div style={styles.divider}>
+                          <div style={styles.line} />
+                          <span style={styles.dividerText}>o continuar con</span>
+                          <div style={styles.line} />
+                        </div>
 
-            {/* DIVIDER */}
-            <div style={styles.divider}>
-              <div style={styles.line} />
-              <span style={styles.dividerText}>o continuar con</span>
-              <div style={styles.line} />
-            </div>
+                        {/* GOOGLE */}
+                        <button type="button" style={styles.googleBtn}>
+                          <img
+                            src="https://www.google.com/favicon.ico"
+                            alt="Google"
+                            style={{ width: 24, height: 24 }}
+                          />
+                          Continuar con Google
+                        </button>
 
-            {/* GOOGLE */}
-            <button type="button" style={styles.googleBtn}>
-              <img
-                src="https://www.google.com/favicon.ico"
-                alt="Google"
-                style={{ width: 24, height: 24 }}
-              />
-              Continuar con Google
-            </button>
-
-            {/* LOGIN */}
-            <p style={styles.loginText}>
-              ¿Aun no tienes cuenta?{" "}
-              <a href="/registro" style={styles.loginLink}>
-                Regístrate
-              </a>
-            </p>
-          </form>
+                        {/* REGISTRO */}
+                        <p style={styles.loginText}>
+                          ¿Aun no tienes cuenta?{" "}
+                          <a href="/registro" style={styles.loginLink}>
+                            Regístrate
+                          </a>
+                        </p>
+                      </div>
         </div>
       </div>
     </div>
 
     {/* ================= MODAL ================= */}
-    {openModal && (
-      <div className="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6">
-        <div
-          onClick={() => setOpenModal(false)}
-          className="absolute inset-0 bg-indigo-950/35 backdrop-blur-md"
-        />
-
-        <div className="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
-          <button
-            type="button"
-            onClick={() => setOpenModal(false)}
-            className="absolute top-4 right-4"
-          >
-            ✕
-          </button>
-
-          <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 overflow-hidden rounded-2xl mb-4">
-              <img
-                src="/logo.webp"
-                alt="Logo"
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            <h1 className="text-gray-600 mt-3">
-              Recuperar contraseña
-            </h1>
-
-            <p className="text-gray-600 mt-3">
-              Enviaremos un código de verificación a este correo, si coincide con una cuenta de InclusiveJob IA existente.
-            </p>
-
-            <div className="w-full mt-6">
-              <input
-                type="email"
-                placeholder="Ingresa tu correo electrónico"
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-indigo-600"
-              />
-            </div>
-            <button className="w-full mt-6 bg-indigo-700 text-white py-3 rounded-xl">
-              Verificar código
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+    
   </>
   );
 };
