@@ -4,6 +4,14 @@ const Registro = () => {
   const [mode, setMode] = useState("postulante");
   const [isMobile, setIsMobile] = useState(false);
 
+  // ================== NUEVO: estado del formulario ==================
+  const [form, setForm] = useState({
+    nombres: "",
+    correo: "",
+    password: "",
+    telefono: ""
+  });
+
   const isPostulante = mode === "postulante";
 
   const theme = isPostulante ? postulante : reclutador;
@@ -21,6 +29,83 @@ const Registro = () => {
 
     return () => mq.removeEventListener("change", update);
   }, []);
+const validar = () => {
+  const { nombres, correo, password, telefono } = form;
+
+  // Nombre: solo letras y espacios
+  const nombreRegex = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ ]{3,60}$/;
+
+  // Email estándar
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Password segura mínima
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,64}$/;
+
+  // Teléfono México básico (7-15 dígitos)
+  const telefonoRegex = /^[0-9]{7,15}$/;
+
+  if (!nombreRegex.test(nombres)) {
+    return "Nombre inválido";
+  }
+
+  if (!emailRegex.test(correo)) {
+    return "Correo inválido";
+  }
+
+  if (!passwordRegex.test(password)) {
+    return "Contraseña débil";
+  }
+
+  if (!telefonoRegex.test(telefono)) {
+    return "Teléfono inválido";
+  }
+
+  return null;
+};
+  // ================== NUEVO: handlers ==================
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    });
+  };
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!isPostulante) return;
+
+  const error = validar();
+
+  if (error) {
+    alert(error);
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/Postulante/reg_pos.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(form)
+    });
+
+    const data = await res.json();
+
+    console.log("Respuesta API:", data);
+
+    if (data.success) {
+      alert("Registro exitoso");
+    } else {
+      alert(data.message || "Error en registro");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Error de conexión con el servidor");
+  }
+};;
 
   return (
     <div
@@ -107,10 +192,14 @@ const Registro = () => {
 
           {/* FORM */}
 
-          <form style={styles.form}>
+          <form style={styles.form} onSubmit={handleSubmit}>
             <input
               type="text"
+              name="nombres"
               placeholder="Nombre completo"
+              maxLength={60}
+              value={form.nombres}
+              onChange={handleChange}
               style={{
                 ...styles.input,
                 border: `2px solid ${theme.border}`,
@@ -119,7 +208,12 @@ const Registro = () => {
 
             <input
               type="email"
+              autoComplete="email"
+              name="correo"
               placeholder="Correo electrónico"
+              maxLength={100}
+              value={form.correo}
+              onChange={handleChange}
               style={{
                 ...styles.input,
                 border: `2px solid ${theme.border}`,
@@ -128,7 +222,12 @@ const Registro = () => {
 
             <input
               type="password"
+              autoComplete="new-password"
+              name="password"
               placeholder="Contraseña"
+              maxLength={128}
+              value={form.password}
+              onChange={handleChange}
               style={{
                 ...styles.input,
                 border: `2px solid ${theme.border}`,
@@ -137,7 +236,12 @@ const Registro = () => {
 
             <input
               type="tel"
+              autoComplete="tel"
+              name="telefono"
               placeholder="Teléfono"
+              maxLength={15}
+              value={form.telefono}
+              onChange={handleChange}
               style={{
                 ...styles.input,
                 border: `2px solid ${theme.border}`,
@@ -147,6 +251,7 @@ const Registro = () => {
             {/* REGISTER */}
 
             <button
+              type="submit"
               style={{
                 ...styles.registerBtn,
                 background: theme.button,
@@ -343,8 +448,6 @@ const styles = {
     zIndex: 5,
   },
 
-  /* RIGHT */
-
   rightSide: {
     position: "relative",
     display: "flex",
@@ -378,9 +481,7 @@ const styles = {
     maxWidth: 650,
     objectFit: "contain",
     zIndex: 3,
-
-    filter:
-      "drop-shadow(0 20px 40px rgba(37,99,235,0.15))",
+    filter: "drop-shadow(0 20px 40px rgba(37,99,235,0.15))",
   },
 
   rightContent: {
@@ -407,8 +508,6 @@ const styles = {
     lineHeight: 1.6,
   },
 
-  /* SWITCH */
-
   switchWrapper: {
     width: "100%",
     maxWidth: 390,
@@ -418,7 +517,6 @@ const styles = {
     position: "relative",
     padding: 6,
     overflow: "hidden",
-
     boxShadow:
       "0 10px 30px rgba(37,99,235,0.18)",
   },
@@ -446,30 +544,18 @@ const styles = {
     fontSize: 18,
   },
 
-  /* CARD */
-
   card: {
-
     width: "100%",
     maxWidth: 520,
-
     background: "rgba(255,255,255,0.72)",
-
     backdropFilter: "blur(20px)",
-
     border: "1px solid rgba(255,255,255,0.35)",
-
     borderRadius: 40,
-
     padding: "50px 45px",
-
-    boxShadow:
-      "0 20px 50px rgba(0,0,0,0.08)",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.08)",
   },
 
-  /* LOGO */
-
-    logoRow: {
+  logoRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -507,10 +593,8 @@ const styles = {
     width: "100%",
     height: "100%",
     borderRadius: "50%",
-
     background:
       "radial-gradient(circle, rgba(96,165,250,0.45), transparent 70%)",
-
     filter: "blur(15px)",
   },
 
@@ -521,12 +605,9 @@ const styles = {
     borderRadius: "50%",
     position: "relative",
     zIndex: 2,
-
     boxShadow:
       "0 10px 30px rgba(37,99,235,0.18)",
   },
-
-  /* TITLES */
 
   title: {
     fontSize: "clamp(38px, 8vw, 64px)",
@@ -541,8 +622,6 @@ const styles = {
     marginBottom: 35,
   },
 
-  /* FORM */
-
   form: {
     display: "flex",
     flexDirection: "column",
@@ -551,47 +630,27 @@ const styles = {
 
   input: {
     minHeight: 58,
-
     height: "auto",
-
     borderRadius: 18,
-
     padding: "0 22px",
-
     fontSize: 16,
-
     outline: "none",
-
     background: "rgba(255,255,255,0.82)",
-
     transition: "0.3s ease",
-
-    boxShadow:
-      "0 4px 10px rgba(0,0,0,0.03)",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.03)",
   },
 
   registerBtn: {
     minHeight: 58,
-
     border: "none",
-
     borderRadius: 18,
-
     color: "#fff",
-
     fontWeight: 700,
-
     fontSize: 18,
-
     cursor: "pointer",
-
     marginTop: 10,
-
-    boxShadow:
-      "0 10px 25px rgba(37,99,235,0.22)",
+    boxShadow: "0 10px 25px rgba(37,99,235,0.22)",
   },
-
-  /* DIVIDER */
 
   divider: {
     display: "flex",
@@ -611,34 +670,20 @@ const styles = {
     fontSize: 14,
   },
 
-  /* GOOGLE */
-
   googleBtn: {
     height: 64,
-
     borderRadius: 18,
-
     background: "rgba(255,255,255,0.92)",
-
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-
     gap: 12,
-
     fontWeight: 600,
-
     cursor: "pointer",
-
     fontSize: 16,
-
     transition: "0.3s ease",
-
-    boxShadow:
-      "0 4px 10px rgba(0,0,0,0.04)",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.04)",
   },
-
-  /* LOGIN */
 
   loginText: {
     textAlign: "center",
