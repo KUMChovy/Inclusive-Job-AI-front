@@ -1,368 +1,448 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+
 import {
-  ArrowRight,
-  MapPin,
+MapPin,
 } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
-import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
-import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+
+import {
+postulantTheme as t,
+} from '../../assets/Componentes/Portal/portalTheme';
+
+import {
+postulantNav,
+} from '../../assets/Componentes/Portal/navItems';
+
+
 
 const MOCK_USER = {
-  nombre: 'Luis',
-  rol: 'Postulante',
-  discapacidades: ['Visual'],
-  completado: 100,
+nombre:'Luis',
+rol:'Postulante',
 };
 
-const POSTULACIONES = [
-  {
-    id: 1,
-    vacante: 'Desarrollador Frontend',
-    empresa: 'Tech Solutions SA',
-    modalidad: 'Remoto',
-    estado: 'entrevista',
-    fecha: '2026-05-18',
-  },
-  {
-    id: 2,
-    vacante: 'Diseñador UX/UI',
-    empresa: 'CreativeHub CDMX',
-    modalidad: 'Híbrido',
-    estado: 'pendiente',
-    fecha: '2026-05-20',
-  },
-  {
-    id: 3,
-    vacante: 'QA Engineer',
-    empresa: 'DataCorp MX',
-    modalidad: 'Presencial',
-    estado: 'aceptado',
-    fecha: '2026-05-21',
-  },
-];
 
-const ESTADO_STYLE = {
-  pendiente: {
-    bg: '#fef3c7',
-    text: '#92400e',
-    border: '#fde68a',
-  },
-
-  entrevista: {
-    bg: '#ede9fe',
-    text: '#5b21b6',
-    border: '#c4b5fd',
-  },
-
-  aceptado: {
-    bg: '#d1fae5',
-    text: '#065f46',
-    border: '#6ee7b7',
-  },
-};
-
-function Badge({ estado }) {
-  const s = ESTADO_STYLE[estado];
-
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '6px 12px',
-        borderRadius: '999px',
-        background: s.bg,
-        color: s.text,
-        border: `1px solid ${s.border}`,
-        fontSize: '12px',
-        fontWeight: 600,
-      }}
-    >
-      {estado}
-    </span>
-  );
-}
 
 function Card({ children }) {
-  return (
-    <div
-      style={{
-        background: '#fff',
-        border: `1px solid ${t.border}`,
-        borderRadius: '18px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(15,23,41,.05)',
-      }}
-    >
-      {children}
-    </div>
-  );
+return (
+
+<div
+style={{
+background:'#fff',
+border:`1px solid ${t.border}`,
+borderRadius:'18px',
+overflow:'hidden',
+boxShadow:'0 2px 8px rgba(15,23,41,.05)',
+}}
+>
+
+{children}
+
+</div>
+
+);
 }
 
-function SectionHead({ title, action, onAction }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '18px 20px',
-        borderBottom: `1px solid ${t.border}`,
-      }}
-    >
-      <h2
-        style={{
-          margin: 0,
-          fontSize: '15px',
-          color: t.textPrimary,
-        }}
-      >
-        {title}
-      </h2>
 
-      <button
-        onClick={onAction}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-          border: 'none',
-          background: 'transparent',
-          cursor: 'pointer',
-          color: t.accent,
-          fontWeight: 600,
-          fontSize: '14px',
-        }}
-      >
-        {action}
-        <ArrowRight size={14} />
-      </button>
-    </div>
-  );
+
+function SectionHead({ title }) {
+
+return(
+
+<div
+style={{
+padding:'18px 22px',
+borderBottom:`1px solid ${t.border}`,
+}}
+>
+
+<h2
+style={{
+margin:0,
+fontSize:'16px',
+fontWeight:700,
+color:t.textPrimary,
+}}
+>
+
+{title}
+
+</h2>
+
+</div>
+
+);
+
 }
 
-export default function PostulanteDashboard() {
-  const navigate = useNavigate();
 
-  return (
-    <PortalLayout
-      theme={t}
-      navItems={postulantNav}
-      user={MOCK_USER}
-      pageTitle="Reportes realizados"
+
+export default function PostulanteDashboard(){
+
+const[
+reportes,
+setReportes
+]=
+useState([]);
+
+const[
+loading,
+setLoading
+]=
+useState(true);
+
+
+
+useEffect(()=>{
+
+cargarReportes();
+
+},[]);
+
+
+
+async function cargarReportes(){
+
+try{
+
+const res=
+await fetch(
+'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php'
+);
+
+const data=
+await res.json();
+
+if(
+data.ok
+){
+
+setReportes(
+data.data
+);
+
+}
+
+}
+catch(error){
+
+console.log(
+error
+);
+
+}
+finally{
+
+setLoading(
+false
+);
+
+}
+
+}
+
+
+
+return(
+
+<PortalLayout
+theme={t}
+navItems={postulantNav}
+user={MOCK_USER}
+pageTitle="Reportes realizados"
+>
+
+<div
+style={{
+maxWidth:'1400px',
+margin:'0 auto',
+display:'flex',
+flexDirection:'column',
+gap:'24px',
+}}
+>
+
+{/* HERO */}
+
+<div
+style={{
+
+borderRadius:'24px',
+
+padding:'40px',
+
+color:'#fff',
+
+background:
+'linear-gradient(135deg,#1e40af 0%,#2563eb 50%,#0ea5e9 100%)',
+
+minHeight:'220px',
+
+display:'flex',
+
+justifyContent:'center',
+
+flexDirection:'column',
+
+}}
+
+>
+
+<p
+style={{
+margin:'0 0 8px',
+opacity:.85,
+}}
+>
+
+Seguimiento de reportes
+
+</p>
+
+<h1
+style={{
+margin:0,
+fontSize:'44px',
+fontWeight:800,
+}}
+>
+
+Reportes realizados
+
+</h1>
+
+<p
+style={{
+marginTop:'16px',
+maxWidth:'700px',
+lineHeight:1.6,
+}}
+>
+
+Consulta los reportes que realizaste sobre vacantes.
+
+</p>
+
+</div>
+
+
+
+<Card>
+
+  <SectionHead
+    title="Mis reportes"
+  />
+
+  {
+
+    loading
+
+    ?
+
+    <div
+      style={{
+        padding: '30px',
+      }}
+    >
+      Cargando reportes...
+    </div>
+
+    :
+
+    reportes.length === 0
+
+    ?
+
+    <div
+      style={{
+        padding: '40px',
+        textAlign: 'center',
+        color: t.textMuted,
+        fontSize: '15px',
+      }}
+    >
+      Sin reportes realizados
+    </div>
+
+    :
+
+    <ul
+      style={{
+        margin: 0,
+        padding: 0,
+        listStyle: 'none',
+      }}
     >
 
-      <div
-        style={{
-          maxWidth: '1400px',
-          margin: '0 auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
-        }}
-      >
+      {
 
-        {/* HERO */}
+        reportes.map(
+          (
+            r,
+            i
+          ) => (
 
-        <div
-          style={{
-            position: 'relative',
-            borderRadius: '24px',
-            overflow: 'hidden',
+            <li
 
-            background:
-              'linear-gradient(135deg,#1e40af 0%,#2563eb 50%,#0ea5e9 100%)',
+              key={
+                r.id
+              }
 
-            padding: '40px',
-
-            color: '#fff',
-
-            minHeight: '220px',
-
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-          }}
-        >
-
-          <div
-            style={{
-              position: 'absolute',
-              width: '320px',
-              height: '320px',
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,.08)',
-              top: '-80px',
-              right: '-60px',
-              filter: 'blur(70px)',
-            }}
-          />
-
-          <div
-            style={{
-              position: 'absolute',
-              width: '220px',
-              height: '220px',
-              borderRadius: '50%',
-              background: 'rgba(14,165,233,.25)',
-              bottom: '-60px',
-              left: '35%',
-              filter: 'blur(70px)',
-            }}
-          />
-
-          <div
-            style={{
-              position: 'relative',
-              zIndex: 1,
-            }}
-          >
-
-            <p
               style={{
-                margin: '0 0 10px',
-                fontSize: '15px',
-                opacity: .85,
+
+                padding: '22px',
+
+                borderBottom:
+
+                  i <
+                  reportes.length - 1
+
+                    ?
+
+                    `1px solid ${t.border}`
+
+                    :
+
+                    'none',
+
               }}
+
             >
-              Seguimiento de procesos
-            </p>
 
-            <h1
-              style={{
-                margin: 0,
-                fontSize: '46px',
-                fontWeight: 800,
-                lineHeight: 1.1,
-              }}
-            >
-              Reportes realizadas
-            </h1>
-
-            <p
-              style={{
-                marginTop: '18px',
-                fontSize: '16px',
-                opacity: .88,
-                maxWidth: '700px',
-                lineHeight: 1.6,
-              }}
-            >
-              Consulta los reportes realizados por ti a vacantes con informacion dudosa.
-            </p>
-
-          </div>
-
-        </div>
-
-        {/* CARD */}
-
-        <Card>
-
-          <SectionHead
-            title="Mis postulaciones"
-            action="Ver todas"
-            onAction={() =>
-              navigate('/postulante/postulaciones')
-            }
-          />
-
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: 'none',
-            }}
-          >
-
-            {POSTULACIONES.map((p, i) => (
-
-              <li
-                key={p.id}
+              <div
                 style={{
-                  padding: '22px',
 
-                  borderBottom:
-                    i < POSTULACIONES.length - 1
-                      ? `1px solid ${t.border}`
-                      : 'none',
+                  display: 'flex',
+
+                  justifyContent: 'space-between',
+
+                  alignItems: 'center',
+
+                  gap: '20px',
+
                 }}
               >
 
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '20px',
-                  }}
-                >
+                <div>
 
-                  <div>
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontSize: '18px',
+                      color: t.textPrimary,
+                    }}
+                  >
+                    {r.vacante}
+                  </h3>
 
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: '20px',
-                        color: t.textPrimary,
-                      }}
-                    >
-                      {p.vacante}
-                    </h3>
 
-                    <p
-                      style={{
-                        margin: '8px 0',
-                        color: t.textMuted,
-                      }}
-                    >
-                      {p.empresa}
-                    </p>
+                  <div
+                    style={{
 
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        color: t.textMuted,
-                      }}
-                    >
+                      display: 'flex',
 
-                      <MapPin size={14} />
+                      alignItems: 'center',
 
-                      {p.modalidad}
+                      gap: '10px',
 
-                      •
+                      marginTop: '10px',
 
-                      {new Date(
-                        p.fecha
-                      ).toLocaleDateString(
+                      color: t.textMuted,
+
+                    }}
+
+                  >
+
+                    <MapPin
+                      size={14}
+                    />
+
+                    {r.modalidad}
+
+                    •
+
+                    {
+
+                      new Date(
+                        r.fecha
+                      )
+
+                      .toLocaleDateString(
                         'es-MX',
                         {
                           day: 'numeric',
                           month: 'short',
+                          year: 'numeric',
                         }
-                      )}
+                      )
 
-                    </div>
+                    }
 
                   </div>
 
-                  <Badge estado={p.estado} />
-
                 </div>
 
-              </li>
 
-            ))}
+                <button
+                  onClick={() => {
 
-          </ul>
+                    console.log(
+                      r.motivo
+                    );
 
-        </Card>
+                  }}
 
-      </div>
+                  style={{
 
-    </PortalLayout>
-  );
+                    padding:
+                      '8px 14px',
+
+                    border:
+                      `1px solid ${t.border}`,
+
+                    background:
+                      '#fff',
+
+                    borderRadius:
+                      '10px',
+
+                    cursor:
+                      'pointer',
+
+                    fontWeight:
+                      600,
+
+                    color:
+                      t.accent,
+
+                  }}
+
+                >
+
+                  Ver motivo
+
+                </button>
+
+              </div>
+
+            </li>
+
+          )
+
+        )
+
+      }
+
+    </ul>
+
+  }
+
+</Card>
+
+</div>
+
+</PortalLayout>
+
+);
+
 }
