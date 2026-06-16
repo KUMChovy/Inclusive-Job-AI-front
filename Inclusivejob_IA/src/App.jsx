@@ -33,6 +33,7 @@ import ReclutadorDashboard from './pages/Reclutador/Reclutadordashboard.jsx';
 import PostulanteDashboard from './pages/Postulante/Postulantedashboard.jsx';
 import Formulario          from './pages/Postulante/formulario.jsx';
 import Certificaciones from './pages/Postulante/Certificaciones.jsx';
+import VacantesPos from "./pages/postulante/vacantes.jsx";
 
 
 function App() {
@@ -79,6 +80,7 @@ function App() {
       <Route path="/postulante" element={<PostulanteDashboard />} />
       <Route path="/formulario" element={<Formulario />} />
       <Route path="/postulante/certificaciones" element={<Certificaciones />} />
+      <Route path="/postulante/vacantes" element={<VacantesPos />} />
       {/* <Route path="/postulante/vacantes"        element={<PostulanteVacantes />} /> */}
     
 
