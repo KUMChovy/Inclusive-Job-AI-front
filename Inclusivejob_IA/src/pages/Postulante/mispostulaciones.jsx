@@ -1,46 +1,23 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowRight,
-  MapPin,
-} from 'lucide-react';
+import { ArrowRight, MapPin } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
-import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
-import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+
+import {
+  postulantTheme as t,
+} from '../../assets/Componentes/Portal/portalTheme';
+
+import {
+  postulantNav,
+} from '../../assets/Componentes/Portal/navItems';
+
 
 const MOCK_USER = {
   nombre: 'Luis',
   rol: 'Postulante',
-  discapacidades: ['Visual'],
-  completado: 100,
 };
 
-const POSTULACIONES = [
-  {
-    id: 1,
-    vacante: 'Desarrollador Frontend',
-    empresa: 'Tech Solutions SA',
-    modalidad: 'Remoto',
-    estado: 'entrevista',
-    fecha: '2026-05-18',
-  },
-  {
-    id: 2,
-    vacante: 'Diseñador UX/UI',
-    empresa: 'CreativeHub CDMX',
-    modalidad: 'Híbrido',
-    estado: 'pendiente',
-    fecha: '2026-05-20',
-  },
-  {
-    id: 3,
-    vacante: 'QA Engineer',
-    empresa: 'DataCorp MX',
-    modalidad: 'Presencial',
-    estado: 'aceptado',
-    fecha: '2026-05-21',
-  },
-];
 
 const ESTADO_STYLE = {
   pendiente: {
@@ -60,17 +37,24 @@ const ESTADO_STYLE = {
     text: '#065f46',
     border: '#6ee7b7',
   },
+
+  rechazado: {
+    bg: '#fee2e2',
+    text: '#991b1b',
+    border: '#fca5a5',
+  },
 };
 
+
 function Badge({ estado }) {
-  const s = ESTADO_STYLE[estado];
+  const s =
+    ESTADO_STYLE[estado] ||
+    ESTADO_STYLE.pendiente;
 
   return (
     <span
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '6px 12px',
+        padding: '6px 14px',
         borderRadius: '999px',
         background: s.bg,
         color: s.text,
@@ -83,6 +67,7 @@ function Badge({ estado }) {
     </span>
   );
 }
+
 
 function Card({ children }) {
   return (
@@ -100,22 +85,26 @@ function Card({ children }) {
   );
 }
 
-function SectionHead({ title, action, onAction }) {
+
+function SectionHead({
+  title,
+  action,
+  onAction,
+}) {
   return (
     <div
       style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '18px 20px',
+        padding: '18px 22px',
         borderBottom: `1px solid ${t.border}`,
       }}
     >
       <h2
         style={{
           margin: 0,
-          fontSize: '15px',
-          color: t.textPrimary,
+          fontSize: '16px',
         }}
       >
         {title}
@@ -124,15 +113,13 @@ function SectionHead({ title, action, onAction }) {
       <button
         onClick={onAction}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
           border: 'none',
           background: 'transparent',
+          display: 'flex',
+          gap: '5px',
           cursor: 'pointer',
           color: t.accent,
           fontWeight: 600,
-          fontSize: '14px',
         }}
       >
         {action}
@@ -142,8 +129,46 @@ function SectionHead({ title, action, onAction }) {
   );
 }
 
+
 export default function PostulanteDashboard() {
   const navigate = useNavigate();
+
+  const [
+    postulaciones,
+    setPostulaciones,
+  ] = useState([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+
+  useEffect(() => {
+    cargarPostulaciones();
+  }, []);
+
+
+  async function cargarPostulaciones() {
+    try {
+      const res = await fetch(
+        'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/postulaciones.php'
+      );
+
+      const data = await res.json();
+
+      if (data.ok) {
+        setPostulaciones(data.data);
+      }
+
+    } catch (error) {
+      console.log(error);
+
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   return (
     <PortalLayout
@@ -152,7 +177,6 @@ export default function PostulanteDashboard() {
       user={MOCK_USER}
       pageTitle="Mis postulaciones"
     >
-
       <div
         style={{
           maxWidth: '1400px',
@@ -167,198 +191,167 @@ export default function PostulanteDashboard() {
 
         <div
           style={{
-            position: 'relative',
             borderRadius: '24px',
-            overflow: 'hidden',
-
+            padding: '40px',
+            color: '#fff',
             background:
               'linear-gradient(135deg,#1e40af 0%,#2563eb 50%,#0ea5e9 100%)',
-
-            padding: '40px',
-
-            color: '#fff',
-
             minHeight: '220px',
-
             display: 'flex',
-            flexDirection: 'column',
             justifyContent: 'center',
+            flexDirection: 'column',
           }}
         >
 
-          <div
+          <p
             style={{
-              position: 'absolute',
-              width: '320px',
-              height: '320px',
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,.08)',
-              top: '-80px',
-              right: '-60px',
-              filter: 'blur(70px)',
-            }}
-          />
-
-          <div
-            style={{
-              position: 'absolute',
-              width: '220px',
-              height: '220px',
-              borderRadius: '50%',
-              background: 'rgba(14,165,233,.25)',
-              bottom: '-60px',
-              left: '35%',
-              filter: 'blur(70px)',
-            }}
-          />
-
-          <div
-            style={{
-              position: 'relative',
-              zIndex: 1,
+              margin: '0 0 8px',
+              opacity: .85,
             }}
           >
+            Seguimiento de procesos
+          </p>
 
-            <p
-              style={{
-                margin: '0 0 10px',
-                fontSize: '15px',
-                opacity: .85,
-              }}
-            >
-              Seguimiento de procesos
-            </p>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: '44px',
+              fontWeight: 800,
+            }}
+          >
+            Estado de tus postulaciones
+          </h1>
 
-            <h1
-              style={{
-                margin: 0,
-                fontSize: '46px',
-                fontWeight: 800,
-                lineHeight: 1.1,
-              }}
-            >
-              Estado de tus postulaciones
-            </h1>
-
-            <p
-              style={{
-                marginTop: '18px',
-                fontSize: '16px',
-                opacity: .88,
-                maxWidth: '700px',
-                lineHeight: 1.6,
-              }}
-            >
-              Consulta el avance de cada solicitud y revisa
-              en qué etapa del proceso te encuentras.
-            </p>
-
-          </div>
+          <p
+            style={{
+              marginTop: '16px',
+              maxWidth: '700px',
+              lineHeight: 1.6,
+            }}
+          >
+            Consulta el avance de cada solicitud
+            y revisa en qué etapa del proceso te encuentras.
+          </p>
 
         </div>
 
-        {/* CARD */}
 
         <Card>
 
           <SectionHead
             title="Mis postulaciones"
-            action="Ver todas"
-            onAction={() =>
-              navigate('/postulante/postulaciones')
-            }
           />
 
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: 'none',
-            }}
-          >
+          {
+            loading
 
-            {POSTULACIONES.map((p, i) => (
-
-              <li
-                key={p.id}
-                style={{
-                  padding: '22px',
-
-                  borderBottom:
-                    i < POSTULACIONES.length - 1
-                      ? `1px solid ${t.border}`
-                      : 'none',
-                }}
-              >
+              ? (
 
                 <div
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '20px',
+                    padding: '30px',
+                  }}
+                >
+                  Cargando postulaciones...
+                </div>
+
+              ) : (
+
+                <ul
+                  style={{
+                    margin: 0,
+                    padding: 0,
+                    listStyle: 'none',
                   }}
                 >
 
-                  <div>
+                  {
+                    postulaciones.map((p, i) => (
 
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: '20px',
-                        color: t.textPrimary,
-                      }}
-                    >
-                      {p.vacante}
-                    </h3>
+                      <li
+                        key={p.id}
+                        style={{
+                          padding: '22px',
 
-                    <p
-                      style={{
-                        margin: '8px 0',
-                        color: t.textMuted,
-                      }}
-                    >
-                      {p.empresa}
-                    </p>
+                          borderBottom:
+                            i < postulaciones.length - 1
+                              ? `1px solid ${t.border}`
+                              : 'none',
+                        }}
+                      >
 
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        color: t.textMuted,
-                      }}
-                    >
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
 
-                      <MapPin size={14} />
+                          <div>
 
-                      {p.modalidad}
+                            <h3
+                              style={{
+                                margin: 0,
+                              }}
+                            >
+                              {p.vacante}
+                            </h3>
 
-                      •
+                            <p
+                              style={{
+                                margin: '8px 0',
+                                color: t.textMuted,
+                              }}
+                            >
+                            </p>
 
-                      {new Date(
-                        p.fecha
-                      ).toLocaleDateString(
-                        'es-MX',
-                        {
-                          day: 'numeric',
-                          month: 'short',
-                        }
-                      )}
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                color: t.textMuted,
+                              }}
+                            >
 
-                    </div>
+                              <MapPin size={14} />
 
-                  </div>
+                              {p.modalidad}
 
-                  <Badge estado={p.estado} />
+                              •
 
-                </div>
+                              {
+                                new Date(
+                                  p.fecha
+                                ).toLocaleDateString(
+                                  'es-MX',
+                                  {
+                                    day: 'numeric',
+                                    month: 'short',
+                                  }
+                                )
+                              }
 
-              </li>
+                            </div>
 
-            ))}
+                          </div>
 
-          </ul>
+                          <Badge
+                            estado={p.estado}
+                          />
+
+                        </div>
+
+                      </li>
+
+                    ))
+                  }
+
+                </ul>
+
+              )
+          }
 
         </Card>
 
