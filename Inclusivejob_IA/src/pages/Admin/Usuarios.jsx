@@ -1,23 +1,18 @@
 // src/pages/Admin/Usuarios.jsx
-import { useState, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, PauseCircle, PlayCircle } from 'lucide-react';
-import { PageHeader, Badge, Button, SearchBar, FilterTabs } from '../../assets/Componentes/Admin/UI';
+import { Eye, PauseCircle, PlayCircle, RefreshCw, Users } from 'lucide-react';
+
+import {
+  PageHeader, Badge, Button, SearchBar, FilterTabs, ErrorBanner,
+} from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
 import { useSearch, usePagination } from '../../assets/Hook/Admin/useApi';
+import { useUsuarioAcciones, useUsuarios } from '../../assets/Hook/Admin/useDomain';
 import { confirmSuspend, confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
 
-const MOCK_USUARIOS = [
-  { id: 1, nombres: 'Ana',      apellidos: 'García Torres',    correo: 'ana.garcia@email.com',    rol: 'postulante',     estado: 'activo',     fecha_registro: '2026-01-10' },
-  { id: 2, nombres: 'Carlos',   apellidos: 'Ramírez López',    correo: 'carlos.rl@empresa.mx',    rol: 'reclutador',     estado: 'activo',     fecha_registro: '2026-01-15' },
-  { id: 3, nombres: 'María',    apellidos: 'Hernández Díaz',   correo: 'mhernandez@email.com',    rol: 'postulante',     estado: 'activo',     fecha_registro: '2026-02-03' },
-  { id: 4, nombres: 'Luis',     apellidos: 'Martínez Pérez',   correo: 'lmartinez@corp.mx',       rol: 'reclutador',     estado: 'suspendido', fecha_registro: '2026-02-20' },
-  { id: 5, nombres: 'José',     apellidos: 'López Morales',    correo: 'jlopez@admin.mx',         rol: 'administrador',  estado: 'activo',     fecha_registro: '2025-12-01' },
-  { id: 6, nombres: 'Patricia', apellidos: 'Sánchez Ruiz',     correo: 'patricia.sr@email.com',   rol: 'postulante',     estado: 'inactivo',   fecha_registro: '2026-03-11' },
-];
-
-const ROL_BADGE    = { administrador: 'purple', reclutador: 'info', postulante: 'default' };
+const ROL_BADGE = { administrador: 'purple', reclutador: 'info', postulante: 'default' };
 const ESTADO_BADGE = { activo: 'success', suspendido: 'danger', inactivo: 'default' };
 
 const FILTROS_ROL = [
@@ -34,95 +29,148 @@ const FILTROS_ESTADO = [
   { value: 'inactivo', label: 'Inactivos' },
 ];
 
+const LIMITE = 15;
+
+function nombreCompleto(row) {
+  return `${row.nombres ?? ''} ${row.apellidos ?? ''}`.trim() || 'Sin nombre';
+}
+
+function safeDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('es-MX');
+}
+
 export default function Usuarios() {
   const navigate = useNavigate();
-  const { query, setQuery, debouncedQuery } = useSearch();
-  const { page, goToPage, reset } = usePagination(1, 10);
-  const [rolFiltro, setRolFiltro]       = useState('todos');
+
+  const { query, setQuery, debouncedQuery } = useSearch(400);
+  const { page, goToPage, reset } = usePagination(1, LIMITE);
+  const [rolFiltro, setRolFiltro] = useState('todos');
   const [estadoFiltro, setEstadoFiltro] = useState('todos');
-  const [usuarios, setUsuarios]         = useState(MOCK_USUARIOS);
   const [actionLoading, setActionLoading] = useState(null);
 
-  const filtered = useMemo(() => {
-    let list = usuarios;
-    if (rolFiltro !== 'todos')    list = list.filter((u) => u.rol === rolFiltro);
-    if (estadoFiltro !== 'todos') list = list.filter((u) => u.estado === estadoFiltro);
-    if (debouncedQuery) {
-      const q = debouncedQuery.toLowerCase();
-      list = list.filter(
-        (u) => `${u.nombres} ${u.apellidos}`.toLowerCase().includes(q) || u.correo.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [usuarios, rolFiltro, estadoFiltro, debouncedQuery]);
+  const buildParams = useCallback(() => {
+    const params = new URLSearchParams();
+    if (rolFiltro !== 'todos') params.set('rol', rolFiltro);
+    if (estadoFiltro !== 'todos') params.set('estado', estadoFiltro);
+    if (debouncedQuery) params.set('buscar', debouncedQuery);
+    params.set('pagina', String(page));
+    params.set('limite', String(LIMITE));
+    return `&${params.toString()}`;
+  }, [rolFiltro, estadoFiltro, debouncedQuery, page]);
 
-  const LIMIT = 10;
-  const paginated = filtered.slice((page - 1) * LIMIT, page * LIMIT);
+  const { data, loading, error, refetch } = useUsuarios(buildParams());
+  const { suspender, reactivar } = useUsuarioAcciones();
 
-  const updateEstado = (id, estado) =>
-    setUsuarios((prev) => prev.map((u) => u.id === id ? { ...u, estado } : u));
+  const usuarios = data?.data?.usuarios ?? [];
+  const total = data?.data?.total ?? 0;
 
   const handleSuspender = async (row) => {
-    const ok = await confirmSuspend(`${row.nombres} ${row.apellidos}`);
+    const nombre = nombreCompleto(row);
+    const ok = await confirmSuspend(nombre);
     if (!ok) return;
-    setActionLoading(row.id);
+
+    setActionLoading(row.id_usuario);
     try {
-      updateEstado(row.id, 'suspendido');
-      await successAlert('Suspendido', `${row.nombres} ${row.apellidos} ha sido suspendido.`);
+      await suspender(row.id_usuario);
+      await refetch();
+      successAlert('Suspendido', `${nombre} ha sido suspendido.`);
     } catch {
-      await errorAlert('Error', 'No se pudo suspender al usuario.');
+      errorAlert('Error', 'No se pudo suspender al usuario.');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleReactivar = async (row) => {
+    const nombre = nombreCompleto(row);
     const ok = await confirmAction({
       title: '¿Reactivar usuario?',
-      html: `<span>Se restaurará el acceso de <strong style="color:#fff">${row.nombres} ${row.apellidos}</strong>.</span>`,
+      html: `<span>Se restaurará el acceso de <strong style="color:#fff">${nombre}</strong>.</span>`,
       confirmText: 'Reactivar',
       confirmColor: '#16a34a',
       icon: 'question',
     });
     if (!ok) return;
-    setActionLoading(row.id);
+
+    setActionLoading(row.id_usuario);
     try {
-      updateEstado(row.id, 'activo');
-      await successAlert('¡Reactivado!', `${row.nombres} ${row.apellidos} puede acceder nuevamente.`);
+      await reactivar(row.id_usuario);
+      await refetch();
+      successAlert('¡Reactivado!', `${nombre} puede acceder nuevamente.`);
     } catch {
-      await errorAlert('Error', 'No se pudo reactivar al usuario.');
+      errorAlert('Error', 'No se pudo reactivar al usuario.');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const COLS = [
+  const columns = [
     {
-      key: 'nombre_completo', label: 'Nombre completo',
-      render: (_, row) => <span className="text-white font-medium">{row.nombres} {row.apellidos}</span>,
+      key: 'nombre_completo',
+      label: 'Nombre completo',
+      render: (_, row) => <span className="text-white font-medium">{nombreCompleto(row)}</span>,
     },
     { key: 'correo', label: 'Correo' },
-    { key: 'rol',    label: 'Rol',    render: (v) => <Badge variant={ROL_BADGE[v]}>{v}</Badge> },
-    { key: 'estado', label: 'Estado', render: (v) => <Badge variant={ESTADO_BADGE[v]}>{v}</Badge> },
-    { key: 'fecha_registro', label: 'Registro', render: (v) => new Date(v).toLocaleDateString('es-MX') },
     {
-      key: 'acciones', label: 'Acciones',
-      render: (_, row) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/usuarios/${row.id}`)} aria-label="Ver perfil">
-            <Eye size={14} />
-          </Button>
-          {row.estado === 'activo' ? (
-            <Button variant="danger" size="sm" loading={actionLoading === row.id} onClick={() => handleSuspender(row)} aria-label="Suspender">
-              <PauseCircle size={14} />
+      key: 'rol',
+      label: 'Rol',
+      render: (value) => <Badge variant={ROL_BADGE[value] ?? 'default'}>{value ?? '-'}</Badge>,
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      render: (value) => <Badge variant={ESTADO_BADGE[value] ?? 'default'}>{value ?? '-'}</Badge>,
+    },
+    {
+      key: 'fecha_registro',
+      label: 'Registro',
+      render: (value) => safeDate(value),
+    },
+    {
+      key: 'acciones',
+      label: 'Acciones',
+      render: (_, row) => {
+        const isLoading = actionLoading === row.id_usuario;
+        const isActive = row.estado === 'activo';
+
+        return (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/admin/usuarios/${row.id_usuario}`)}
+              aria-label="Ver perfil"
+            >
+              <Eye size={14} />
             </Button>
-          ) : (
-            <Button variant="success" size="sm" loading={actionLoading === row.id} onClick={() => handleReactivar(row)} aria-label="Reactivar">
-              <PlayCircle size={14} />
-            </Button>
-          )}
-        </div>
-      ),
+
+            {isActive ? (
+              <Button
+                variant="danger"
+                size="sm"
+                loading={isLoading}
+                onClick={() => handleSuspender(row)}
+                aria-label="Suspender"
+              >
+                <PauseCircle size={14} />
+              </Button>
+            ) : (
+              <Button
+                variant="success"
+                size="sm"
+                loading={isLoading}
+                onClick={() => handleReactivar(row)}
+                aria-label="Reactivar"
+              >
+                <PlayCircle size={14} />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -131,19 +179,57 @@ export default function Usuarios() {
       <PageHeader
         title="Gestión de Usuarios"
         description="Administra los usuarios registrados en la plataforma"
-        action={<span className="text-slate-400 text-sm">{filtered.length} usuarios</span>}
+        action={
+          <div className="flex items-center gap-3">
+            <span className="text-slate-400 text-sm flex items-center gap-1">
+              <Users size={15} /> {total} usuarios
+            </span>
+            <Button variant="ghost" size="sm" onClick={refetch} disabled={loading}>
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              {loading ? 'Cargando...' : 'Actualizar'}
+            </Button>
+          </div>
+        }
       />
 
+      <ErrorBanner message={error} />
+
       <div className="flex flex-col gap-3">
-        <SearchBar value={query} onChange={(v) => { setQuery(v); reset(); }} placeholder="Buscar por nombre o correo..." className="sm:w-72" />
+        <SearchBar
+          value={query}
+          onChange={(value) => { setQuery(value); reset(); }}
+          placeholder="Buscar por nombre o correo..."
+          className="sm:w-80"
+        />
+
         <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
-          <FilterTabs options={FILTROS_ROL}    value={rolFiltro}    onChange={(v) => { setRolFiltro(v);    reset(); }} />
-          <FilterTabs options={FILTROS_ESTADO} value={estadoFiltro} onChange={(v) => { setEstadoFiltro(v); reset(); }} />
+          <FilterTabs
+            options={FILTROS_ROL}
+            value={rolFiltro}
+            onChange={(value) => { setRolFiltro(value); reset(); }}
+          />
+          <FilterTabs
+            options={FILTROS_ESTADO}
+            value={estadoFiltro}
+            onChange={(value) => { setEstadoFiltro(value); reset(); }}
+          />
         </div>
       </div>
 
-      <Table columns={COLS} data={paginated} loading={false} emptyMessage="No se encontraron usuarios." caption="Usuarios registrados" />
-      <Pagination total={filtered.length} page={page} limit={LIMIT} onPageChange={goToPage} />
+      <Table
+        columns={columns}
+        data={usuarios}
+        loading={loading}
+        emptyMessage="No se encontraron usuarios con los filtros aplicados."
+        caption="Usuarios registrados"
+      />
+
+      <Pagination
+        total={total}
+        page={page}
+        limit={LIMITE}
+        onPageChange={goToPage}
+      />
     </div>
   );
 }

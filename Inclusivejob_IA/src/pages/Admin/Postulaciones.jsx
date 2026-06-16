@@ -1,22 +1,20 @@
 // src/pages/Admin/Postulaciones.jsx
-import { useState, useMemo } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye } from 'lucide-react';
-import { PageHeader, Badge, Button, SearchBar, FilterTabs } from '../../assets/Componentes/Admin/UI';
+import { Eye, FileText, RefreshCw } from 'lucide-react';
+
+import { PageHeader, Badge, Button, SearchBar, FilterTabs, ErrorBanner } from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
 import { useSearch, usePagination } from '../../assets/Hook/Admin/useApi';
-
-const MOCK_POSTULACIONES = [
-  { id: 1, postulante: 'Ana García Torres', vacante: 'Desarrollador Frontend', empresa: 'Tech Solutions SA', estado: 'pendiente', fecha_postulacion: '2026-05-12' },
-  { id: 2, postulante: 'Carlos Mendoza', vacante: 'Analista de Datos', empresa: 'DataCorp MX', estado: 'entrevista', fecha_postulacion: '2026-05-13' },
-  { id: 3, postulante: 'María Hernández', vacante: 'Diseñador UX/UI', empresa: 'CreativeHub CDMX', estado: 'aceptado', fecha_postulacion: '2026-05-14' },
-  { id: 4, postulante: 'José Torres', vacante: 'QA Engineer', empresa: 'Tech Solutions SA', estado: 'rechazado', fecha_postulacion: '2026-05-10' },
-  { id: 5, postulante: 'Patricia Sánchez', vacante: 'Soporte Técnico', empresa: 'HelpDesk Pro', estado: 'pendiente', fecha_postulacion: '2026-05-15' },
-];
+import { usePostulaciones } from '../../assets/Hook/Admin/useDomain';
 
 const ESTADO_BADGE = {
-  pendiente: 'warning', entrevista: 'info', aceptado: 'success', rechazado: 'danger',
+  pendiente: 'warning',
+  entrevista: 'info',
+  aceptado: 'success',
+  rechazada: 'danger',
+  rechazado: 'danger',
 };
 
 const FILTROS = [
@@ -27,42 +25,83 @@ const FILTROS = [
   { value: 'rechazado', label: 'Rechazadas' },
 ];
 
+const LIMITE = 15;
+
+function safeDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('es-MX');
+}
+
+function postulanteName(row) {
+  const fullName = `${row.nombres ?? ''} ${row.apellidos ?? ''}`.trim();
+  return row.postulante ?? row.nombre_postulante ?? (fullName || row.correo || '-');
+}
+
+function getPostulacionId(row) {
+  return row.id_postulacion ?? row.id;
+}
+
 export default function Postulaciones() {
   const navigate = useNavigate();
-  const { query, setQuery, debouncedQuery } = useSearch();
-  const { page, goToPage, reset } = usePagination(1, 10);
+  const { query, setQuery, debouncedQuery } = useSearch(400);
+  const { page, goToPage, reset } = usePagination(1, LIMITE);
   const [filtro, setFiltro] = useState('todas');
 
-  const filtered = useMemo(() => {
-    let list = MOCK_POSTULACIONES;
-    if (filtro !== 'todas') list = list.filter((p) => p.estado === filtro);
-    if (debouncedQuery) {
-      const q = debouncedQuery.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.postulante.toLowerCase().includes(q) ||
-          p.vacante.toLowerCase().includes(q) ||
-          p.empresa.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [filtro, debouncedQuery]);
+  const buildParams = useCallback(() => {
+    const params = new URLSearchParams();
+    if (filtro !== 'todas') params.set('estado', filtro);
+    if (debouncedQuery) params.set('buscar', debouncedQuery);
+    params.set('pagina', String(page));
+    params.set('limite', String(LIMITE));
+    return `&${params.toString()}`;
+  }, [filtro, debouncedQuery, page]);
 
-  const LIMIT = 10;
-  const paginated = filtered.slice((page - 1) * LIMIT, page * LIMIT);
+  const { data, loading, error, refetch } = usePostulaciones(buildParams());
+  const payload = data?.data ?? data ?? {};
+  const postulaciones = payload.postulaciones ?? (Array.isArray(payload) ? payload : []);
+  const total = Number(payload.total ?? postulaciones.length);
 
-  const COLS = [
-    { key: 'postulante', label: 'Postulante', render: (v) => <span className="text-white font-medium">{v}</span> },
-    { key: 'vacante', label: 'Vacante' },
-    { key: 'empresa', label: 'Empresa' },
-    { key: 'estado', label: 'Estado', render: (v) => <Badge variant={ESTADO_BADGE[v]}>{v}</Badge> },
-    { key: 'fecha_postulacion', label: 'Fecha', render: (v) => new Date(v).toLocaleDateString('es-MX') },
+  const columns = [
     {
-      key: 'acciones', label: 'Acciones', render: (_, row) => (
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/postulaciones/${row.id}`)} aria-label="Ver detalle">
+      key: 'postulante',
+      label: 'Postulante',
+      render: (_, row) => <span className="text-white font-medium">{postulanteName(row)}</span>,
+    },
+    {
+      key: 'vacante',
+      label: 'Vacante',
+      render: (value, row) => value ?? row.titulo_puesto ?? '-',
+    },
+    {
+      key: 'empresa',
+      label: 'Empresa',
+      render: (value, row) => value ?? row.nombre_empresas ?? '-',
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      render: (value) => <Badge variant={ESTADO_BADGE[value] ?? 'default'}>{value ?? '-'}</Badge>,
+    },
+    {
+      key: 'fecha_postulacion',
+      label: 'Fecha',
+      render: (value) => safeDate(value),
+    },
+    {
+      key: 'acciones',
+      label: 'Acciones',
+      render: (_, row) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(`/admin/postulaciones/${getPostulacionId(row)}`)}
+          aria-label="Ver detalle"
+        >
           <Eye size={14} />
         </Button>
-      )
+      ),
     },
   ];
 
@@ -71,21 +110,49 @@ export default function Postulaciones() {
       <PageHeader
         title="Gestión de Postulaciones"
         description="Visualiza todas las postulaciones del sistema"
-        action={<span className="text-slate-400 text-sm">{filtered.length} postulaciones</span>}
+        action={
+          <div className="flex items-center gap-3">
+            <span className="text-slate-400 text-sm flex items-center gap-1">
+              <FileText size={15} /> {total} postulaciones
+            </span>
+            <Button variant="ghost" size="sm" onClick={refetch} disabled={loading}>
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              {loading ? 'Cargando...' : 'Actualizar'}
+            </Button>
+          </div>
+        }
       />
+
+      <ErrorBanner message={error} />
 
       <div className="flex flex-col sm:flex-row gap-3">
         <SearchBar
           value={query}
-          onChange={(v) => { setQuery(v); reset(); }}
+          onChange={(value) => { setQuery(value); reset(); }}
           placeholder="Buscar postulante, vacante o empresa..."
-          className="sm:w-72"
+          className="sm:w-80"
         />
-        <FilterTabs options={FILTROS} value={filtro} onChange={(v) => { setFiltro(v); reset(); }} />
+        <FilterTabs
+          options={FILTROS}
+          value={filtro}
+          onChange={(value) => { setFiltro(value); reset(); }}
+        />
       </div>
 
-      <Table columns={COLS} data={paginated} loading={false} emptyMessage="No se encontraron postulaciones." caption="Postulaciones del sistema" />
-      <Pagination total={filtered.length} page={page} limit={LIMIT} onPageChange={goToPage} />
+      <Table
+        columns={columns}
+        data={postulaciones}
+        loading={loading}
+        emptyMessage="No se encontraron postulaciones con los filtros aplicados."
+        caption="Postulaciones del sistema"
+      />
+
+      <Pagination
+        total={total}
+        page={page}
+        limit={LIMITE}
+        onPageChange={goToPage}
+      />
     </div>
   );
 }
