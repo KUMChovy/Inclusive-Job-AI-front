@@ -3,79 +3,283 @@ import { useState } from "react";
 export default function Rp() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
 
-  const handleEnviar = () => {
+  const validarEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
+  const handleEnviar = async (e) => {
+    e.preventDefault();
+
     if (!email.trim()) {
-      alert("Por favor ingresa tu correo electrónico.");
+      setMensaje({ texto: "Ingresa tu correo.", tipo: "error" });
       return;
     }
 
-    alert(`Se ha enviado un correo de recuperación a ${email}`);
-    setEmail("");
-    setOpen(false);
+    if (!validarEmail(email)) {
+      setMensaje({ texto: "Correo inválido.", tipo: "error" });
+      return;
+    }
+
+    setLoading(true);
+    setMensaje({ texto: "", tipo: "" });
+
+    try {
+      const response = await fetch(
+        "http://localhost/back-inclusiveJob/API/recuperar_password.php",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMensaje({
+          texto: "Revisa tu correo para restablecer contraseña.",
+          tipo: "exito",
+        });
+
+        setEmail("");
+
+        setTimeout(() => {
+          setOpen(false);
+          setMensaje({ texto: "", tipo: "" });
+        }, 2500);
+      } else {
+        setMensaje({
+          texto: data.error || "Error al enviar correo.",
+          tipo: "error",
+        });
+      }
+    } catch (error) {
+      setMensaje({
+        texto: "Error de conexión con el servidor.",
+        tipo: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <>
+      {/* BOTÓN ABRIR MODAL - con estilos mejorados */}
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition"
+        style={{
+          fontSize: "14px",
+          color: "#4f46e5",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 500,
+          transition: "0.2s ease",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "#1e3a8a")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "#4f46e5")}
       >
         ¿Olvidaste tu contraseña?
       </button>
 
+      {/* MODAL MEJORADO */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+          }}
           onClick={() => setOpen(false)}
         >
+          {/* Fondo con blur y opacidad */}
           <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundColor: "rgba(55, 48, 163, 0.35)", // indigo-950/35
+              backdropFilter: "blur(12px)",
+            }}
+          />
+
+          {/* Tarjeta del modal */}
+          <div
+            style={{
+              position: "relative",
+              zIndex: 10,
+              width: "100%",
+              maxWidth: "28rem",
+              backgroundColor: "#fff",
+              borderRadius: "2rem",
+              boxShadow: "0 20px 35px -8px rgba(0, 0, 0, 0.25)",
+              padding: "2rem",
+            }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200"
           >
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
-                📧
+            {/* Botón cerrar (X) */}
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              style={{
+                position: "absolute",
+                top: "1rem",
+                right: "1rem",
+                background: "transparent",
+                border: "none",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                color: "#9ca3af",
+                transition: "0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#4b5563")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
+            >
+              ✕
+            </button>
+
+            {/* Logo y contenido centrado */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: "4rem",
+                  height: "4rem",
+                  overflow: "hidden",
+                  borderRadius: "1rem",
+                  marginBottom: "1rem",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                }}
+              >
+                <img
+                  src="/logo.webp"
+                  alt="InclusiJob IA"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
               </div>
 
-              <h2 className="text-2xl font-bold text-gray-800">
+              <h2
+                style={{
+                  fontSize: "1.8rem",
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  marginBottom: "0.5rem",
+                }}
+              >
                 Recuperar contraseña
               </h2>
 
-              <p className="mt-2 text-gray-500 text-sm">
-                Ingresa tu correo electrónico y te enviaremos las instrucciones
-                para restablecer tu contraseña.
+              <p
+                style={{
+                  color: "#64748b",
+                  fontSize: "0.9rem",
+                  marginTop: "0.5rem",
+                }}
+              >
+                Ingresa tu correo electrónico y te enviaremos las instrucciones para restablecer tu contraseña.
               </p>
-            </div>
 
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Correo electrónico
-              </label>
+              <form onSubmit={handleEnviar} style={{ width: "100%", marginTop: "1.5rem" }}>
+                <input
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 1rem",
+                    borderRadius: "0.75rem",
+                    border: "1px solid #d1d5db",
+                    outline: "none",
+                    fontSize: "1rem",
+                    transition: "0.2s ease",
+                  }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "#4f46e5")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "#d1d5db")}
+                />
 
-              <input
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
-            </div>
+                {mensaje.texto && (
+                  <p
+                    style={{
+                      marginTop: "0.5rem",
+                      fontSize: "0.85rem",
+                      color: mensaje.tipo === "error" ? "#dc2626" : "#10b981",
+                    }}
+                  >
+                    {mensaje.texto}
+                  </p>
+                )}
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setOpen(false)}
-                className="flex-1 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
-              >
-                Cancelar
-              </button>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.75rem",
+                    marginTop: "1.5rem",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    style={{
+                      flex: 1,
+                      padding: "0.75rem",
+                      borderRadius: "0.75rem",
+                      border: "1px solid #d1d5db",
+                      background: "#fff",
+                      color: "#374151",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      transition: "0.2s ease",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f6")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+                  >
+                    Cancelar
+                  </button>
 
-              <button
-                onClick={handleEnviar}
-                className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
-              >
-                Enviar
-              </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      flex: 1,
+                      padding: "0.75rem",
+                      borderRadius: "0.75rem",
+                      border: "none",
+                      background: "#4f46e5",
+                      color: "#fff",
+                      fontWeight: 600,
+                      cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.6 : 1,
+                      transition: "0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) e.currentTarget.style.background = "#4338ca";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!loading) e.currentTarget.style.background = "#4f46e5";
+                    }}
+                  >
+                    {loading ? "Enviando..." : "Enviar"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
