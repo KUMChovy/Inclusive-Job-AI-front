@@ -5,6 +5,11 @@ const Registro = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [openModal, setOpenModal] = useState(false);
 
+  const [form, setForm] = useState({
+    correo: "",
+    password: ""
+  });
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 900px)");
     const update = () => setIsMobile(mq.matches);
@@ -13,117 +18,220 @@ const Registro = () => {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  return (  
-  <>
-    <div
-      style={{
-        ...styles.container,
-        flexDirection: isMobile ? "column" : "row",
-      }}
-    >
-      {/* ================= LEFT — IMAGEN ================= */}
-      {!isMobile && (
-        <div style={{ ...styles.leftSide, width: "55%" }}>
-          <div style={styles.bigCircle} />
+  const validarLogin = (data) => {
+    const { correo, password } = data;
 
-          <div style={{ ...styles.ball, width: 120, height: 120, top: 80, right: 60 }} />
-          <div style={{ ...styles.ball, width: 80,  height: 80,  bottom: 100, left: 120 }} />
-          <div style={{ ...styles.ball, width: 50,  height: 50,  top: 180, left: 180 }} />
+    if (!correo || !password) {
+      return "Correo y contraseña son obligatorios";
+    }
 
-          <img
-            src="/inclu1.png"
-            alt="Inclusión"
-            style={styles.image}
-          />
+    if (correo.length > 100) {
+      return "Correo demasiado largo";
+    }
 
-          <div style={styles.leftContent}>
-            <h2 style={styles.leftTitle}>
-              Inclusión que genera{" "}
-              <span style={styles.highlight}>oportunidades</span>
-            </h2>
-            <p style={styles.leftText}>
-              Conectamos talento diverso con empresas comprometidas usando inteligencia artificial.
-            </p>
-          </div>
-        </div>
-      )}
+    if (password.length > 128) {
+      return "Contraseña demasiado larga";
+    }
 
-      {/* ================= RIGHT — FORMULARIO ================= */}
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correo)) {
+      return "Correo inválido";
+    }
+
+    return null;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  const currentData = {
+    correo: form.correo,
+    password: form.password
+  };
+
+  const error = validarLogin(currentData);
+
+  if (error) {
+    alert(error);
+    return;
+  }
+
+  try {
+    // 🔐 1. LOGIN (crea sesión en PHP)
+    const res = await fetch(
+      "http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/login.php",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(currentData)
+      }
+    );
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.message || "Error en login");
+      return;
+    }
+
+    // 🔐 2. CONSULTAR SESIÓN REAL
+    const sessionRes = await fetch(
+      "http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/sesion.php",
+      {
+        credentials: "include"
+      }
+    );
+
+    const session = await sessionRes.json();
+
+    if (!session.auth) {
+      alert("Sesión no válida");
+      return;
+    }
+
+    const rol = session.user.rol;
+
+    // 🚀 3. REDIRECCIÓN POR ROL
+    if (rol === "Postulante") {
+      window.location.href = "/postulante";
+      return;
+    }
+
+    if (rol === "Reclutador") {
+      window.location.href = "/reclutador";
+      return;
+    }
+    else{
+    alert("Rol no reconocido");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Error de conexión con el servidor");
+  }
+};
+
+  return (
+    <>
       <div
         style={{
-          ...styles.rightSide,
-          width: isMobile ? "100%" : "45%",
+          ...styles.container,
+          flexDirection: isMobile ? "column" : "row",
         }}
       >
-        <div style={{ ...styles.card, width: isMobile ? "88%" : 520 }}>
-          {/* LOGO */}
-          <div style={styles.logoRow}>
-            <div style={styles.logoWrapper}>
-              <div style={styles.logoGlow} />
-              <img src="/logo.webp" alt="InclusiJob IA" style={styles.logo} />
+        {!isMobile && (
+          <div style={{ ...styles.leftSide, width: "55%" }}>
+            <div style={styles.bigCircle} />
+
+            <div style={{ ...styles.ball, width: 120, height: 120, top: 80, right: 60 }} />
+            <div style={{ ...styles.ball, width: 80, height: 80, bottom: 100, left: 120 }} />
+            <div style={{ ...styles.ball, width: 50, height: 50, top: 180, left: 180 }} />
+
+            <img
+              src="/inclu1.png"
+              alt="Inclusión"
+              style={styles.image}
+            />
+
+            <div style={styles.leftContent}>
+              <h2 style={styles.leftTitle}>
+                Inclusión que genera{" "}
+                <span style={styles.highlight}>oportunidades</span>
+              </h2>
+              <p style={styles.leftText}>
+                Conectamos talento diverso con empresas comprometidas usando inteligencia artificial.
+              </p>
             </div>
-            <a href="/" style={styles.backBtn}>
-              ← Inicio
-            </a>
           </div>
+        )}
 
-          {/* TÍTULOS */}
-          <h1 style={styles.title}>Inicia sesion</h1>
-          <p style={styles.subtitle}>ingresa a InclusiJobIA</p>
+        <div
+          style={{
+            ...styles.rightSide,
+            width: isMobile ? "100%" : "45%",
+          }}
+        >
+          <div style={{ ...styles.card, width: isMobile ? "88%" : 520 }}>
+            <div style={styles.logoRow}>
+              <div style={styles.logoWrapper}>
+                <div style={styles.logoGlow} />
+                <img src="/logo.webp" alt="InclusiJob IA" style={styles.logo} />
+              </div>
+              <a href="/" style={styles.backBtn}>
+                ← Inicio
+              </a>
+            </div>
 
-          {/* FORMULARIO */}
-                      <div style={styles.form}>
-                        <input
-                          type="email"
-                          placeholder="Correo electrónico"
-                          style={styles.input}
-                        />
+            <h1 style={styles.title}>Inicia sesion</h1>
+            <p style={styles.subtitle}>ingresa a InclusiJobIA</p>
 
-                        <input
-                          type="password"
-                          placeholder="Contraseña"
-                          style={styles.input}
-                        />
+            <form onSubmit={handleSubmit}>
+              <div style={styles.form}>
 
-                        {/* BOTÓN */}
-                        <button type="submit" style={styles.registerBtn}>
-                          Ingresar
-                        </button>
+                <input
+                  type="email"
+                  name="correo"
+                  placeholder="Correo electrónico"
+                  style={styles.input}
+                  onChange={handleChange}
+                />
 
-                        {/* RECUPERAR CONTRASEÑA */}
-                        <Rp />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Contraseña"
+                  style={styles.input}
+                  onChange={handleChange}
+                />
 
-                        {/* DIVIDER */}
-                        <div style={styles.divider}>
-                          <div style={styles.line} />
-                          <span style={styles.dividerText}>o continuar con</span>
-                          <div style={styles.line} />
-                        </div>
+                <button type="submit" style={styles.registerBtn}>
+                  Ingresar
+                </button>
 
-                        {/* GOOGLE */}
-                        <button type="button" style={styles.googleBtn}>
-                          <img
-                            src="https://www.google.com/favicon.ico"
-                            alt="Google"
-                            style={{ width: 24, height: 24 }}
-                          />
-                          Continuar con Google
-                        </button>
+                <Rp />
 
-                        {/* REGISTRO */}
-                        <p style={styles.loginText}>
-                          ¿Aun no tienes cuenta?{" "}
-                          <a href="/registro" style={styles.loginLink}>
-                            Regístrate
-                          </a>
-                        </p>
-                      </div>
+                <div style={styles.divider}>
+                  <div style={styles.line} />
+                  <span style={styles.dividerText}>o continuar con</span>
+                  <div style={styles.line} />
+                </div>
+
+                <button type="button" style={styles.googleBtn}>
+                  <img
+                    src="https://www.google.com/favicon.ico"
+                    alt="Google"
+                    style={{ width: 24, height: 24 }}
+                  />
+                  Continuar con Google
+                </button>
+
+                <p style={styles.loginText}>
+                  ¿Aun no tienes cuenta?{" "}
+                  <a href="/registro" style={styles.loginLink}>
+                    Regístrate
+                  </a>
+                </p>
+
+              </div>
+            </form>
+
+          </div>
         </div>
       </div>
-    </div>
 
     {/* ================= MODAL ================= */}
-    
   </>
   );
 };
