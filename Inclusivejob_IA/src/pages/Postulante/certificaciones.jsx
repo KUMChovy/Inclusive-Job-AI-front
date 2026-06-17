@@ -322,90 +322,100 @@ export default function PostulanteDashboard() {
 
           <Card>
 
-            <SectionHead title="Mi CV" />
+          <SectionHead
+          title="Mi CV"
+          />
 
-            <div
-              style={{
-                padding: '20px',
-                borderBottom:
-                  `1px solid ${t.border}`,
-              }}
-            >
+          <div
+          style={{
+          padding:'20px',
+          borderBottom:
+          `1px solid ${t.border}`,
+          }}
+          >
 
-              <div
-                style={{
-                  height: '240px',
+          <iframe
 
-                  borderRadius: '12px',
+          title="Vista previa CV"
 
-                  background: '#f8f9fb',
+          src=
+          'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/cv.php'
 
-                  border:
-                    `1px solid ${t.border}`,
+          style={{
 
-                  display: 'flex',
+          width:'100%',
 
-                  flexDirection: 'column',
+          height:'420px',
 
-                  justifyContent: 'center',
+          border:'none',
 
-                  alignItems: 'center',
+          borderRadius:'12px',
 
-                  gap: '8px',
-                }}
-              >
+          background:'#f8f9fb',
 
-                <FileText
-                  size={40}
-                  color={t.textMuted}
-                />
+          }}
 
-                <span
-                  style={{
-                    color:
-                      t.textMuted,
-                  }}
-                >
-                  Vista previa del CV
-                </span>
+          >
 
-              </div>
+          </iframe>
 
-            </div>
+          </div>
 
-            <div
-              style={{
-                padding: '18px',
 
-                display: 'flex',
+          <div
+          style={{
+          padding:'18px',
 
-                justifyContent: 'center',
+          display:'flex',
 
-                gap: '10px',
-              }}
-            >
+          justifyContent:'center',
 
-              <ActionBtn
-                icon={<Eye size={13} />}
-                label="Ver CV"
-                onClick={() =>
-                  navigate(
-                    '/postulante/cv'
-                  )
-                }
-              />
+          gap:'10px',
+          }}
+          >
 
-              <ActionBtn
-                icon={<Pencil size={13} />}
-                label="Editar CV"
-                onClick={() =>
-                  navigate(
-                    '/postulante/cv/editar'
-                  )
-                }
-              />
+          <ActionBtn
 
-            </div>
+          icon={
+          <Eye size={13}/>
+          }
+
+          label="Ver CV"
+
+          onClick={()=>
+
+          window.open(
+
+          'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/cv.php',
+
+          '_blank'
+
+          )
+
+          }
+
+          />
+
+
+          <ActionBtn
+
+          icon={
+          <Pencil size={13}/>
+          }
+
+          label="Editar CV"
+
+          onClick={()=>
+
+          navigate(
+          '/postulante/cv/editar'
+          )
+
+          }
+
+          />
+
+          </div>
 
           </Card>
 
