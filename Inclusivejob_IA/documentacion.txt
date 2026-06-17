@@ -25,3 +25,8 @@ pnpm add lucide-react //pa' que instalen el lucide-react con los íconos usados 
 - git commit -m "nombre commit" (le dan nombre a sus cambios)
 - git push (sube sus cambios)
 - git pull (recibir cambios realizados a tu computadora xd)(siempre abras tu archivo ejecuta el pull)
+
+
+
+instalacione------------------------------------------------------------------------------------
+pnpm add @emailjs/browser
