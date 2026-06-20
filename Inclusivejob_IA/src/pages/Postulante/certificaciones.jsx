@@ -47,7 +47,7 @@ function Card({ children, style = {} }) {
         border: `1px solid ${t.border}`,
         borderRadius: '18px',
         overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(15,23,41,0.05)',
+        boxShadow: '0 1px 4px rgba(15,23,41,.05)',
         ...style,
       }}
     >
@@ -56,13 +56,18 @@ function Card({ children, style = {} }) {
   );
 }
 
-function SectionHead({ title, sub, action, onAction }) {
+function SectionHead({
+  title,
+  sub,
+  action,
+  onAction,
+}) {
   return (
     <div
       style={{
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
         padding: '18px 20px',
         borderBottom: `1px solid ${t.border}`,
       }}
@@ -82,7 +87,7 @@ function SectionHead({ title, sub, action, onAction }) {
         {sub && (
           <p
             style={{
-              margin: '2px 0 0',
+              margin: '4px 0 0',
               fontSize: '12px',
               color: t.textMuted,
             }}
@@ -97,12 +102,11 @@ function SectionHead({ title, sub, action, onAction }) {
           onClick={onAction}
           style={{
             display: 'flex',
-            alignItems: 'center',
             gap: '4px',
-            background: 'none',
+            alignItems: 'center',
             border: 'none',
+            background: 'transparent',
             cursor: 'pointer',
-            fontSize: '12px',
             color: t.accent,
             fontWeight: 600,
           }}
@@ -115,22 +119,25 @@ function SectionHead({ title, sub, action, onAction }) {
   );
 }
 
-function ActionBtn({ icon, label, onClick }) {
+function ActionBtn({
+  icon,
+  label,
+  onClick,
+}) {
   return (
     <button
       onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '4px',
-        padding: '5px 12px',
-        borderRadius: '8px',
+        gap: '6px',
+        padding: '8px 14px',
+        borderRadius: '10px',
         border: `1px solid ${t.border}`,
         background: '#fff',
         cursor: 'pointer',
         fontSize: '12px',
         fontWeight: 600,
-        color: t.textPrimary,
       }}
     >
       {icon}
@@ -149,146 +156,385 @@ export default function PostulanteDashboard() {
       user={MOCK_USER}
       pageTitle="Certificaciones"
     >
-      {/* ── Estilos responsive ── */}
+
       <style>{`
-        .cert-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
+
+        .cards-grid{
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:20px;
         }
-        .cert-item-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
+
+        .cert-row{
+          display:flex;
+          justify-content:space-between;
+          align-items:flex-start;
         }
-        .cert-item-btns {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          align-items: flex-end;
+
+        .cert-btns{
+          display:flex;
+          flex-direction:column;
+          gap:8px;
         }
-        @media (max-width: 640px) {
-          .cert-grid {
-            grid-template-columns: 1fr;
+
+        @media(max-width:900px){
+
+          .cards-grid{
+            grid-template-columns:1fr;
           }
-          .cert-item-row {
-            flex-direction: column;
-            gap: 10px;
+
+          .cert-row{
+            flex-direction:column;
+            gap:14px;
           }
-          .cert-item-btns {
-            flex-direction: row;
-            align-items: flex-start;
+
+          .cert-btns{
+            flex-direction:row;
           }
+
         }
+
       `}</style>
 
-      {/* ── Bienvenida ── */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: t.textPrimary }}>
-          Hola, {MOCK_USER.nombre.split(' ')[0]} 👋
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: '14px', color: t.textMuted }}>
-          Aquí tienes el CV que subiste y tus certificaciones.
-        </p>
-      </div>
+      <div
+        style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+        }}
+      >
 
-      {/* ── Grid principal ── */}
-      <div className="cert-grid">
+        {/* HERO */}
 
-        {/* ── Card CV ── */}
-        <Card>
-          <SectionHead title="Mi CV" />
+        <div
+          style={{
+            position: 'relative',
 
-          {/* Vista previa CV */}
-          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${t.border}` }}>
-            <div
-              style={{
-                width: '100%',
-                height: '220px',
-                borderRadius: '10px',
-                border: `1px solid ${t.border}`,
-                background: '#f8f9fb',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                color: t.textMuted,
-                overflow: 'hidden',
-              }}
-            >
-              {/* Reemplaza esto con: <img src={tuImagen} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> */}
-              <FileText size={36} color={t.textMuted} />
-              <span style={{ fontSize: '12px' }}>Vista previa del CV</span>
-            </div>
-          </div>
+            borderRadius: '24px',
 
-          {/* Botones CV — centrados */}
-          <div style={{ padding: '14px 20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-            <ActionBtn
-              icon={<Eye size={13} />}
-              label="Ver CV"
-              onClick={() => navigate('/postulante/cv')}
-            />
-            <ActionBtn
-              icon={<Pencil size={13} />}
-              label="Editar CV"
-              onClick={() => navigate('/postulante/cv/editar')}
-            />
-          </div>
-        </Card>
+            overflow: 'hidden',
 
-        {/* ── Card Certificaciones ── */}
-        <Card>
-          <SectionHead
-            title="Mis certificaciones"
-            sub={`${CERTIFICACIONES.length} registradas`}
-            action="Añadir"
+            background:
+              'linear-gradient(135deg,#1e40af 0%,#2563eb 50%,#0ea5e9 100%)',
+
+            padding: '40px',
+
+            color: '#fff',
+
+            minHeight: '220px',
+
+            marginBottom: '28px',
+
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+
+          <div
+            style={{
+              position: 'absolute',
+              width: '340px',
+              height: '340px',
+              borderRadius: '50%',
+              background:
+                'rgba(255,255,255,.08)',
+
+              top: '-90px',
+              right: '-80px',
+
+              filter: 'blur(70px)',
+            }}
           />
 
-          <ul style={{ margin: 0, padding: '8px 20px 16px', listStyle: 'none' }}>
-            {CERTIFICACIONES.map((c) => (
-              <li
-                key={c.id}
-                style={{
-                  padding: '12px 0',
-                  borderBottom: `1px solid ${t.border}`,
-                }}
-              >
-                <div className="cert-item-row">
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Award size={13} color={t.accent} />
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: t.textPrimary }}>
-                        {c.nombre}
-                      </p>
+          <div
+            style={{
+              position: 'absolute',
+
+              width: '250px',
+              height: '250px',
+
+              borderRadius: '50%',
+
+              background:
+                'rgba(14,165,233,.25)',
+
+              left: '35%',
+              bottom: '-90px',
+
+              filter: 'blur(70px)',
+            }}
+          />
+
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+
+            <p
+              style={{
+                margin: 0,
+                opacity: .85,
+              }}
+            >
+              Perfil profesional
+            </p>
+
+            <h1
+              style={{
+                margin: '10px 0',
+
+                fontSize: '44px',
+
+                fontWeight: 800,
+
+                lineHeight: 1.1,
+              }}
+            >
+              CV y certificaciones
+            </h1>
+
+            <p
+              style={{
+                maxWidth: '700px',
+
+                fontSize: '16px',
+
+                opacity: .9,
+
+                lineHeight: 1.6,
+              }}
+            >
+              Mantén actualizado tu currículum y agrega
+              certificaciones para destacar frente a
+              reclutadores.
+            </p>
+
+          </div>
+
+        </div>
+
+        {/* GRID */}
+
+        <div className="cards-grid">
+
+          {/* CV */}
+
+          <Card>
+
+          <SectionHead
+          title="Mi CV"
+          />
+
+          <div
+          style={{
+          padding:'20px',
+          borderBottom:
+          `1px solid ${t.border}`,
+          }}
+          >
+
+          <iframe
+
+          title="Vista previa CV"
+
+          src=
+          'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/cv.php'
+
+          style={{
+
+          width:'100%',
+
+          height:'420px',
+
+          border:'none',
+
+          borderRadius:'12px',
+
+          background:'#f8f9fb',
+
+          }}
+
+          >
+
+          </iframe>
+
+          </div>
+
+
+          <div
+          style={{
+          padding:'18px',
+
+          display:'flex',
+
+          justifyContent:'center',
+
+          gap:'10px',
+          }}
+          >
+
+          <ActionBtn
+
+          icon={
+          <Eye size={13}/>
+          }
+
+          label="Ver CV"
+
+          onClick={()=>
+
+          window.open(
+
+          'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/cv.php',
+
+          '_blank'
+
+          )
+
+          }
+
+          />
+
+
+          <ActionBtn
+
+          icon={
+          <Pencil size={13}/>
+          }
+
+          label="Editar CV"
+
+          onClick={()=>
+
+          navigate(
+          '/postulante/cv/editar'
+          )
+
+          }
+
+          />
+
+          </div>
+
+          </Card>
+
+          {/* CERTIFICACIONES */}
+
+          <Card>
+
+            <SectionHead
+              title="Mis certificaciones"
+              sub={`${CERTIFICACIONES.length} registradas`}
+              action="Añadir"
+            />
+
+            <ul
+              style={{
+                margin: 0,
+                padding:
+                  '10px 20px 16px',
+
+                listStyle: 'none',
+              }}
+            >
+
+              {CERTIFICACIONES.map(
+                (c) => (
+
+                  <li
+                    key={c.id}
+                    style={{
+                      padding:
+                        '14px 0',
+
+                      borderBottom:
+                        `1px solid ${t.border}`,
+                    }}
+                  >
+
+                    <div className="cert-row">
+
+                      <div>
+
+                        <div
+                          style={{
+                            display:
+                              'flex',
+
+                            gap: '8px',
+
+                            alignItems:
+                              'center',
+                          }}
+                        >
+
+                          <Award
+                            size={14}
+                            color={
+                              t.accent
+                            }
+                          />
+
+                          <strong>
+                            {c.nombre}
+                          </strong>
+
+                        </div>
+
+                        <p>
+                          {c.emisor}
+                        </p>
+
+                        <small>
+                          {c.fecha}
+                        </small>
+
+                      </div>
+
+                      <div className="cert-btns">
+
+                        <ActionBtn
+                          icon={
+                            <Eye size={11} />
+                          }
+                          label="Ver"
+                          onClick={() =>
+                            navigate(
+                              `/postulante/certificaciones/${c.id}`
+                            )
+                          }
+                        />
+
+                        <ActionBtn
+                          icon={
+                            <Pencil size={11} />
+                          }
+                          label="Editar"
+                          onClick={() =>
+                            navigate(
+                              `/postulante/certificaciones/${c.id}/editar`
+                            )
+                          }
+                        />
+
+                      </div>
+
                     </div>
-                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: t.textMuted }}>
-                      {c.emisor}
-                    </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: t.textMuted }}>
-                      {c.fecha}
-                    </p>
-                  </div>
-                  <div className="cert-item-btns">
-                    <ActionBtn
-                      icon={<Eye size={11} />}
-                      label="Ver"
-                      onClick={() => navigate(`/postulante/certificaciones/${c.id}`)}
-                    />
-                    <ActionBtn
-                      icon={<Pencil size={11} />}
-                      label="Editar"
-                      onClick={() => navigate(`/postulante/certificaciones/${c.id}/editar`)}
-                    />
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
+
+                  </li>
+
+                )
+              )}
+
+            </ul>
+
+          </Card>
+
+        </div>
 
       </div>
+
     </PortalLayout>
   );
 }
