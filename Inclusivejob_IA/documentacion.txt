@@ -30,3 +30,17 @@ pnpm add lucide-react //pa' que instalen el lucide-react con los íconos usados 
 
 instalacione------------------------------------------------------------------------------------
 pnpm add @emailjs/browser
+
+
+
+------------------------modificaciones bd----------------------------------------------
+ALTER TABLE postulantes 
+MODIFY cv LONGBLOB;
+
+
+ALTER TABLE certificaciones 
+MODIFY pdf LONGBLOB;
+
+
+ALTER TABLE reclutadores 
+MODIFY id_empresas INT NULL;
