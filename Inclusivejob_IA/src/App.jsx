@@ -27,6 +27,7 @@ import Reportes       from './pages/Admin/Reportes.jsx';
 
 // ── Reclutador ───────────────────────────────────────────────
 import ReclutadorDashboard from './pages/Reclutador/Reclutadordashboard.jsx';
+import Reportesmios from './pages/Reclutador/reportesmios.jsx';
 
 
 // ── Postulante ───────────────────────────────────────────────
@@ -72,6 +73,7 @@ function App() {
           RECLUTADOR 
           ================================================================ */}
       <Route path="/reclutador" element={<ReclutadorDashboard />} />
+      <Route path="reclutador/reportes" element={<Reportesmios />} />
 
       {/* <Route path="/reclutador/empresa"      element={<ReclutadorEmpresa />} /> */}
   
