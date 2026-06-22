@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import {
-  MapPin,
-  Eye,
-  X,
-  Briefcase,
-} from 'lucide-react';
+import { MapPin, Eye, X, Briefcase, Star, Calendar, Accessibility, Bookmark, CheckCircle } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 
@@ -63,239 +58,296 @@ function SectionHead({ title }) {
 /* ───────────────────────────────
    MODAL (RESPETA EL ORIGINAL)
 ─────────────────────────────── */
-function ModalReporte({ reporte, onClose }) {
-  if (!reporte) return null;
+const ESTADO_STYLE = {
+  revisando:  { bg: '#fefce8', text: '#854d0e', border: '#fde68a', dot: '#eab308' },
+  aceptado:   { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0', dot: '#22c55e' },
+  rechazado:  { bg: '#fff1f2', text: '#9f1239', border: '#fecdd3', dot: '#f43f5e' },
+  pendiente:  { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', dot: '#3b82f6' },
+  entrevista: { bg: '#fdf4ff', text: '#6b21a8', border: '#e9d5ff', dot: '#a855f7' },
+};
+
+function formatFecha(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-MX', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+}
+
+function formatSalario(min, max) {
+  const fmt = (n) =>
+    Number(n).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+  return `${fmt(min)} – ${fmt(max)}`;
+}
+
+function ModalReporte({ postulacion, onClose }) {
+  if (!postulacion) return null;
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, []);
+
+  const estadoKey = postulacion.estado?.toLowerCase() || 'revisando';
+  const s = ESTADO_STYLE[estadoKey] || ESTADO_STYLE.revisando;
 
   return (
     <div
       onClick={onClose}
       style={{
-        position: 'fixed',
-        inset: 0,
+        position: 'fixed', inset: 0,
         background: 'rgba(15,23,41,0.45)',
         zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '20px',
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#fff',
-          borderRadius: '20px',
-          position: 'relative',
-          width: '100%',
-          maxWidth: '640px',
+          background: '#fff', borderRadius: '20px',
+          position: 'relative', width: '100%', maxWidth: '640px',
           border: `1px solid ${t.border}`,
           boxShadow: '0 20px 60px rgba(15,23,41,0.18)',
-          overflow: 'hidden',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
+          overflow: 'hidden', maxHeight: '90vh',
+          display: 'flex', flexDirection: 'column',
         }}
       >
-
-        {/* ── HEADER (MISMO DEL MODAL ORIGINAL) ── */}
-        <div
-          style={{
-            background:
-              'linear-gradient(135deg,#1e40af 0%,#2563eb 50%,#0ea5e9 100%)',
-            padding: '24px 24px 20px',
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: '12px',
-              marginBottom: '14px',
-            }}
-          >
-
-            {/* ICONO + TITULO */}
-            <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
-              <div
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'rgba(255,255,255,0.18)',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
+        {/* ── Header ── */}
+        <div style={{
+          background: 'linear-gradient(135deg,#1e40af 0%,#2563eb 50%,#0ea5e9 100%)',
+          padding: '24px 24px 20px', flexShrink: 0,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'flex-start',
+            justifyContent: 'space-between', gap: '12px', marginBottom: '14px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+              <div style={{
+                width: '42px', height: '42px', borderRadius: '12px',
+                background: 'rgba(255,255,255,0.18)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
                 <Briefcase size={18} color="#fff" />
               </div>
-
               <div style={{ flex: 1 }}>
-                <h2
-                  style={{
-                    margin: '0 0 3px',
-                    fontSize: '19px',
-                    fontWeight: 500,
-                    color: '#fff',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {reporte.vacante}
+                <h2 style={{
+                  margin: '0 0 3px', fontSize: '19px', fontWeight: 500,
+                  color: '#fff', lineHeight: 1.2,
+                }}>
+                  {postulacion.vacante}
                 </h2>
-
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '12px',
-                    color: 'rgba(255,255,255,0.8)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <MapPin size={11} />
-                  {reporte.modalidad}
+                <p style={{
+                  margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)',
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                }}>
+                  <Briefcase size={11} /> {postulacion.empresa || '—'}
                 </p>
               </div>
             </div>
-
-            {/* CLOSE */}
             <button
               onClick={onClose}
               style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '8px',
+                width: '30px', height: '30px', borderRadius: '8px',
                 background: 'rgba(255,255,255,0.15)',
                 border: '1px solid rgba(255,255,255,0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: '#fff',
-                flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: '#fff', flexShrink: 0,
               }}
             >
               <X size={15} />
             </button>
           </div>
 
-          {/* BADGES (MISMO ESTILO) */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 10px',
-                borderRadius: '999px',
-                fontSize: '11px',
-                fontWeight: 500,
-                background: 'rgba(255,255,255,0.18)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.28)',
-              }}
-            >
-              <MapPin size={10} />
-              {reporte.modalidad}
+          {/* Badges */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500,
+              background: 'rgba(255,255,255,0.18)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.28)',
+            }}>
+              <MapPin size={10} /> {postulacion.modalidad || '—'}
             </span>
-
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 10px',
-                borderRadius: '999px',
-                fontSize: '11px',
-                fontWeight: 500,
-                background: 'rgba(255,255,255,0.18)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.28)',
-              }}
-            >
-              📅 {new Date(reporte.fecha).toLocaleDateString('es-MX')}
+            {postulacion.match && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500,
+                background: '#05966980', color: '#fff', border: '1px solid #05966950',
+              }}>
+                <Star size={10} style={{ fill: '#fff' }} /> {postulacion.match}% match
+              </span>
+            )}
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500,
+              background: 'rgba(255,255,255,0.18)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.28)',
+            }}>
+              <Calendar size={10} /> Postulado el {formatFecha(postulacion.fecha)}
             </span>
-
           </div>
         </div>
 
-        {/* ── BODY (MISMO FORMATO DEL OTRO MODAL) ── */}
+        {/* ── Body ── */}
         <div style={{ padding: '18px 20px', overflowY: 'auto', flex: 1 }}>
 
-          {/* BLOQUE PRINCIPAL */}
-          <div
-            style={{
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
-              borderRadius: '12px',
-              padding: '14px 16px',
-              marginBottom: '16px',
-            }}
-          >
-            <p
-              style={{
-                margin: '0 0 2px',
-                fontSize: '11px',
-                color: '#2563eb',
-                fontWeight: 500,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}
-            >
-              Motivo del reporte
-            </p>
-
-            <p
-              style={{
-                margin: 0,
-                fontSize: '14px',
-                color: '#1e40af',
-                lineHeight: 1.5,
-              }}
-            >
-              {reporte.motivo}
-            </p>
+          {/* Salario + estado */}
+          <div style={{
+            background: '#eff6ff', border: '1px solid #bfdbfe',
+            borderRadius: '12px', padding: '14px 16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: '12px', marginBottom: '16px',
+          }}>
+            <div>
+              <p style={{ margin: '0 0 2px', fontSize: '11px', color: '#2563eb', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Rango salarial
+              </p>
+              <p style={{ margin: 0, fontSize: '20px', fontWeight: 500, color: '#1e40af' }}>
+                {postulacion.salario_min && postulacion.salario_max
+                  ? formatSalario(postulacion.salario_min, postulacion.salario_max)
+                  : '—'}
+              </p>
+            </div>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 500,
+              background: s.bg, color: s.text, border: `1px solid ${s.border}`,
+            }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: s.dot }} />
+              {postulacion.estado}
+            </span>
           </div>
 
+          {/* Info grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+            {[
+              { label: 'Publicación', value: formatFecha(postulacion.fecha_publicacion), icon: Calendar },
+              { label: 'Cierre',      value: formatFecha(postulacion.fecha_cierre),      icon: Calendar },
+              { label: 'Modalidad',   value: postulacion.modalidad || '—',               icon: MapPin   },
+            ].map(({ label, value, icon: Icon }) => (
+              <div key={label} style={{
+                background: '#f8fafc', border: `1px solid ${t.border}`,
+                borderRadius: '12px', padding: '10px 12px',
+              }}>
+                <p style={{
+                  margin: '0 0 4px', fontSize: '11px', color: '#9ca3af',
+                  fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px',
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                }}>
+                  <Icon size={11} /> {label}
+                </p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Descripción */}
+          {postulacion.descripcion_puesto && (
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{
+                margin: '0 0 8px', fontSize: '11px', fontWeight: 500,
+                color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px',
+                paddingBottom: '6px', borderBottom: `1px solid ${t.border}`,
+              }}>
+                Descripción del puesto
+              </p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>
+                {postulacion.descripcion_puesto}
+              </p>
+            </div>
+          )}
+
+          {/* Requisitos */}
+          {postulacion.requisitos?.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{
+                margin: '0 0 8px', fontSize: '11px', fontWeight: 500,
+                color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px',
+                paddingBottom: '6px', borderBottom: `1px solid ${t.border}`,
+              }}>
+                Requisitos
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {(Array.isArray(postulacion.requisitos)
+                  ? postulacion.requisitos
+                  : postulacion.requisitos.split('\n').filter(Boolean)
+                ).map((req, i) => (
+                  <li key={i} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '8px',
+                    fontSize: '13px', color: '#374151', lineHeight: 1.4,
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2563eb', flexShrink: 0, marginTop: '5px' }} />
+                    {req}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Accesibilidad */}
+          {postulacion.discapacidades?.length > 0 && (
+            <div>
+              <p style={{
+                margin: '0 0 8px', fontSize: '11px', fontWeight: 500,
+                color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px',
+                paddingBottom: '6px', borderBottom: `1px solid ${t.border}`,
+              }}>
+                Adaptaciones de accesibilidad disponibles
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {postulacion.discapacidades.map((d) => (
+                  <span key={d} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    fontSize: '11px', color: '#2563eb', background: '#eff6ff',
+                    border: '1px solid #bfdbfe', padding: '3px 9px',
+                    borderRadius: '6px', fontWeight: 500,
+                  }}>
+                    <Accessibility size={10} /> {d}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* ── FOOTER (MISMO DEL OTRO MODAL) ── */}
-        <div
-          style={{
-            padding: '14px 20px',
-            borderTop: `1px solid ${t.border}`,
-            display: 'flex',
-            gap: '10px',
-            justifyContent: 'flex-end',
-          }}
-        >
+        {/* ── Footer ── */}
+        <div style={{
+          padding: '14px 20px', borderTop: `1px solid ${t.border}`,
+          display: 'flex', gap: '10px', flexShrink: 0,
+          background: '#fff',
+        }}>
+          <button style={{
+            background: '#fff', color: t.textSecondary,
+            border: `1px solid ${t.border}`, borderRadius: '12px',
+            padding: '10px 14px', fontSize: '13px', fontWeight: 500,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+          }}>
+            <Bookmark size={14} /> Guardar
+          </button>
           <button
-            onClick={onClose}
+            onClick={() => console.log('Despostular', postulacion.id)}
             style={{
-              background: '#fff',
-              border: `1px solid ${t.border}`,
-              borderRadius: '12px',
-              padding: '10px 14px',
-              fontSize: '13px',
-              cursor: 'pointer',
+              background: '#fff5f5', color: '#dc2626',
+              border: '1px solid #fecaca', borderRadius: '12px',
+              padding: '10px 14px', fontSize: '13px', fontWeight: 500,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
             }}
           >
-            Cerrar
+            <X size={14} /> Despostularme
+          </button>
+          <button style={{
+            flex: 1,
+            background: 'linear-gradient(135deg,#1e40af,#2563eb)',
+            color: '#fff', border: 'none', borderRadius: '12px',
+            padding: '10px 18px', fontSize: '13px', fontWeight: 500,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          }}>
+            <CheckCircle size={14} /> Ver empresa
           </button>
         </div>
-
       </div>
     </div>
   );
@@ -354,7 +406,7 @@ export default function PostulanteDashboard() {
       {/* MODAL INYECTADO */}
       {reporteSeleccionado && (
         <ModalReporte
-          reporte={reporteSeleccionado}
+          postulacion={reporteSeleccionado}
           onClose={() => setReporteSeleccionado(null)}
         />
       )}
