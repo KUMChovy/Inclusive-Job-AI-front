@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import {
 MapPin,
+Eye,
 } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
@@ -24,7 +25,8 @@ rol:'Postulante',
 
 
 function Card({ children }) {
-return (
+
+return(
 
 <div
 style={{
@@ -41,6 +43,7 @@ boxShadow:'0 2px 8px rgba(15,23,41,.05)',
 </div>
 
 );
+
 }
 
 
@@ -91,6 +94,12 @@ setLoading
 ]=
 useState(true);
 
+const[
+busqueda,
+setBusqueda
+]=
+useState('');
+
 
 
 useEffect(()=>{
@@ -124,22 +133,46 @@ data.data
 }
 
 }
+
 catch(error){
 
-console.log(
-error
-);
+console.log(error);
 
 }
+
 finally{
 
-setLoading(
-false
+setLoading(false);
+
+}
+
+}
+
+
+
+const reportesFiltrados =
+
+reportes.filter((r)=>{
+
+const texto=`
+
+${r.vacante||''}
+
+${r.modalidad||''}
+
+${r.motivo||''}
+
+${r.fecha||''}
+
+`
+
+.toLowerCase();
+
+return texto.includes(
+busqueda.toLowerCase()
 );
 
-}
-
-}
+});
 
 
 
@@ -161,8 +194,6 @@ flexDirection:'column',
 gap:'24px',
 }}
 >
-
-{/* HERO */}
 
 <div
 style={{
@@ -229,213 +260,369 @@ Consulta los reportes que realizaste sobre vacantes.
 
 <Card>
 
-  <SectionHead
-    title="Mis reportes"
-  />
+<SectionHead
+title="Mis reportes"
+/>
 
-  {
 
-    loading
 
-    ?
+<div
+style={{
+padding:'20px 22px',
+borderBottom:`1px solid ${t.border}`,
+}}
+>
 
-    <div
-      style={{
-        padding: '30px',
-      }}
-    >
-      Cargando reportes...
-    </div>
+<input
 
-    :
+value={busqueda}
 
-    reportes.length === 0
+onChange={
+(e)=>
+setBusqueda(
+e.target.value
+)
+}
 
-    ?
+placeholder="Buscar por vacante, ubicación o motivo..."
 
-    <div
-      style={{
-        padding: '40px',
-        textAlign: 'center',
-        color: t.textMuted,
-        fontSize: '15px',
-      }}
-    >
-      Sin reportes realizados
-    </div>
+style={{
 
-    :
+width:'100%',
 
-    <ul
-      style={{
-        margin: 0,
-        padding: 0,
-        listStyle: 'none',
-      }}
-    >
+padding:'12px 16px',
 
-      {
+border:`1px solid ${t.border}`,
 
-        reportes.map(
-          (
-            r,
-            i
-          ) => (
+borderRadius:'12px',
 
-            <li
+outline:'none',
 
-              key={
-                r.id
-              }
+fontSize:'14px',
 
-              style={{
+color:t.textPrimary,
 
-                padding: '22px',
+background:'#fff',
 
-                borderBottom:
+}}
 
-                  i <
-                  reportes.length - 1
+>
 
-                    ?
+</input>
 
-                    `1px solid ${t.border}`
+</div>
 
-                    :
 
-                    'none',
 
-              }}
+{
 
-            >
+loading
 
-              <div
-                style={{
+?
 
-                  display: 'flex',
+<div
+style={{
+padding:'30px',
+}}
+>
 
-                  justifyContent: 'space-between',
+Cargando reportes...
 
-                  alignItems: 'center',
+</div>
 
-                  gap: '20px',
+:
 
-                }}
-              >
+reportesFiltrados.length===0
 
-                <div>
+?
 
-                  <h3
-                    style={{
-                      margin: 0,
-                      fontSize: '18px',
-                      color: t.textPrimary,
-                    }}
-                  >
-                    {r.vacante}
-                  </h3>
+<div
+style={{
+padding:'40px',
+textAlign:'center',
+color:t.textMuted,
+fontSize:'15px',
+}}
+>
 
+{
 
-                  <div
-                    style={{
+busqueda
 
-                      display: 'flex',
+?
 
-                      alignItems: 'center',
+'No se encontraron reportes'
 
-                      gap: '10px',
+:
 
-                      marginTop: '10px',
+'Sin reportes realizados'
 
-                      color: t.textMuted,
+}
 
-                    }}
+</div>
 
-                  >
+:
 
-                    <MapPin
-                      size={14}
-                    />
+<div
+style={{
+overflowX:'auto',
+}}
+>
 
-                    {r.modalidad}
+<table
+style={{
+width:'100%',
+borderCollapse:'collapse',
+}}
+>
 
-                    •
+<thead>
 
-                    {
+<tr>
 
-                      new Date(
-                        r.fecha
-                      )
+{
 
-                      .toLocaleDateString(
-                        'es-MX',
-                        {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        }
-                      )
+[
+'VACANTE',
+'UBICACIÓN',
+'MOTIVO',
+'FECHA',
+'ACCIONES',
+]
 
-                    }
+.map(
 
-                  </div>
+(h)=>(
 
-                </div>
+<th
+key={h}
+style={{
+padding:'18px 22px',
+textAlign:'left',
+fontSize:'13px',
+letterSpacing:'1px',
+fontWeight:600,
+color:t.textMuted,
+borderBottom:`1px solid ${t.border}`,
+}}
+>
 
+{h}
 
-                <button
-                  onClick={() => {
+</th>
 
-                    console.log(
-                      r.motivo
-                    );
+)
 
-                  }}
+)
 
-                  style={{
+}
 
-                    padding:
-                      '8px 14px',
+</tr>
 
-                    border:
-                      `1px solid ${t.border}`,
+</thead>
 
-                    background:
-                      '#fff',
 
-                    borderRadius:
-                      '10px',
 
-                    cursor:
-                      'pointer',
+<tbody>
 
-                    fontWeight:
-                      600,
+{
 
-                    color:
-                      t.accent,
+reportesFiltrados.map(
 
-                  }}
+(
+r,
+i
+)=>(
 
-                >
+<tr
+key={r.id}
+style={{
+borderBottom:
 
-                  Ver motivo
+i<
+reportesFiltrados.length-1
 
-                </button>
+?
 
-              </div>
+`1px solid ${t.border}`
 
-            </li>
+:
 
-          )
+'none',
+}}
+>
 
-        )
+<td
+style={{
+padding:'22px',
+}}
+>
 
-      }
+<div
+style={{
+fontWeight:600,
+fontSize:'18px',
+color:t.textPrimary,
+}}
+>
 
-    </ul>
+{r.vacante}
 
-  }
+</div>
+
+</td>
+
+
+
+<td
+style={{
+padding:'22px',
+}}
+>
+
+<div
+style={{
+
+display:'flex',
+
+alignItems:'center',
+
+gap:'10px',
+
+color:t.textMuted,
+
+}}
+
+>
+
+<MapPin size={14}/>
+
+{r.modalidad}
+
+</div>
+
+</td>
+
+
+
+<td
+style={{
+padding:'22px',
+maxWidth:'350px',
+}}
+>
+
+<div
+style={{
+overflow:'hidden',
+display:'-webkit-box',
+WebkitLineClamp:2,
+WebkitBoxOrient:'vertical',
+color:t.textPrimary,
+lineHeight:1.5,
+}}
+>
+
+{r.motivo}
+
+</div>
+
+</td>
+
+
+
+<td
+style={{
+padding:'22px',
+whiteSpace:'nowrap',
+color:t.textPrimary,
+}}
+>
+
+{
+
+new Date(
+r.fecha
+)
+
+.toLocaleDateString(
+'es-MX',
+{
+day:'numeric',
+month:'short',
+year:'numeric',
+}
+
+)
+
+}
+
+</td>
+
+
+
+<td
+style={{
+padding:'22px',
+}}
+>
+
+<button
+
+onClick={()=>
+console.log(
+r.motivo
+)
+}
+
+style={{
+
+width:'40px',
+
+height:'40px',
+
+display:'flex',
+
+alignItems:'center',
+
+justifyContent:'center',
+
+border:`1px solid ${t.border}`,
+
+background:'#fff',
+
+borderRadius:'10px',
+
+cursor:'pointer',
+
+}}
+
+>
+
+<Eye
+size={16}
+color={t.accent}
+/>
+
+</button>
+
+</td>
+
+</tr>
+
+)
+
+)
+
+}
+
+</tbody>
+
+</table>
+
+</div>
+
+}
 
 </Card>
 
