@@ -154,7 +154,7 @@ export default function PostulanteDashboard() {
       theme={t}
       navItems={postulantNav}
       user={MOCK_USER}
-      pageTitle="Certificaciones"
+      pageTitle="Capacitaciones"
     >
 
       <style>{`
@@ -291,7 +291,7 @@ export default function PostulanteDashboard() {
                 lineHeight: 1.1,
               }}
             >
-              CV y certificaciones
+              CV y capacitaciones
             </h1>
 
             <p
