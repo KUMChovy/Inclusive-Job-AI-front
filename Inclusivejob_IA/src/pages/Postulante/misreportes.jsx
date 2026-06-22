@@ -309,6 +309,99 @@ function ModalReporte({ postulacion, onClose }) {
   );
 }
 
+function ModalEditarReporte({ reporte, onClose, onSave }) {
+  const [motivo, setMotivo] = useState(reporte.motivo || '');
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  if (!reporte) return null;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15,23,41,0.45)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#fff',
+          borderRadius: '20px',
+          width: '100%',
+          maxWidth: '520px',
+          border: `1px solid ${t.border}`,
+          boxShadow: '0 20px 60px rgba(15,23,41,0.18)',
+          padding: '20px',
+        }}
+      >
+        <h2 style={{ marginBottom: '12px', color: '#111827' }}>
+          Modificar reporte
+        </h2>
+
+        <textarea
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          style={{
+            width: '100%',
+            minHeight: '120px',
+            borderRadius: '12px',
+            border: `1px solid ${t.border}`,
+            padding: '12px',
+            outline: 'none',
+            background: '#fff',
+            color: '#111827',
+            fontSize: '14px',
+          }}
+        />
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '10px',
+              border: `1px solid ${t.border}`,
+              background: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            Cancelar
+          </button>
+
+          <button
+            onClick={() => onSave(motivo)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '10px',
+              background: '#2563eb',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            Editar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PostulanteDashboard() {
 
   const [reportes, setReportes] = useState([]);
@@ -317,6 +410,7 @@ export default function PostulanteDashboard() {
 
   // ✅ estado del modal
   const [reporteSeleccionado, setReporteSeleccionado] = useState(null);
+  const [modalEditar, setModalEditar] = useState(null);
 
   async function eliminarReporte(id) {
     try {
@@ -348,6 +442,40 @@ export default function PostulanteDashboard() {
       console.log('Error eliminando reporte:', error);
     }
   }
+
+  async function editarReporte(id, motivo) {
+  try {
+    const res = await fetch(
+      'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_reporte: id,
+          motivo: motivo,
+        }),
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.ok) {
+      setReportes((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...r, motivo } : r
+        )
+      );
+
+      setModalEditar(null);
+    } else {
+      console.log(data.msg);
+    }
+  } catch (error) {
+    console.log('Error editando reporte:', error);
+  }
+}
 
   useEffect(() => {
     cargarReportes();
@@ -395,6 +523,14 @@ export default function PostulanteDashboard() {
         <ModalReporte
           postulacion={reporteSeleccionado}
           onClose={() => setReporteSeleccionado(null)}
+        />
+      )}
+
+      {modalEditar && (
+        <ModalEditarReporte
+          reporte={modalEditar}
+          onClose={() => setModalEditar(null)}
+          onSave={(motivo) => editarReporte(modalEditar.id, motivo)}
         />
       )}
 
@@ -539,7 +675,7 @@ export default function PostulanteDashboard() {
 
                         {/* EDITAR REPORTE */}
                         <button
-                        onClick={() => console.log('Editar reporte', r.id)}
+                        onClick={() => setModalEditar(r)}
                         style={{
                             width: '40px',
                             height: '40px',
