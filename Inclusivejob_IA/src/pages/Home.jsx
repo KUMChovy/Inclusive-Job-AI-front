@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import fondo from "../assets/img/Designer (21).png";
 import icono from "../assets/img/perfil.png";
 import img1 from "../assets/img/Designer (17).png";
@@ -56,6 +57,37 @@ function Reveal({ children, delay = 0, className = "" }) {
 
 export default function Home() {
   const [active, setActive] = React.useState(null);
+
+  const scrollToSection = (e, id) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    const startY = window.scrollY;
+    const targetY = el.getBoundingClientRect().top + startY;
+    const distance = targetY - startY;
+    const duration = 900; // ms — sube este número para un recorrido más lento
+    let startTime = null;
+
+    const easeInOutCubic = (t) =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+    const step = (timestamp) => {
+      if (startTime === null) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeInOutCubic(progress);
+
+      window.scrollTo({ top: startY + distance * eased, behavior: "auto" });
+
+      if (elapsed < duration) {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  };
+
   const data = [
     {
       icon: "🤖",
@@ -83,6 +115,15 @@ export default function Home() {
   return (
     <div className="w-screen min-h-screen bg-gray-100 overflow-x-hidden relative left-1/2 -ml-[50vw]">
 
+      {/* ESTILO GLOBAL: scroll suave para los anchors del nav */}
+      <style>
+        {`
+          html {
+            scroll-behavior: smooth;
+          }
+        `}
+      </style>
+
       {/* NAVBAR */}
       <header className="w-full bg-indigo-900 text-white shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-6 py-4 gap-4">
@@ -98,10 +139,10 @@ export default function Home() {
           </div>
 
           <nav className="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
-            <a href="#quienes" className="hover:opacity-70 cursor-pointer">Quienes somos</a>
-            <span className="hover:opacity-70 cursor-pointer">Empieza tu camino</span>
-            <span className="hover:opacity-70 cursor-pointer">Como funciona</span>
-            <span className="hover:opacity-70 cursor-pointer">Comentarios</span>
+            <a href="#quienes" onClick={(e) => scrollToSection(e, "quienes")} className="hover:opacity-70 cursor-pointer">Quienes somos</a>
+            <a href="#empieza" onClick={(e) => scrollToSection(e, "empieza")} className="hover:opacity-70 cursor-pointer">Empieza tu camino</a>
+            <a href="#como-funciona" onClick={(e) => scrollToSection(e, "como-funciona")} className="hover:opacity-70 cursor-pointer">Como funciona</a>
+            <a href="#comentarios" onClick={(e) => scrollToSection(e, "comentarios")} className="hover:opacity-70 cursor-pointer">Comentarios</a>
           </nav>
 
           <span className="italic text-sm opacity-80 hidden md:block">
@@ -156,13 +197,19 @@ export default function Home() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <button className="bg-indigo-700 hover:bg-indigo-600 transition text-white px-7 py-3 rounded-xl shadow-lg font-medium">
+                <Link
+                  to="/login"
+                  className="bg-indigo-700 hover:bg-indigo-600 transition text-white px-7 py-3 rounded-xl shadow-lg font-medium text-center"
+                >
                   Iniciar sesión
-                </button>
+                </Link>
 
-                <button className="bg-white/10 border border-white/30 backdrop-blur hover:bg-white/20 transition text-white px-7 py-3 rounded-xl font-medium">
+                <Link
+                  to="/registro"
+                  className="bg-white/10 border border-white/30 backdrop-blur hover:bg-white/20 transition text-white px-7 py-3 rounded-xl font-medium text-center"
+                >
                   Crear cuenta
-                </button>
+                </Link>
               </div>
 
             </Reveal>
@@ -283,6 +330,7 @@ export default function Home() {
 
         {/* CTA + FUNCIONALIDADES */}
         <section
+          id="empieza"
           className="relative py-24 w-screen left-1/2 -ml-[50vw] bg-slate-950 overflow-hidden"
         >
           {/* DECORACIÓN DE FONDO */}
@@ -397,7 +445,7 @@ export default function Home() {
 
 
         {/* COMO FUNCIONA */}
-        <section className="py-20 text-center">
+        <section id="como-funciona" className="py-20 text-center">
 
           <div className="max-w-7xl mx-auto px-6">
 
@@ -503,7 +551,7 @@ export default function Home() {
 
 
 
-        <section className="relative py-10 w-screen left-1/2 -ml-[50vw]">
+        <section id="comentarios" className="relative py-10 w-screen left-1/2 -ml-[50vw]">
 
           {/* FONDO */}
           <div className="absolute inset-0 w-full h-full">
