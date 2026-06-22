@@ -1,7 +1,7 @@
 import React from "react";
 import { postulantTheme } from '../../assets/Componentes/Portal/portalTheme';
 
-const API_BASE = "http://localhost/back-inclusiveJob/Modelo/Postulante";
+const API_BASE = "http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/Postulante";
 
 export default function Formulario() {
   const [openSection, setOpenSection] = React.useState(0);

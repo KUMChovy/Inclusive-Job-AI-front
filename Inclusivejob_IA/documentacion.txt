@@ -44,3 +44,7 @@ MODIFY pdf LONGBLOB;
 
 ALTER TABLE reclutadores 
 MODIFY id_empresas INT NULL;
+
+-----------------------------------------------------------------------------------------
+ALTER TABLE `tokens` 
+MODIFY COLUMN `id_usuario` int(11) NULL;
