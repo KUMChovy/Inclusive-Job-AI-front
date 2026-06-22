@@ -318,6 +318,37 @@ export default function PostulanteDashboard() {
   // ✅ estado del modal
   const [reporteSeleccionado, setReporteSeleccionado] = useState(null);
 
+  async function eliminarReporte(id) {
+    try {
+      const res = await fetch(
+        'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id_reporte: id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.ok) {
+        setReportes((prev) => prev.filter((r) => r.id !== id));
+
+        if (reporteSeleccionado?.id === id) {
+          setReporteSeleccionado(null);
+        }
+      } else {
+        console.log(data.msg);
+      }
+    } catch (error) {
+      console.log('Error eliminando reporte:', error);
+    }
+  }
+
   useEffect(() => {
     cargarReportes();
   }, []);
@@ -523,7 +554,7 @@ export default function PostulanteDashboard() {
 
                         {/* DESHACER / ELIMINAR REPORTE */}
                         <button
-                        onClick={() => console.log('Eliminar reporte', r.id)}
+                        onClick={() => eliminarReporte(r.id)}
                         style={{
                             width: '40px',
                             height: '40px',
