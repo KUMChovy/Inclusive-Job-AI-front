@@ -1,63 +1,67 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import emailjs from "@emailjs/browser";
 
 // EmailJS config - reemplaza con tus datos
-const EMAILJS_SERVICE_ID  = "service_m28i25a";
+const EMAILJS_SERVICE_ID  = "service_88694gg";
 const EMAILJS_TEMPLATE_ID = "template_2e0bv8e";
 const EMAILJS_PUBLIC_KEY  = "KqSVFeZM9Y4NA0sHN";
 
-// ─────────────────────────────────────────────────────────────
-//  Ajusta esta URL base a donde vivas tu backend PHP
-// ─────────────────────────────────────────────────────────────
-const API_BASE = "http://localhost/back-inclusiveJob/Modelo/Postulante";
+const API_BASE = "http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/Postulante";
 
-export default function Verificacion({ correoUsuario = "" }) {
-  const [openModal, setOpenModal]   = useState(false);
+// correoUsuario y codigoInicial llegan desde Registro.jsx (reg_pos.php ya generó el código).
+// autoAbrir=true hace que el modal se abra solo, sin necesidad de un botón.
+export default function Verificacion({ correoUsuario, codigoInicial, autoAbrir = false, onClose, onVerificado }) {
+  const [openModal, setOpenModal]   = useState(autoAbrir);
   const [digitos,   setDigitos]     = useState(["", "", "", "", "", ""]);
   const [cargando,  setCargando]    = useState(false);
-  const [mensaje,   setMensaje]     = useState({ texto: "", tipo: "" }); // tipo: "ok" | "error"
-  const [enviado,   setEnviado]     = useState(false);   // true cuando ya se envió el código
-  const [reenvio,   setReenvio]     = useState(false);   // bloqueo temporal de reenvío
+  const [mensaje,   setMensaje]     = useState({ texto: "", tipo: "" });
+  const [enviado,   setEnviado]     = useState(false);
+  const [reenvio,   setReenvio]     = useState(false);
   const inputsRef = useRef([]);
+  const yaEnviadoRef = useRef(false); // evita doble envío en el primer render
 
-  // Correo a usar: el que llega por prop o uno de prueba
-  const correo = correoUsuario || "rimekotwo@gmail.com";
+  const correo = correoUsuario;
 
-  // ── Abrir modal y enviar código automáticamente ────────────
+  // ── Si autoAbrir es true, manda el código que ya nos dio reg_pos.php ──
+  useEffect(() => {
+    if (autoAbrir && correo && codigoInicial && !yaEnviadoRef.current) {
+      yaEnviadoRef.current = true;
+      setOpenModal(true);
+      enviarPorCorreo(codigoInicial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAbrir, correo, codigoInicial]);
+
+  const cerrarModal = () => {
+    setOpenModal(false);
+    if (onClose) onClose();
+  };
+
+  // ── Abrir modal manualmente (uso standalone, sin autoAbrir) ───
   const abrirModal = async () => {
+    if (!correo) {
+      setMensaje({ texto: "No se encontró el correo del registro. Vuelve a intentarlo.", tipo: "error" });
+      return;
+    }
     setOpenModal(true);
     setDigitos(["", "", "", "", "", ""]);
     setMensaje({ texto: "", tipo: "" });
-    await enviarCodigo();
+    if (codigoInicial) await enviarPorCorreo(codigoInicial);
   };
 
-  // ── Enviar / Reenviar código via PHP + EmailJS ───────────────
-  const enviarCodigo = async () => {
-    if (reenvio) return;
+  // ── Mandar el código por EmailJS (sin generar uno nuevo) ──────
+  const enviarPorCorreo = async (codigo) => {
+    if (reenvio || !correo || !codigo) return;
     setCargando(true);
     setMensaje({ texto: "", tipo: "" });
 
     try {
-      // 1. PHP genera el código y lo guarda en la BD
-      const res  = await fetch(`${API_BASE}/enviar_codigo.php`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ correo }),
-      });
-      const data = await res.json();
-
-      if (!data.success) {
-        setMensaje({ texto: data.mensaje || "No se pudo generar el código.", tipo: "error" });
-        return;
-      }
-
-      // 2. EmailJS envía el correo con el código recibido
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
           to_email: correo,
-          codigo:   data.codigo,
+          codigo:   codigo,
         },
         EMAILJS_PUBLIC_KEY
       );
@@ -74,19 +78,41 @@ export default function Verificacion({ correoUsuario = "" }) {
     }
   };
 
+  // ── Reenviar: pide un código NUEVO a reenviar_codigo.php ──────
+  const reenviarCodigo = async () => {
+    if (reenvio || !correo) return;
+    setCargando(true);
+    setMensaje({ texto: "", tipo: "" });
+
+    try {
+      const res  = await fetch(`${API_BASE}/reenviar_codigo.php`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ correo }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setMensaje({ texto: data.mensaje || "No se pudo reenviar el código.", tipo: "error" });
+        return;
+      }
+
+      await enviarPorCorreo(data.codigo);
+
+    } catch {
+      setMensaje({ texto: "Error de red. Verifica tu conexión.", tipo: "error" });
+    } finally {
+      setCargando(false);
+    }
+  };
+
   // ── Manejo de inputs del código ────────────────────────────
   const handleChange = (index, value) => {
-    // Solo números
     if (!/^\d?$/.test(value)) return;
-
     const nuevo = [...digitos];
     nuevo[index] = value;
     setDigitos(nuevo);
-
-    // Auto-avanzar al siguiente input
-    if (value && index < 5) {
-      inputsRef.current[index + 1]?.focus();
-    }
+    if (value && index < 5) inputsRef.current[index + 1]?.focus();
   };
 
   const handleKeyDown = (index, e) => {
@@ -101,7 +127,6 @@ export default function Verificacion({ correoUsuario = "" }) {
     const nuevo  = ["", "", "", "", "", ""];
     pegado.split("").forEach((c, i) => { nuevo[i] = c; });
     setDigitos(nuevo);
-    // Mover foco al último dígito pegado
     const ultimo = Math.min(pegado.length, 5);
     inputsRef.current[ultimo]?.focus();
   };
@@ -127,10 +152,10 @@ export default function Verificacion({ correoUsuario = "" }) {
 
       if (data.success) {
         setMensaje({ texto: data.mensaje, tipo: "ok" });
-        // Esperar 2 s y cerrar / redirigir
+        if (onVerificado) onVerificado(data);
         setTimeout(() => {
           setOpenModal(false);
-          // window.location.href = "/login"; // Descomenta para redirigir
+          window.location.href = "/login"; // Redirige al login tras verificar
         }, 2000);
       } else {
         setMensaje({ texto: data.mensaje || "Código incorrecto.", tipo: "error" });
@@ -146,17 +171,19 @@ export default function Verificacion({ correoUsuario = "" }) {
 
   // ──────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-slate-50 to-white flex items-center justify-center px-4 py-10">
+    <>
+      {/* Botón visible solo si NO se usa en modo autoAbrir */}
+      {!autoAbrir && (
+        <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-slate-50 to-white flex items-center justify-center px-4 py-10">
+          <button
+            onClick={abrirModal}
+            className="bg-indigo-800 text-white px-8 py-3 rounded-xl shadow-lg hover:bg-indigo-700 hover:scale-[1.03] transition-all font-semibold"
+          >
+            Verificación
+          </button>
+        </div>
+      )}
 
-      {/* BOTÓN ABRIR MODAL */}
-      <button
-        onClick={abrirModal}
-        className="bg-indigo-800 text-white px-8 py-3 rounded-xl shadow-lg hover:bg-indigo-700 hover:scale-[1.03] transition-all font-semibold"
-      >
-        Verificación
-      </button>
-
-      {/* MODAL */}
       {openModal && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6">
 
@@ -166,34 +193,28 @@ export default function Verificacion({ correoUsuario = "" }) {
             @keyframes softFloat  { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-3px) } }
           `}</style>
 
-          {/* Overlay */}
           <div
-            onClick={() => setOpenModal(false)}
+            onClick={cerrarModal}
             className="absolute inset-0 bg-indigo-950/35 backdrop-blur-md"
             style={{ animation: "fadeModal .25s ease-out both" }}
           />
 
-          {/* Halo */}
           <div className="absolute w-[520px] h-[520px] bg-white/20 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Card */}
           <div
             className="relative z-10 w-full max-w-md bg-white/75 backdrop-blur-2xl rounded-3xl shadow-[0_30px_80px_rgba(30,27,75,0.35)] border border-white/70 p-8 overflow-hidden"
             style={{ animation: "scaleSoft .35s ease-out both" }}
           >
-            {/* Cerrar */}
             <button
-              onClick={() => setOpenModal(false)}
+              onClick={cerrarModal}
               className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white/60 backdrop-blur-md border border-white/70 text-gray-500 hover:text-indigo-800 hover:bg-indigo-50/80 transition flex items-center justify-center shadow-sm"
             >✕</button>
 
-            {/* Decoraciones */}
             <div className="absolute -top-16 -right-16 w-32 h-32 bg-indigo-100/70 rounded-full pointer-events-none" />
             <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-indigo-50/70 rounded-full pointer-events-none" />
 
             <div className="relative z-10">
 
-              {/* Header */}
               <div className="flex flex-col items-center text-center mb-8">
                 <div className="w-16 h-16 bg-white/75 backdrop-blur-md rounded-2xl shadow-md border border-white/80 overflow-hidden mb-4">
                   <img src="/logo.webp" alt="Logo" className="w-full h-full object-cover" />
@@ -211,13 +232,11 @@ export default function Verificacion({ correoUsuario = "" }) {
                 </p>
               </div>
 
-              {/* Correo */}
               <div className="bg-indigo-50/70 backdrop-blur-md border border-white/70 rounded-2xl p-4 mb-6 text-center shadow-sm">
                 <p className="text-xs text-gray-500 mb-1">Código enviado a:</p>
-                <p className="text-sm font-semibold text-indigo-800">{correo}</p>
+                <p className="text-sm font-semibold text-indigo-800">{correo || "—"}</p>
               </div>
 
-              {/* Mensaje de estado */}
               {mensaje.texto && (
                 <div className={`mb-4 px-4 py-3 rounded-xl text-sm text-center font-medium transition-all ${
                   mensaje.tipo === "ok"
@@ -228,7 +247,6 @@ export default function Verificacion({ correoUsuario = "" }) {
                 </div>
               )}
 
-              {/* Inputs del código */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-800 mb-3 text-center">
                   Código de verificación
@@ -252,7 +270,6 @@ export default function Verificacion({ correoUsuario = "" }) {
                 </div>
               </div>
 
-              {/* Botón verificar */}
               <button
                 onClick={verificarCodigo}
                 disabled={cargando || digitos.join("").length < 6}
@@ -261,11 +278,10 @@ export default function Verificacion({ correoUsuario = "" }) {
                 {cargando ? "Verificando…" : "Verificar correo"}
               </button>
 
-              {/* Reenviar */}
               <div className="text-center mt-6">
                 <p className="text-sm text-gray-500">¿No recibiste el código?</p>
                 <button
-                  onClick={enviarCodigo}
+                  onClick={reenviarCodigo}
                   disabled={reenvio || cargando}
                   className="text-indigo-700 text-sm font-semibold hover:text-indigo-900 hover:underline mt-1 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -273,10 +289,9 @@ export default function Verificacion({ correoUsuario = "" }) {
                 </button>
               </div>
 
-              {/* Cambiar correo */}
               <div className="mt-6 border-t border-white/70 pt-5 text-center">
                 <button
-                  onClick={() => setOpenModal(false)}
+                  onClick={cerrarModal}
                   className="text-sm text-gray-500 hover:text-indigo-700 transition"
                 >
                   Cambiar correo electrónico
@@ -287,6 +302,6 @@ export default function Verificacion({ correoUsuario = "" }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

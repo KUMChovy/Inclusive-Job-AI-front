@@ -98,10 +98,10 @@ export default function Home() {
           </div>
 
           <nav className="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
-            <span className="hover:opacity-70 cursor-pointer">Inicio</span>
-            <span className="hover:opacity-70 cursor-pointer">Evaluaciones</span>
-            <span className="hover:opacity-70 cursor-pointer">Puestos</span>
             <a href="#quienes" className="hover:opacity-70 cursor-pointer">Quienes somos</a>
+            <span className="hover:opacity-70 cursor-pointer">Empieza tu camino</span>
+            <span className="hover:opacity-70 cursor-pointer">Como funciona</span>
+            <span className="hover:opacity-70 cursor-pointer">Comentarios</span>
           </nav>
 
           <span className="italic text-sm opacity-80 hidden md:block">

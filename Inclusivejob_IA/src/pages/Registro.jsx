@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Verificacion from "./Verificacion";
 
 const Registro = () => {
   const [mode, setMode] = useState("postulante");
@@ -11,6 +12,11 @@ const Registro = () => {
     password: "",
     telefono: ""
   });
+
+  // ================== NUEVO: control del modal de verificación ==================
+  const [mostrarVerificacion, setMostrarVerificacion] = useState(false);
+  const [correoRegistrado, setCorreoRegistrado] = useState("");
+  const [codigoRegistro, setCodigoRegistro] = useState("");
 
   const isPostulante = mode === "postulante";
 
@@ -96,7 +102,10 @@ const handleSubmit = async (e) => {
     console.log("Respuesta API:", data);
 
     if (data.success) {
-      alert("Registro exitoso");
+      // ================== NUEVO: mostrar modal de verificación ==================
+      setCorreoRegistrado(form.correo);
+      setCodigoRegistro(data.codigo); // reg_pos.php ya genera y devuelve el código
+      setMostrarVerificacion(true);
     } else {
       alert(data.message || "Error en registro");
     }
@@ -379,6 +388,17 @@ const handleSubmit = async (e) => {
             </p>
           </div>
         </div>
+      )}
+
+      {/* ================= NUEVO: MODAL DE VERIFICACIÓN ================= */}
+      {/* Se abre solo, automáticamente, justo después de un registro exitoso */}
+      {mostrarVerificacion && (
+        <Verificacion
+          correoUsuario={correoRegistrado}
+          codigoInicial={codigoRegistro}
+          autoAbrir={true}
+          onClose={() => setMostrarVerificacion(false)}
+        />
       )}
     </div>
   );
