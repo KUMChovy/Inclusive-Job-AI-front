@@ -4,6 +4,7 @@ import {
   MapPin,
   Eye,
   X,
+  Briefcase,
 } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
@@ -103,7 +104,7 @@ function ModalReporte({ reporte, onClose }) {
         }}
       >
 
-        {/* HEADER estilo original */}
+        {/* ── HEADER (MISMO DEL MODAL ORIGINAL) ── */}
         <div
           style={{
             background:
@@ -116,34 +117,59 @@ function ModalReporte({ reporte, onClose }) {
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'flex-start',
               gap: '12px',
               marginBottom: '14px',
             }}
           >
-            <div style={{ flex: 1 }}>
-              <h2
-                style={{
-                  margin: '0 0 3px',
-                  fontSize: '19px',
-                  fontWeight: 500,
-                  color: '#fff',
-                }}
-              >
-                Detalle del reporte
-              </h2>
 
-              <p
+            {/* ICONO + TITULO */}
+            <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
+              <div
                 style={{
-                  margin: 0,
-                  fontSize: '12px',
-                  color: 'rgba(255,255,255,0.8)',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(255,255,255,0.18)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               >
-                {reporte.vacante}
-              </p>
+                <Briefcase size={18} color="#fff" />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <h2
+                  style={{
+                    margin: '0 0 3px',
+                    fontSize: '19px',
+                    fontWeight: 500,
+                    color: '#fff',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {reporte.vacante}
+                </h2>
+
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '12px',
+                    color: 'rgba(255,255,255,0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <MapPin size={11} />
+                  {reporte.modalidad}
+                </p>
+              </div>
             </div>
 
+            {/* CLOSE */}
             <button
               onClick={onClose}
               style={{
@@ -152,34 +178,48 @@ function ModalReporte({ reporte, onClose }) {
                 borderRadius: '8px',
                 background: 'rgba(255,255,255,0.15)',
                 border: '1px solid rgba(255,255,255,0.25)',
-                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
+                color: '#fff',
+                flexShrink: 0,
               }}
             >
               <X size={15} />
             </button>
           </div>
 
-          {/* BADGES estilo original */}
+          {/* BADGES (MISMO ESTILO) */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+
             <span
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
                 padding: '4px 10px',
                 borderRadius: '999px',
                 fontSize: '11px',
+                fontWeight: 500,
                 background: 'rgba(255,255,255,0.18)',
                 color: '#fff',
                 border: '1px solid rgba(255,255,255,0.28)',
               }}
             >
-              <MapPin size={10} /> {reporte.modalidad}
+              <MapPin size={10} />
+              {reporte.modalidad}
             </span>
 
             <span
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
                 padding: '4px 10px',
                 borderRadius: '999px',
                 fontSize: '11px',
+                fontWeight: 500,
                 background: 'rgba(255,255,255,0.18)',
                 color: '#fff',
                 border: '1px solid rgba(255,255,255,0.28)',
@@ -187,12 +227,14 @@ function ModalReporte({ reporte, onClose }) {
             >
               📅 {new Date(reporte.fecha).toLocaleDateString('es-MX')}
             </span>
+
           </div>
         </div>
 
-        {/* BODY estilo original */}
+        {/* ── BODY (MISMO FORMATO DEL OTRO MODAL) ── */}
         <div style={{ padding: '18px 20px', overflowY: 'auto', flex: 1 }}>
 
+          {/* BLOQUE PRINCIPAL */}
           <div
             style={{
               background: '#eff6ff',
@@ -229,23 +271,24 @@ function ModalReporte({ reporte, onClose }) {
 
         </div>
 
-        {/* FOOTER */}
+        {/* ── FOOTER (MISMO DEL OTRO MODAL) ── */}
         <div
           style={{
             padding: '14px 20px',
             borderTop: `1px solid ${t.border}`,
             display: 'flex',
-            justifyContent: 'flex-end',
             gap: '10px',
+            justifyContent: 'flex-end',
           }}
         >
           <button
             onClick={onClose}
             style={{
-              padding: '10px 14px',
-              borderRadius: '12px',
-              border: `1px solid ${t.border}`,
               background: '#fff',
+              border: `1px solid ${t.border}`,
+              borderRadius: '12px',
+              padding: '10px 14px',
+              fontSize: '13px',
               cursor: 'pointer',
             }}
           >
