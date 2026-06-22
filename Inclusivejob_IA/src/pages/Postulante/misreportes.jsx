@@ -209,14 +209,6 @@ function ModalReporte({ postulacion, onClose }) {
                   : '—'}
               </p>
             </div>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 500,
-              background: s.bg, color: s.text, border: `1px solid ${s.border}`,
-            }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: s.dot }} />
-              {postulacion.estado}
-            </span>
           </div>
 
           {/* Info grid */}
@@ -311,42 +303,6 @@ function ModalReporte({ postulacion, onClose }) {
               </div>
             </div>
           )}
-        </div>
-
-        {/* ── Footer ── */}
-        <div style={{
-          padding: '14px 20px', borderTop: `1px solid ${t.border}`,
-          display: 'flex', gap: '10px', flexShrink: 0,
-          background: '#fff',
-        }}>
-          <button style={{
-            background: '#fff', color: t.textSecondary,
-            border: `1px solid ${t.border}`, borderRadius: '12px',
-            padding: '10px 14px', fontSize: '13px', fontWeight: 500,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-          }}>
-            <Bookmark size={14} /> Guardar
-          </button>
-          <button
-            onClick={() => console.log('Despostular', postulacion.id)}
-            style={{
-              background: '#fff5f5', color: '#dc2626',
-              border: '1px solid #fecaca', borderRadius: '12px',
-              padding: '10px 14px', fontSize: '13px', fontWeight: 500,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-            }}
-          >
-            <X size={14} /> Despostularme
-          </button>
-          <button style={{
-            flex: 1,
-            background: 'linear-gradient(135deg,#1e40af,#2563eb)',
-            color: '#fff', border: 'none', borderRadius: '12px',
-            padding: '10px 18px', fontSize: '13px', fontWeight: 500,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          }}>
-            <CheckCircle size={14} /> Ver empresa
-          </button>
         </div>
       </div>
     </div>
