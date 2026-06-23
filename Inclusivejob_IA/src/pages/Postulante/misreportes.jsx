@@ -310,10 +310,11 @@ function ModalReporte({ postulacion, onClose }) {
 }
 
 function ModalEditarReporte({ reporte, onClose, onSave }) {
-  const [motivo, setMotivo] = useState(reporte.motivo || '');
+  const [motivo, setMotivo] = useState(reporte?.motivo || '');
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
+
     return () => {
       document.body.style.overflow = '';
     };
@@ -327,56 +328,241 @@ function ModalEditarReporte({ reporte, onClose, onSave }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(15,23,41,0.45)',
-        zIndex: 1000,
+        background: 'rgba(15,23,41,.50)',
+        backdropFilter: 'blur(10px)',
+        zIndex: 1200,
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'center',
+        alignItems: 'center',
         padding: '20px',
       }}
     >
+
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#fff',
-          borderRadius: '20px',
           width: '100%',
-          maxWidth: '520px',
+          maxWidth: '650px',
+          background: '#fff',
+          borderRadius: '24px',
+          overflow: 'hidden',
           border: `1px solid ${t.border}`,
-          boxShadow: '0 20px 60px rgba(15,23,41,0.18)',
-          padding: '20px',
+          boxShadow: '0 30px 80px rgba(15,23,41,.22)',
+          animation: 'fadeModal .18s ease',
         }}
       >
-        <h2 style={{ marginBottom: '12px', color: '#111827' }}>
-          Modificar reporte
-        </h2>
 
-        <textarea
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
+        {/* HEADER */}
+        <div
           style={{
-            width: '100%',
-            minHeight: '120px',
-            borderRadius: '12px',
-            border: `1px solid ${t.border}`,
-            padding: '12px',
-            outline: 'none',
-            background: '#fff',
-            color: '#111827',
-            fontSize: '14px',
+            background:
+              'linear-gradient(135deg,#1e40af 0%,#2563eb 50%,#0ea5e9 100%)',
+            padding: '28px',
+            color: '#fff',
+            position: 'relative',
           }}
-        />
+        >
 
-        <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+          <div
+            style={{
+              position: 'absolute',
+              width: '220px',
+              height: '220px',
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,.08)',
+              right: '-80px',
+              top: '-80px',
+              filter: 'blur(40px)',
+            }}
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '14px',
+              alignItems: 'flex-start',
+            }}
+          >
+
+            <div>
+
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '14px',
+                  background: 'rgba(255,255,255,.18)',
+                  border: '1px solid rgba(255,255,255,.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '14px',
+                }}
+              >
+                <Bookmark size={20} />
+              </div>
+
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: '26px',
+                  fontWeight: 800,
+                }}
+              >
+                Editar reporte
+              </h2>
+
+              <p
+                style={{
+                  margin: '8px 0 0',
+                  opacity: .88,
+                  fontSize: '14px',
+                }}
+              >
+                Actualiza el motivo del reporte enviado.
+              </p>
+
+            </div>
+
+            <button
+              onClick={onClose}
+              style={{
+                width: '38px',
+                height: '38px',
+                border: 'none',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,.16)',
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={16}/>
+            </button>
+
+          </div>
+
+        </div>
+
+        {/* BODY */}
+        <div
+          style={{
+            padding: '26px',
+          }}
+        >
+
+          {/* INFO */}
+          <div
+            style={{
+              background: '#f8fafc',
+              border: `1px solid ${t.border}`,
+              borderRadius: '16px',
+              padding: '16px',
+              marginBottom: '18px',
+            }}
+          >
+
+            <div
+              style={{
+                fontSize: '11px',
+                color: t.textMuted,
+                textTransform: 'uppercase',
+                letterSpacing: '.8px',
+                marginBottom: '8px',
+              }}
+            >
+              Vacante reportada
+            </div>
+
+            <div
+              style={{
+                fontSize: '18px',
+                fontWeight: 700,
+                color: t.textPrimary,
+              }}
+            >
+              {reporte.vacante}
+            </div>
+
+          </div>
+
+          {/* TEXTAREA */}
+          <div>
+
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: 700,
+                color: t.textPrimary,
+              }}
+            >
+              Motivo del reporte
+            </label>
+
+            <textarea
+              value={motivo}
+              onChange={(e) =>
+                setMotivo(e.target.value)
+              }
+              placeholder="Describe el motivo..."
+              style={{
+                width: '100%',
+                minHeight: '180px',
+                resize: 'vertical',
+
+                border: `1px solid ${t.border}`,
+                borderRadius: '16px',
+
+                padding: '18px',
+
+                fontSize: '15px',
+                lineHeight: 1.6,
+
+                background: '#fbfdff',
+
+                outline: 'none',
+
+                transition: '.18s',
+              }}
+            />
+
+            <div
+              style={{
+                marginTop: '8px',
+                textAlign: 'right',
+                color: t.textMuted,
+                fontSize: '12px',
+              }}
+            >
+              {motivo.length} caracteres
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* FOOTER */}
+        <div
+          style={{
+            padding: '22px',
+            borderTop: `1px solid ${t.border}`,
+            display: 'flex',
+            justifyContent: 'end',
+            gap: '10px',
+          }}
+        >
+
           <button
             onClick={onClose}
             style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '10px',
+              height: '46px',
+              padding: '0 18px',
+              borderRadius: '12px',
               border: `1px solid ${t.border}`,
               background: '#fff',
               cursor: 'pointer',
+              fontWeight: 700,
             }}
           >
             Cancelar
@@ -385,19 +571,47 @@ function ModalEditarReporte({ reporte, onClose, onSave }) {
           <button
             onClick={() => onSave(motivo)}
             style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '10px',
-              background: '#2563eb',
-              color: '#fff',
+              height: '46px',
+              padding: '0 22px',
+              borderRadius: '12px',
+
               border: 'none',
+
+              background:
+                'linear-gradient(135deg,#2563eb,#0ea5e9)',
+
+              color: '#fff',
+
+              fontWeight: 700,
+
               cursor: 'pointer',
+
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
             }}
           >
-            Editar
+            <CheckCircle size={15}/>
+            Guardar cambios
           </button>
+
         </div>
+
       </div>
+
+      <style>{`
+        @keyframes fadeModal{
+          from{
+            opacity:0;
+            transform:translateY(12px) scale(.98);
+          }
+          to{
+            opacity:1;
+            transform:translateY(0) scale(1);
+          }
+        }
+      `}</style>
+
     </div>
   );
 }
