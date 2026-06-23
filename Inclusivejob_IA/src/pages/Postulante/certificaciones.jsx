@@ -86,6 +86,19 @@ export default function PostulanteDashboard() {
   // ── Certificaciones ─────────────────────────────────────
   const [certificaciones, setCertificaciones] = useState(null); // null=cargando
 
+  const [modalCert,setModalCert]=useState(false);
+
+  const [guardandoCert,setGuardandoCert]=useState(false);
+
+  const [editandoCert,setEditandoCert]=useState(null);
+
+  const [formCert,setFormCert]=useState({
+  nombre:'',
+  institucion:'',
+  pdf:null
+  });
+
+
   /* Verifica CV */
   useEffect(() => {
     fetch(CV_URL)
@@ -134,6 +147,154 @@ export default function PostulanteDashboard() {
     const file = e.target.files?.[0];
     if (file) subirCV(file);
   }
+
+  function abrirNuevaCert(){
+
+setEditandoCert(null);
+
+setFormCert({
+nombre:'',
+institucion:'',
+pdf:null
+});
+
+setModalCert(true);
+
+}
+
+function abrirEditarCert(cert){
+
+setEditandoCert(cert.id);
+
+setFormCert({
+nombre:cert.nombre,
+institucion:cert.emisor,
+pdf:null
+});
+
+setModalCert(true);
+
+}
+
+async function recargarCertificaciones(){
+
+const r=await fetch(CERT_URL);
+
+const data=await r.json();
+
+setCertificaciones(
+data.ok
+? data.certificaciones
+: []
+);
+
+}
+
+async function guardarCertificacion(){
+
+  if(
+  !formCert.nombre.trim()
+  ||
+  !formCert.institucion.trim()
+  ){
+  alert('Completa todos los campos');
+  return;
+  }
+
+  if(
+  !editandoCert
+  &&
+  !formCert.pdf
+  ){
+  alert('Selecciona un PDF');
+  return;
+  }
+
+  try{
+
+  setGuardandoCert(true);
+
+  const formData=
+  new FormData();
+
+  formData.append(
+  'nombre_certificacion',
+  formCert.nombre
+  );
+
+  formData.append(
+  'institucion_dada',
+  formCert.institucion
+  );
+
+  if(editandoCert){
+
+  formData.append(
+  'id',
+  editandoCert
+  );
+
+  }
+
+  if(formCert.pdf){
+
+  formData.append(
+  'pdf',
+  formCert.pdf
+  );
+
+  }
+
+  const res=
+  await fetch(
+  CERT_URL,
+  {
+  method:'POST',
+  body:formData
+  }
+  );
+
+  const data=
+  await res.json();
+
+  if(data.ok){
+
+  await recargarCertificaciones();
+
+  setModalCert(false);
+
+  alert(
+  editandoCert
+  ?'Certificación actualizada'
+  :'Certificación creada'
+  );
+
+  }else{
+
+  alert(
+  data.msg
+  );
+
+  }
+
+  }catch(err){
+
+  console.error(err);
+
+  alert(
+  'Error al guardar'
+  );
+
+  }
+
+  finally{
+
+  setGuardandoCert(false);
+
+  }
+
+  }
+
 
   /* ────────────────────────── RENDER ────────────────────── */
   return (
@@ -220,7 +381,7 @@ export default function PostulanteDashboard() {
               title="Mis certificaciones"
               sub={certificaciones ? `${certificaciones.length} registradas` : ''}
               action="Añadir"
-              onAction={() => navigate('/postulante/certificaciones/nueva')}
+              onAction={abrirNuevaCert}
             />
 
             {/* Cargando */}
@@ -262,7 +423,7 @@ export default function PostulanteDashboard() {
                         <ActionBtn
                           icon={<Pencil size={11}/>}
                           label="Editar"
-                          onClick={() => navigate(`/postulante/certificaciones/${c.id}/editar`)}
+                          onClick={() => abrirEditarCert(c)}
                         />
                       </div>
                     </div>
@@ -274,6 +435,398 @@ export default function PostulanteDashboard() {
 
         </div>
       </div>
+      {modalCert && (
+
+      <div
+      onClick={()=>{
+      if(!guardandoCert){
+      setModalCert(false);
+      }
+      }}
+      style={{
+      position:'fixed',
+      inset:0,
+      background:'rgba(15,23,42,.55)',
+      backdropFilter:'blur(10px)',
+      display:'flex',
+      justifyContent:'center',
+      alignItems:'center',
+      padding:'24px',
+      zIndex:9999
+      }}
+      >
+
+      <div
+      onClick={(e)=>e.stopPropagation()}
+      style={{
+      width:'100%',
+      maxWidth:'620px',
+      background:'#fff',
+      borderRadius:'28px',
+      overflow:'hidden',
+      boxShadow:'0 30px 80px rgba(15,23,42,.25)',
+      animation:'fadeIn .18s ease'
+      }}
+      >
+
+      {/* HEADER */}
+
+      <div
+      style={{
+      background:'linear-gradient(135deg,#1e40af,#2563eb,#0ea5e9)',
+      padding:'28px',
+      color:'#fff',
+      position:'relative'
+      }}
+      >
+
+      <div
+      style={{
+      position:'absolute',
+      right:'-50px',
+      top:'-50px',
+      width:'180px',
+      height:'180px',
+      borderRadius:'50%',
+      background:'rgba(255,255,255,.08)'
+      }}
+      />
+
+      <div
+      style={{
+      position:'relative',
+      zIndex:2
+      }}
+      >
+
+      <div
+      style={{
+      display:'flex',
+      alignItems:'center',
+      gap:'12px'
+      }}
+      >
+
+      <div
+      style={{
+      width:'52px',
+      height:'52px',
+      borderRadius:'14px',
+      background:'rgba(255,255,255,.18)',
+      display:'grid',
+      placeItems:'center'
+      }}
+      >
+      <Award size={24}/>
+      </div>
+
+      <div>
+      <h2
+      style={{
+      margin:0,
+      fontSize:'24px',
+      fontWeight:800
+      }}
+      >
+
+      {
+      editandoCert
+      ? 'Editar certificación'
+      : 'Nueva certificación'
+      }
+
+      </h2>
+
+      <p
+      style={{
+      margin:'6px 0 0',
+      opacity:.9
+      }}
+      >
+
+      {
+      editandoCert
+      ? 'Actualiza información o reemplaza el PDF'
+      : 'Agrega una certificación a tu perfil'
+      }
+
+      </p>
+
+      </div>
+
+      </div>
+
+      </div>
+
+      </div>
+
+      {/* BODY */}
+
+      <div
+      style={{
+      padding:'26px',
+      display:'flex',
+      flexDirection:'column',
+      gap:'18px'
+      }}
+      >
+
+      <div>
+
+      <label
+      style={{
+      display:'block',
+      marginBottom:'8px',
+      fontSize:'13px',
+      fontWeight:700,
+      color:t.textPrimary
+      }}
+      >
+      Nombre del certificado
+      </label>
+
+      <input
+      value={formCert.nombre}
+      onChange={(e)=>
+      setFormCert({
+      ...formCert,
+      nombre:e.target.value
+      })
+      }
+      placeholder='Ej. Certificación React Avanzado'
+      style={{
+      width:'100%',
+      padding:'14px 16px',
+      border:`1px solid ${t.border}`,
+      borderRadius:'14px',
+      outline:'none',
+      fontSize:'14px',
+      background:'#f8fafc'
+      }}
+      />
+
+      </div>
+
+
+      <div>
+
+      <label
+      style={{
+      display:'block',
+      marginBottom:'8px',
+      fontSize:'13px',
+      fontWeight:700
+      }}
+      >
+      Institución
+      </label>
+
+      <input
+      value={formCert.institucion}
+      onChange={(e)=>
+      setFormCert({
+      ...formCert,
+      institucion:e.target.value
+      })
+      }
+      placeholder='Ej. Coursera'
+      style={{
+      width:'100%',
+      padding:'14px 16px',
+      border:`1px solid ${t.border}`,
+      borderRadius:'14px',
+      background:'#f8fafc',
+      outline:'none'
+      }}
+      />
+
+      </div>
+
+
+      <div>
+
+      <label
+      style={{
+      display:'block',
+      marginBottom:'8px',
+      fontSize:'13px',
+      fontWeight:700
+      }}
+      >
+      PDF del certificado
+      </label>
+
+      <label
+      style={{
+      display:'flex',
+      alignItems:'center',
+      justifyContent:'center',
+      gap:'10px',
+      padding:'26px',
+      border:`2px dashed ${t.accent}`,
+      borderRadius:'18px',
+      cursor:'pointer',
+      background:'#eff6ff'
+      }}
+      >
+
+      <Upload
+      size={18}
+      color={t.accent}
+      />
+
+      <div>
+
+      <div
+      style={{
+      fontWeight:700
+      }}
+      >
+
+      {
+      formCert.pdf
+      ? formCert.pdf.name
+      : 'Seleccionar PDF'
+      }
+
+      </div>
+
+      <div
+      style={{
+      fontSize:'12px',
+      color:t.textMuted
+      }}
+      >
+
+      PDF máximo 5MB
+
+      </div>
+
+      </div>
+
+      <input
+      hidden
+      type='file'
+      accept='application/pdf'
+      onChange={(e)=>
+      setFormCert({
+      ...formCert,
+      pdf:e.target.files?.[0]
+      })
+      }
+      />
+
+      </label>
+
+      {
+      editandoCert && (
+
+      <p
+      style={{
+      marginTop:'10px',
+      fontSize:'12px',
+      color:t.textMuted
+      }}
+      >
+
+      Si no seleccionas PDF se conservará el actual.
+
+      </p>
+
+      )
+
+      }
+
+      </div>
+
+      </div>
+
+      {/* FOOTER */}
+
+      <div
+      style={{
+      padding:'22px',
+      display:'flex',
+      justifyContent:'end',
+      gap:'12px',
+      borderTop:`1px solid ${t.border}`,
+      background:'#fafafa'
+      }}
+      >
+
+      <button
+      disabled={guardandoCert}
+      onClick={()=>
+      setModalCert(false)
+      }
+      style={{
+      height:'46px',
+      padding:'0 18px',
+      borderRadius:'14px',
+      border:`1px solid ${t.border}`,
+      background:'#fff',
+      cursor:'pointer',
+      fontWeight:700
+      }}
+      >
+      Cancelar
+      </button>
+
+
+      <button
+      disabled={guardandoCert}
+      onClick={guardarCertificacion}
+      style={{
+      height:'46px',
+      padding:'0 20px',
+      border:'none',
+      borderRadius:'14px',
+      background:'linear-gradient(135deg,#1e40af,#2563eb)',
+      color:'#fff',
+      fontWeight:700,
+      display:'flex',
+      alignItems:'center',
+      gap:'10px',
+      cursor:'pointer'
+      }}
+      >
+
+      {
+      guardandoCert
+      ? (
+      <>
+      <Loader
+      size={14}
+      style={{
+      animation:'spin 1s linear infinite'
+      }}
+      />
+      Guardando...
+      </>
+      )
+      :
+      (
+      <>
+      <Upload size={14}/>
+      {
+      editandoCert
+      ? 'Guardar cambios'
+      : 'Crear certificación'
+      }
+      </>
+      )
+      }
+
+      </button>
+
+      </div>
+
+      </div>
+
+      </div>
+
+      )}
+
     </PortalLayout>
   );
 }
