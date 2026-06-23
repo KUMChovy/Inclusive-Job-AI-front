@@ -1,13 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useRef, useState, useEffect } from 'react';
 import {
-  ArrowRight,
-  FileText,
-  Eye,
-  Pencil,
-  Award,
-  Upload,
-  Loader,
+  ArrowRight, FileText, Eye, Pencil,
+  Award, Upload, Loader, Trash2,
 } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
@@ -23,6 +18,8 @@ const MOCK_USER = {
 
 const CV_URL   = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/cv.php';
 const CERT_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/certificaciones.php';
+
+const HOY = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
 
 /* ─── Componentes reutilizables ─────────────────────────── */
 
@@ -79,25 +76,21 @@ export default function PostulanteDashboard() {
   const fileInputRef = useRef(null);
   const iframeRef    = useRef(null);
 
-  // ── CV ──────────────────────────────────────────────────
   const [subiendo, setSubiendo] = useState(false);
-  const [tieneCV, setTieneCV]   = useState(null); // null=cargando | true | false
+  const [tieneCV, setTieneCV]   = useState(null);
 
-  // ── Certificaciones ─────────────────────────────────────
-  const [certificaciones, setCertificaciones] = useState(null); // null=cargando
+  const [certificaciones, setCertificaciones] = useState(null);
+  const [modalCert,    setModalCert]    = useState(false);
+  const [guardandoCert,setGuardandoCert]= useState(false);
+  const [editandoCert, setEditandoCert] = useState(null);
 
-  const [modalCert,setModalCert]=useState(false);
-
-  const [guardandoCert,setGuardandoCert]=useState(false);
-
-  const [editandoCert,setEditandoCert]=useState(null);
-
-  const [formCert,setFormCert]=useState({
-  nombre:'',
-  institucion:'',
-  pdf:null
+  // ← fecha agregada al estado
+  const [formCert, setFormCert] = useState({
+    nombre: '',
+    institucion: '',
+    fecha: '',
+    pdf: null,
   });
-
 
   /* Verifica CV */
   useEffect(() => {
@@ -148,153 +141,85 @@ export default function PostulanteDashboard() {
     if (file) subirCV(file);
   }
 
-  function abrirNuevaCert(){
-
-setEditandoCert(null);
-
-setFormCert({
-nombre:'',
-institucion:'',
-pdf:null
-});
-
-setModalCert(true);
-
-}
-
-function abrirEditarCert(cert){
-
-setEditandoCert(cert.id);
-
-setFormCert({
-nombre:cert.nombre,
-institucion:cert.emisor,
-pdf:null
-});
-
-setModalCert(true);
-
-}
-
-async function recargarCertificaciones(){
-
-const r=await fetch(CERT_URL);
-
-const data=await r.json();
-
-setCertificaciones(
-data.ok
-? data.certificaciones
-: []
-);
-
-}
-
-async function guardarCertificacion(){
-
-  if(
-  !formCert.nombre.trim()
-  ||
-  !formCert.institucion.trim()
-  ){
-  alert('Completa todos los campos');
-  return;
+  function abrirNuevaCert() {
+    setEditandoCert(null);
+    setFormCert({ nombre:'', institucion:'', fecha:'', pdf:null });
+    setModalCert(true);
   }
 
-  if(
-  !editandoCert
-  &&
-  !formCert.pdf
-  ){
-  alert('Selecciona un PDF');
-  return;
+  function abrirEditarCert(cert) {
+    setEditandoCert(cert.id);
+    // ← fecha mapeada desde el listado
+    setFormCert({ nombre:cert.nombre, institucion:cert.emisor, fecha:cert.fecha, pdf:null });
+    setModalCert(true);
   }
 
-  try{
-
-  setGuardandoCert(true);
-
-  const formData=
-  new FormData();
-
-  formData.append(
-  'nombre_certificacion',
-  formCert.nombre
-  );
-
-  formData.append(
-  'institucion_dada',
-  formCert.institucion
-  );
-
-  if(editandoCert){
-
-  formData.append(
-  'id',
-  editandoCert
-  );
-
+  async function recargarCertificaciones() {
+    const r    = await fetch(CERT_URL);
+    const data = await r.json();
+    setCertificaciones(data.ok ? data.certificaciones : []);
   }
 
-  if(formCert.pdf){
+  async function guardarCertificacion() {
+    if (!formCert.nombre.trim() || !formCert.institucion.trim() || !formCert.fecha) {
+      alert('Completa todos los campos');
+      return;
+    }
+    if (!editandoCert && !formCert.pdf) {
+      alert('Selecciona un PDF');
+      return;
+    }
 
-  formData.append(
-  'pdf',
-  formCert.pdf
-  );
+    try {
+      setGuardandoCert(true);
 
+      const formData = new FormData();
+      formData.append('nombre_certificacion', formCert.nombre);
+      formData.append('institucion_dada',     formCert.institucion);
+      formData.append('fecha_emitido',        formCert.fecha); // ← fecha enviada
+      if (editandoCert)  formData.append('id',  editandoCert);
+      if (formCert.pdf)  formData.append('pdf', formCert.pdf);
+
+      const res  = await fetch(CERT_URL, { method:'POST', body:formData });
+      const data = await res.json();
+
+      if (data.ok) {
+        await recargarCertificaciones();
+        setModalCert(false);
+        alert(editandoCert ? 'Certificación actualizada' : 'Certificación creada');
+      } else {
+        alert(data.msg);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al guardar');
+    } finally {
+      setGuardandoCert(false);
+    }
   }
 
-  const res=
-  await fetch(
-  CERT_URL,
-  {
-  method:'POST',
-  body:formData
+  async function eliminarCertificacion(id) {
+    if (!window.confirm('¿Eliminar esta certificación?')) return;
+
+    try {
+      const res  = await fetch(CERT_URL, {
+        method: 'DELETE',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        setCertificaciones(prev => prev.filter(c => c.id !== id));
+        alert('Certificación eliminada');
+      } else {
+        alert(data.msg);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error eliminando certificación');
+    }
   }
-  );
-
-  const data=
-  await res.json();
-
-  if(data.ok){
-
-  await recargarCertificaciones();
-
-  setModalCert(false);
-
-  alert(
-  editandoCert
-  ?'Certificación actualizada'
-  :'Certificación creada'
-  );
-
-  }else{
-
-  alert(
-  data.msg
-  );
-
-  }
-
-  }catch(err){
-
-  console.error(err);
-
-  alert(
-  'Error al guardar'
-  );
-
-  }
-
-  finally{
-
-  setGuardandoCert(false);
-
-  }
-
-  }
-
 
   /* ────────────────────────── RENDER ────────────────────── */
   return (
@@ -332,17 +257,12 @@ async function guardarCertificacion(){
           {/* ── TARJETA CV ── */}
           <Card>
             <SectionHead title="Mi CV" />
-
             <div style={{ padding:'20px', borderBottom:`1px solid ${t.border}` }}>
-
-              {/* Verificando */}
               {tieneCV === null && (
                 <div style={{ height:'420px', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'12px', background:'#f8f9fb' }}>
                   <Loader size={24} color={t.accent} style={{ animation:'spin 1s linear infinite' }} />
                 </div>
               )}
-
-              {/* Sin CV */}
               {tieneCV === false && (
                 <div style={{ height:'420px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', color:t.textMuted, background:'#f8fafc', border:`1px dashed ${t.border}`, borderRadius:'12px' }}>
                   <FileText size={32} opacity={0.5} />
@@ -351,17 +271,13 @@ async function guardarCertificacion(){
                   <ActionBtn icon={<Upload size={13}/>} label="Subir CV" onClick={() => fileInputRef.current?.click()} />
                 </div>
               )}
-
-              {/* Con CV */}
               {tieneCV === true && (
                 <iframe ref={iframeRef} title="Vista previa CV" src={CV_URL}
                   style={{ width:'100%', height:'420px', border:'none', borderRadius:'12px', background:'#f8f9fb' }}
                 />
               )}
             </div>
-
             <input ref={fileInputRef} type="file" accept="application/pdf" style={{ display:'none' }} onChange={handleFileChange} />
-
             {tieneCV === true && (
               <div style={{ padding:'18px', display:'flex', justifyContent:'center', gap:'10px', flexWrap:'wrap' }}>
                 <ActionBtn icon={<Eye size={13}/>} label="Ver CV" onClick={() => window.open(CV_URL,'_blank')} />
@@ -383,15 +299,11 @@ async function guardarCertificacion(){
               action="Añadir"
               onAction={abrirNuevaCert}
             />
-
-            {/* Cargando */}
             {certificaciones === null && (
               <div style={{ height:'120px', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <Loader size={20} color={t.accent} style={{ animation:'spin 1s linear infinite' }} />
               </div>
             )}
-
-            {/* Sin certificaciones */}
             {certificaciones !== null && certificaciones.length === 0 && (
               <div style={{ padding:'40px 20px', textAlign:'center', color:t.textMuted }}>
                 <Award size={32} opacity={0.4} style={{ margin:'0 auto 10px' }} />
@@ -399,8 +311,6 @@ async function guardarCertificacion(){
                 <p style={{ margin:'6px 0 0', fontSize:'12px' }}>Añade tu primera certificación con el botón de arriba</p>
               </div>
             )}
-
-            {/* Lista */}
             {certificaciones !== null && certificaciones.length > 0 && (
               <ul style={{ margin:0, padding:'10px 20px 16px', listStyle:'none' }}>
                 {certificaciones.map((c) => (
@@ -414,17 +324,10 @@ async function guardarCertificacion(){
                         <p style={{ margin:'4px 0 0', fontSize:'13px', color:t.textMuted }}>{c.emisor}</p>
                         <small style={{ color:t.textMuted }}>{c.fecha}</small>
                       </div>
-                      <div className="cert-btns">
-                        <ActionBtn
-                          icon={<Eye size={11}/>}
-                          label="Ver"
-                          onClick={() => window.open(`${CERT_URL}?id=${c.id}&archivo=1`, '_blank')}
-                        />
-                        <ActionBtn
-                          icon={<Pencil size={11}/>}
-                          label="Editar"
-                          onClick={() => abrirEditarCert(c)}
-                        />
+                      <div className="cert-btns" style={{ display:'flex', flexDirection:'row', gap:'10px', flexWrap:'wrap', justifyContent:'flex-end', alignItems:'center' }}>
+                        <ActionBtn icon={<Eye size={11}/>}    label="Ver"      onClick={() => window.open(`${CERT_URL}?id=${c.id}&archivo=1`,'_blank')} />
+                        <ActionBtn icon={<Pencil size={11}/>} label="Editar"   onClick={() => abrirEditarCert(c)} />
+                        <ActionBtn icon={<Trash2 size={11}/>} label="Eliminar" onClick={() => eliminarCertificacion(c.id)} />
                       </div>
                     </div>
                   </li>
@@ -435,396 +338,127 @@ async function guardarCertificacion(){
 
         </div>
       </div>
+
+      {/* ── MODAL CERTIFICACIÓN ── */}
       {modalCert && (
+        <div
+          onClick={() => { if (!guardandoCert) setModalCert(false); }}
+          style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.55)', backdropFilter:'blur(10px)', display:'flex', justifyContent:'center', alignItems:'center', padding:'24px', zIndex:9999 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width:'100%', maxWidth:'620px', background:'#fff', borderRadius:'28px', overflow:'hidden', boxShadow:'0 30px 80px rgba(15,23,42,.25)' }}
+          >
+            {/* HEADER */}
+            <div style={{ background:'linear-gradient(135deg,#1e40af,#2563eb,#0ea5e9)', padding:'28px', color:'#fff', position:'relative' }}>
+              <div style={{ position:'absolute', right:'-50px', top:'-50px', width:'180px', height:'180px', borderRadius:'50%', background:'rgba(255,255,255,.08)' }} />
+              <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:'12px' }}>
+                <div style={{ width:'52px', height:'52px', borderRadius:'14px', background:'rgba(255,255,255,.18)', display:'grid', placeItems:'center' }}>
+                  <Award size={24}/>
+                </div>
+                <div>
+                  <h2 style={{ margin:0, fontSize:'24px', fontWeight:800 }}>
+                    {editandoCert ? 'Editar certificación' : 'Nueva certificación'}
+                  </h2>
+                  <p style={{ margin:'6px 0 0', opacity:.9 }}>
+                    {editandoCert ? 'Actualiza información o reemplaza el PDF' : 'Agrega una certificación a tu perfil'}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-      <div
-      onClick={()=>{
-      if(!guardandoCert){
-      setModalCert(false);
-      }
-      }}
-      style={{
-      position:'fixed',
-      inset:0,
-      background:'rgba(15,23,42,.55)',
-      backdropFilter:'blur(10px)',
-      display:'flex',
-      justifyContent:'center',
-      alignItems:'center',
-      padding:'24px',
-      zIndex:9999
-      }}
-      >
+            {/* BODY */}
+            <div style={{ padding:'26px', display:'flex', flexDirection:'column', gap:'18px' }}>
 
-      <div
-      onClick={(e)=>e.stopPropagation()}
-      style={{
-      width:'100%',
-      maxWidth:'620px',
-      background:'#fff',
-      borderRadius:'28px',
-      overflow:'hidden',
-      boxShadow:'0 30px 80px rgba(15,23,42,.25)',
-      animation:'fadeIn .18s ease'
-      }}
-      >
+              {/* Nombre */}
+              <div>
+                <label style={{ display:'block', marginBottom:'8px', fontSize:'13px', fontWeight:700, color:t.textPrimary }}>
+                  Nombre del certificado
+                </label>
+                <input
+                  value={formCert.nombre}
+                  onChange={(e) => setFormCert({ ...formCert, nombre:e.target.value })}
+                  placeholder="Ej. Certificación React Avanzado"
+                  style={{ width:'100%', padding:'14px 16px', border:`1px solid ${t.border}`, borderRadius:'14px', outline:'none', fontSize:'14px', background:'#f8fafc' }}
+                />
+              </div>
 
-      {/* HEADER */}
+              {/* Institución */}
+              <div>
+                <label style={{ display:'block', marginBottom:'8px', fontSize:'13px', fontWeight:700 }}>
+                  Institución
+                </label>
+                <input
+                  value={formCert.institucion}
+                  onChange={(e) => setFormCert({ ...formCert, institucion:e.target.value })}
+                  placeholder="Ej. Coursera"
+                  style={{ width:'100%', padding:'14px 16px', border:`1px solid ${t.border}`, borderRadius:'14px', background:'#f8fafc', outline:'none' }}
+                />
+              </div>
 
-      <div
-      style={{
-      background:'linear-gradient(135deg,#1e40af,#2563eb,#0ea5e9)',
-      padding:'28px',
-      color:'#fff',
-      position:'relative'
-      }}
-      >
+              {/* ── Fecha de emisión ── */}
+              <div>
+                <label style={{ display:'block', marginBottom:'8px', fontSize:'13px', fontWeight:700 }}>
+                  Fecha de emisión
+                </label>
+                <input
+                  type="date"
+                  value={formCert.fecha}
+                  max={HOY}
+                  onChange={(e) => setFormCert({ ...formCert, fecha:e.target.value })}
+                  style={{ width:'100%', padding:'14px 16px', border:`1px solid ${t.border}`, borderRadius:'14px', background:'#f8fafc', outline:'none', fontSize:'14px' }}
+                />
+              </div>
 
-      <div
-      style={{
-      position:'absolute',
-      right:'-50px',
-      top:'-50px',
-      width:'180px',
-      height:'180px',
-      borderRadius:'50%',
-      background:'rgba(255,255,255,.08)'
-      }}
-      />
+              {/* PDF */}
+              <div>
+                <label style={{ display:'block', marginBottom:'8px', fontSize:'13px', fontWeight:700 }}>
+                  PDF del certificado
+                </label>
+                <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', padding:'26px', border:`2px dashed ${t.accent}`, borderRadius:'18px', cursor:'pointer', background:'#eff6ff' }}>
+                  <Upload size={18} color={t.accent} />
+                  <div>
+                    <div style={{ fontWeight:700 }}>{formCert.pdf ? formCert.pdf.name : 'Seleccionar PDF'}</div>
+                    <div style={{ fontSize:'12px', color:t.textMuted }}>PDF máximo 5MB</div>
+                  </div>
+                  <input
+                    hidden type="file" accept="application/pdf"
+                    onChange={(e) => setFormCert({ ...formCert, pdf:e.target.files?.[0] })}
+                  />
+                </label>
+                {editandoCert && (
+                  <p style={{ marginTop:'10px', fontSize:'12px', color:t.textMuted }}>
+                    Si no seleccionas PDF se conservará el actual.
+                  </p>
+                )}
+              </div>
 
-      <div
-      style={{
-      position:'relative',
-      zIndex:2
-      }}
-      >
+            </div>
 
-      <div
-      style={{
-      display:'flex',
-      alignItems:'center',
-      gap:'12px'
-      }}
-      >
+            {/* FOOTER */}
+            <div style={{ padding:'22px', display:'flex', justifyContent:'end', gap:'12px', borderTop:`1px solid ${t.border}`, background:'#fafafa' }}>
+              <button
+                disabled={guardandoCert}
+                onClick={() => setModalCert(false)}
+                style={{ height:'46px', padding:'0 18px', borderRadius:'14px', border:`1px solid ${t.border}`, background:'#fff', cursor:'pointer', fontWeight:700 }}
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={guardandoCert}
+                onClick={guardarCertificacion}
+                style={{ height:'46px', padding:'0 20px', border:'none', borderRadius:'14px', background:'linear-gradient(135deg,#1e40af,#2563eb)', color:'#fff', fontWeight:700, display:'flex', alignItems:'center', gap:'10px', cursor:'pointer' }}
+              >
+                {guardandoCert ? (
+                  <><Loader size={14} style={{ animation:'spin 1s linear infinite' }} />Guardando...</>
+                ) : (
+                  <><Upload size={14}/>{editandoCert ? 'Guardar cambios' : 'Crear certificación'}</>
+                )}
+              </button>
+            </div>
 
-      <div
-      style={{
-      width:'52px',
-      height:'52px',
-      borderRadius:'14px',
-      background:'rgba(255,255,255,.18)',
-      display:'grid',
-      placeItems:'center'
-      }}
-      >
-      <Award size={24}/>
-      </div>
-
-      <div>
-      <h2
-      style={{
-      margin:0,
-      fontSize:'24px',
-      fontWeight:800
-      }}
-      >
-
-      {
-      editandoCert
-      ? 'Editar certificación'
-      : 'Nueva certificación'
-      }
-
-      </h2>
-
-      <p
-      style={{
-      margin:'6px 0 0',
-      opacity:.9
-      }}
-      >
-
-      {
-      editandoCert
-      ? 'Actualiza información o reemplaza el PDF'
-      : 'Agrega una certificación a tu perfil'
-      }
-
-      </p>
-
-      </div>
-
-      </div>
-
-      </div>
-
-      </div>
-
-      {/* BODY */}
-
-      <div
-      style={{
-      padding:'26px',
-      display:'flex',
-      flexDirection:'column',
-      gap:'18px'
-      }}
-      >
-
-      <div>
-
-      <label
-      style={{
-      display:'block',
-      marginBottom:'8px',
-      fontSize:'13px',
-      fontWeight:700,
-      color:t.textPrimary
-      }}
-      >
-      Nombre del certificado
-      </label>
-
-      <input
-      value={formCert.nombre}
-      onChange={(e)=>
-      setFormCert({
-      ...formCert,
-      nombre:e.target.value
-      })
-      }
-      placeholder='Ej. Certificación React Avanzado'
-      style={{
-      width:'100%',
-      padding:'14px 16px',
-      border:`1px solid ${t.border}`,
-      borderRadius:'14px',
-      outline:'none',
-      fontSize:'14px',
-      background:'#f8fafc'
-      }}
-      />
-
-      </div>
-
-
-      <div>
-
-      <label
-      style={{
-      display:'block',
-      marginBottom:'8px',
-      fontSize:'13px',
-      fontWeight:700
-      }}
-      >
-      Institución
-      </label>
-
-      <input
-      value={formCert.institucion}
-      onChange={(e)=>
-      setFormCert({
-      ...formCert,
-      institucion:e.target.value
-      })
-      }
-      placeholder='Ej. Coursera'
-      style={{
-      width:'100%',
-      padding:'14px 16px',
-      border:`1px solid ${t.border}`,
-      borderRadius:'14px',
-      background:'#f8fafc',
-      outline:'none'
-      }}
-      />
-
-      </div>
-
-
-      <div>
-
-      <label
-      style={{
-      display:'block',
-      marginBottom:'8px',
-      fontSize:'13px',
-      fontWeight:700
-      }}
-      >
-      PDF del certificado
-      </label>
-
-      <label
-      style={{
-      display:'flex',
-      alignItems:'center',
-      justifyContent:'center',
-      gap:'10px',
-      padding:'26px',
-      border:`2px dashed ${t.accent}`,
-      borderRadius:'18px',
-      cursor:'pointer',
-      background:'#eff6ff'
-      }}
-      >
-
-      <Upload
-      size={18}
-      color={t.accent}
-      />
-
-      <div>
-
-      <div
-      style={{
-      fontWeight:700
-      }}
-      >
-
-      {
-      formCert.pdf
-      ? formCert.pdf.name
-      : 'Seleccionar PDF'
-      }
-
-      </div>
-
-      <div
-      style={{
-      fontSize:'12px',
-      color:t.textMuted
-      }}
-      >
-
-      PDF máximo 5MB
-
-      </div>
-
-      </div>
-
-      <input
-      hidden
-      type='file'
-      accept='application/pdf'
-      onChange={(e)=>
-      setFormCert({
-      ...formCert,
-      pdf:e.target.files?.[0]
-      })
-      }
-      />
-
-      </label>
-
-      {
-      editandoCert && (
-
-      <p
-      style={{
-      marginTop:'10px',
-      fontSize:'12px',
-      color:t.textMuted
-      }}
-      >
-
-      Si no seleccionas PDF se conservará el actual.
-
-      </p>
-
-      )
-
-      }
-
-      </div>
-
-      </div>
-
-      {/* FOOTER */}
-
-      <div
-      style={{
-      padding:'22px',
-      display:'flex',
-      justifyContent:'end',
-      gap:'12px',
-      borderTop:`1px solid ${t.border}`,
-      background:'#fafafa'
-      }}
-      >
-
-      <button
-      disabled={guardandoCert}
-      onClick={()=>
-      setModalCert(false)
-      }
-      style={{
-      height:'46px',
-      padding:'0 18px',
-      borderRadius:'14px',
-      border:`1px solid ${t.border}`,
-      background:'#fff',
-      cursor:'pointer',
-      fontWeight:700
-      }}
-      >
-      Cancelar
-      </button>
-
-
-      <button
-      disabled={guardandoCert}
-      onClick={guardarCertificacion}
-      style={{
-      height:'46px',
-      padding:'0 20px',
-      border:'none',
-      borderRadius:'14px',
-      background:'linear-gradient(135deg,#1e40af,#2563eb)',
-      color:'#fff',
-      fontWeight:700,
-      display:'flex',
-      alignItems:'center',
-      gap:'10px',
-      cursor:'pointer'
-      }}
-      >
-
-      {
-      guardandoCert
-      ? (
-      <>
-      <Loader
-      size={14}
-      style={{
-      animation:'spin 1s linear infinite'
-      }}
-      />
-      Guardando...
-      </>
-      )
-      :
-      (
-      <>
-      <Upload size={14}/>
-      {
-      editandoCert
-      ? 'Guardar cambios'
-      : 'Crear certificación'
-      }
-      </>
-      )
-      }
-
-      </button>
-
-      </div>
-
-      </div>
-
-      </div>
-
+          </div>
+        </div>
       )}
 
     </PortalLayout>
