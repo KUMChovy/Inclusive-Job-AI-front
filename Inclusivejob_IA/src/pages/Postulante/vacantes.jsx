@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect} from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -6,158 +6,21 @@ import {
   MapPin,
   Briefcase,
   ChevronRight,
-  Star,
   ArrowRight,
   CheckCircle,
   Clock,
   Sparkles,
   X,
-  Bookmark,
   Calendar,
+  AlertTriangle,
 } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
 
-// ── Mock user ──────────────────────────────────────────────
-const MOCK_USER = {
-  nombre: 'Ana García Torres',
-  rol: 'Postulante',
-  discapacidades: ['Visual'],
-  completado: 72,
-};
-
-// ── Vacantes disponibles ───────────────────────────────────
-const VACANTES_RECOMENDADAS = [
-  {
-    id: 1,
-    titulo_puesto: 'Frontend React Developer',
-    empresa: 'Innovatech MX',
-    salario_min: 18000,
-    salario_max: 28000,
-    modalidad: 'Remoto',
-    match: 96,
-    discapacidades: ['Visual', 'Auditiva'],
-    estado: 'Activa',
-    fecha_publicacion: '2026-06-01',
-    fecha_cierre: '2026-06-30',
-    descripcion_puesto:
-      'Buscamos un desarrollador Frontend con experiencia en React para integrarse a nuestro equipo de producto. Serás responsable de construir interfaces accesibles, colaborar con el equipo de diseño y mantener componentes reutilizables de alto rendimiento. El rol es 100% remoto con horario flexible orientado a resultados.',
-    requisitos: [
-      '2+ años de experiencia con React y ecosistema (Hooks, Context, React Router)',
-      'Conocimiento de accesibilidad web (WCAG 2.1 nivel AA)',
-      'Manejo de TypeScript y herramientas de testing (Jest, React Testing Library)',
-      'Inglés intermedio para lectura de documentación técnica',
-      'Capacidad para trabajar de forma autónoma y comunicar avances',
-    ],
-  },
-  {
-    id: 2,
-    titulo_puesto: 'Tester Automatizado',
-    empresa: 'SoftQA CDMX',
-    salario_min: 14000,
-    salario_max: 20000,
-    modalidad: 'Híbrido',
-    match: 88,
-    discapacidades: ['Visual', 'Motriz'],
-    estado: 'Activa',
-    fecha_publicacion: '2026-06-02',
-    fecha_cierre: '2026-07-02',
-    descripcion_puesto:
-      'Buscamos un Tester Automatizado para unirse a nuestro equipo de QA. Serás responsable de diseñar, desarrollar y mantener scripts de prueba automatizados para garantizar la calidad del software.',
-    requisitos: [
-      '1+ año de experiencia en pruebas automatizadas',
-      'Conocimiento de Selenium, Cypress o herramientas similares',
-      'Experiencia con metodologías ágiles (Scrum, Kanban)',
-      'Habilidad para documentar casos de prueba de forma clara',
-    ],
-  },
-  {
-    id: 3,
-    titulo_puesto: 'Analista de Datos Jr.',
-    empresa: 'DataWave México',
-    salario_min: 16000,
-    salario_max: 22000,
-    modalidad: 'Remoto',
-    match: 81,
-    discapacidades: ['Visual'],
-    estado: 'Activa',
-    fecha_publicacion: '2026-06-03',
-    fecha_cierre: '2026-07-03',
-    descripcion_puesto:
-      'Únete a DataWave como Analista de Datos Jr. Apoyarás en la recopilación, limpieza y análisis de datos para generar insights que respalden la toma de decisiones del negocio.',
-    requisitos: [
-      'Conocimientos en SQL y manejo de bases de datos',
-      'Experiencia básica con Python o R para análisis de datos',
-      'Manejo de herramientas de visualización (Power BI, Tableau)',
-      'Atención al detalle y pensamiento analítico',
-    ],
-  },
-  {
-    id: 4,
-    titulo_puesto: 'Soporte Técnico Nivel 1',
-    empresa: 'HelpDesk Solutions',
-    salario_min: 13000,
-    salario_max: 18000,
-    modalidad: 'Remoto',
-    match: 90,
-    discapacidades: ['Auditiva', 'Motriz'],
-    estado: 'Activa',
-    fecha_publicacion: '2026-06-04',
-    fecha_cierre: '2026-06-25',
-    descripcion_puesto:
-      'Brinda soporte técnico de primer nivel a usuarios internos y externos. Resolverás incidencias, darás seguimiento a tickets y escalarás casos complejos al equipo especializado.',
-    requisitos: [
-      'Experiencia previa en soporte técnico o help desk',
-      'Conocimientos de sistemas operativos Windows y macOS',
-      'Habilidades de comunicación escrita y verbal',
-      'Disponibilidad para turnos rotativos',
-    ],
-  },
-  {
-    id: 5,
-    titulo_puesto: 'Auxiliar Administrativo',
-    empresa: 'Servicios Empresariales Roma',
-    salario_min: 10000,
-    salario_max: 14000,
-    modalidad: 'Presencial',
-    match: 74,
-    discapacidades: ['Motriz'],
-    estado: 'Activa',
-    fecha_publicacion: '2026-06-05',
-    fecha_cierre: '2026-06-20',
-    descripcion_puesto:
-      'Apoya las labores administrativas del área contable y de recursos humanos. Gestionarás documentación, agendarás citas y darás seguimiento a trámites internos.',
-    requisitos: [
-      'Manejo de paquetería Office (Word, Excel, Outlook)',
-      'Organización y gestión del tiempo',
-      'Experiencia mínima de 6 meses en puestos similares',
-      'Residencia en CDMX o zona metropolitana',
-    ],
-  },
-  {
-    id: 6,
-    titulo_puesto: 'Diseñador UX/UI Jr.',
-    empresa: 'CreativeHub CDMX',
-    salario_min: 15000,
-    salario_max: 21000,
-    modalidad: 'Híbrido',
-    match: 84,
-    discapacidades: ['Visual', 'Cognitiva'],
-    estado: 'Activa',
-    fecha_publicacion: '2026-06-06',
-    fecha_cierre: '2026-07-06',
-    descripcion_puesto:
-      'Diseña experiencias digitales centradas en el usuario para productos web y móvil. Colaborarás con equipos de producto y desarrollo para crear flujos intuitivos y accesibles.',
-    requisitos: [
-      'Dominio de Figma o Adobe XD',
-      'Conocimientos de principios de diseño accesible',
-      'Portafolio con proyectos de UX/UI',
-      'Disposición para recibir y dar retroalimentación constructiva',
-    ],
-  },
-];
+// ── URL del backend ────────────────────────────────────────
+const API_BASE = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
 
 // ── Helpers ────────────────────────────────────────────────
 function formatFecha(iso) {
@@ -169,6 +32,9 @@ function formatFecha(iso) {
 
 function formatSalario(min, max) {
   const fmt = (n) => `$${Number(n).toLocaleString('es-MX')}`;
+  if (!min && !max) return 'Salario a convenir';
+  if (!max) return `Desde ${fmt(min)} MXN`;
+  if (!min) return `Hasta ${fmt(max)} MXN`;
   return `${fmt(min)} – ${fmt(max)} MXN`;
 }
 
@@ -237,29 +103,6 @@ function SectionHead({ title, sub, action, onAction }) {
   );
 }
 
-function MatchBadge({ match }) {
-  const color = match >= 90 ? '#059669' : match >= 80 ? '#2563eb' : '#7c3aed';
-  return (
-    <span
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
-        fontSize: '12px',
-        fontWeight: 700,
-        color,
-        background: `${color}10`,
-        border: `1px solid ${color}25`,
-        padding: '3px 9px',
-        borderRadius: '999px',
-      }}
-    >
-      <Star size={11} style={{ fill: color }} />
-      {match}% match
-    </span>
-  );
-}
-
 function FilterButton({ active, children, onClick }) {
   return (
     <button
@@ -285,24 +128,17 @@ function FilterButton({ active, children, onClick }) {
 function ModalVacante({ vacante, onClose }) {
   if (!vacante) return null;
 
-   useEffect(() => {
+  useEffect(() => {
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, []);
 
+  const [toast, setToast] = useState(null); // 'postulado' | 'reportado' | null
 
-
-  const [toast, setToast] = useState(null); // 'guardado' | 'postulado' | null
-
-const mostrarToast = (tipo) => {
-  setToast(tipo);
-  setTimeout(() => setToast(null), 3200);
-};
-
-  const matchColor =
-    vacante.match >= 90 ? '#059669' : vacante.match >= 80 ? '#2563eb' : '#7c3aed';
+  const mostrarToast = (tipo) => {
+    setToast(tipo);
+    setTimeout(() => setToast(null), 3200);
+  };
 
   return (
     <div
@@ -342,7 +178,6 @@ const mostrarToast = (tipo) => {
             flexShrink: 0,
           }}
         >
-          {/* Fila top: ícono + título + cerrar */}
           <div
             style={{
               display: 'flex',
@@ -355,15 +190,9 @@ const mostrarToast = (tipo) => {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
               <div
                 style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '12px',
-                  background: 'rgba(255,255,255,0.18)',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
+                  width: '44px', height: '44px', borderRadius: '12px',
+                  background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}
               >
                 <Briefcase size={20} color="#fff" />
@@ -371,28 +200,20 @@ const mostrarToast = (tipo) => {
               <div style={{ flex: 1 }}>
                 <h2
                   style={{
-                    margin: '0 0 4px',
-                    fontSize: '20px',
-                    fontWeight: 800,
-                    color: '#fff',
-                    lineHeight: 1.2,
-                    letterSpacing: '-0.4px',
+                    margin: '0 0 4px', fontSize: '20px', fontWeight: 800,
+                    color: '#fff', lineHeight: 1.2, letterSpacing: '-0.4px',
                   }}
                 >
                   {vacante.titulo_puesto}
                 </h2>
                 <p
                   style={{
-                    margin: 0,
-                    fontSize: '13px',
-                    color: 'rgba(255,255,255,0.8)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
+                    margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.8)',
+                    display: 'flex', alignItems: 'center', gap: '5px',
                   }}
                 >
                   <Briefcase size={11} />
-                  {vacante.empresa}
+                  {vacante.empresa ?? 'Empresa'}
                 </p>
               </div>
             </div>
@@ -400,58 +221,28 @@ const mostrarToast = (tipo) => {
             <button
               onClick={onClose}
               style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.15)',
-                border: '1px solid rgba(255,255,255,0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: '#fff',
-                flexShrink: 0,
+                width: '32px', height: '32px', borderRadius: '8px',
+                background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: '#fff', flexShrink: 0,
               }}
             >
               <X size={15} />
             </button>
           </div>
 
-          {/* Badges */}
+          {/* Badge modalidad */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 10px',
-                borderRadius: '999px',
-                fontSize: '11px',
-                fontWeight: 600,
-                background: 'rgba(255,255,255,0.18)',
-                color: '#fff',
+                display: 'flex', alignItems: 'center', gap: '4px',
+                padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
+                background: 'rgba(255,255,255,0.18)', color: '#fff',
                 border: '1px solid rgba(255,255,255,0.28)',
               }}
             >
               <MapPin size={10} />
               {vacante.modalidad}
-            </span>
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 10px',
-                borderRadius: '999px',
-                fontSize: '11px',
-                fontWeight: 600,
-                background: `${matchColor}cc`,
-                color: '#fff',
-                border: `1px solid ${matchColor}50`,
-              }}
-            >
-              <Star size={10} style={{ fill: '#fff' }} />
-              {vacante.match}% match
             </span>
           </div>
         </div>
@@ -463,214 +254,100 @@ const mostrarToast = (tipo) => {
           <div style={{ marginBottom: '20px' }}>
             <div
               style={{
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: '12px',
-                padding: '14px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px',
+                background: '#eff6ff', border: '1px solid #bfdbfe',
+                borderRadius: '12px', padding: '14px 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
               }}
             >
               <div>
-                <p
-                  style={{
-                    margin: '0 0 2px',
-                    fontSize: '11px',
-                    color: '#2563eb',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}
-                >
+                <p style={{ margin: '0 0 2px', fontSize: '11px', color: '#2563eb', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Rango salarial
                 </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '20px',
-                    fontWeight: 800,
-                    color: '#1e40af',
-                    letterSpacing: '-0.5px',
-                  }}
-                >
+                <p style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#1e40af', letterSpacing: '-0.5px' }}>
                   {formatSalario(vacante.salario_min, vacante.salario_max)}
                 </p>
               </div>
               <span
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '999px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  background: vacante.estado === 'Activa' ? '#d1fae5' : '#fee2e2',
-                  color: vacante.estado === 'Activa' ? '#065f46' : '#991b1b',
-                  border: `1px solid ${vacante.estado === 'Activa' ? '#6ee7b7' : '#fca5a5'}`,
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
+                  background: vacante.estado === 'activa' ? '#d1fae5' : '#fee2e2',
+                  color: vacante.estado === 'activa' ? '#065f46' : '#991b1b',
+                  border: `1px solid ${vacante.estado === 'activa' ? '#6ee7b7' : '#fca5a5'}`,
                 }}
               >
                 <span
                   style={{
-                    width: '7px',
-                    height: '7px',
-                    borderRadius: '50%',
-                    background: vacante.estado === 'Activa' ? '#059669' : '#dc2626',
-                    animation: vacante.estado === 'Activa' ? 'pulseDot 2s ease-in-out infinite' : 'none',
+                    width: '7px', height: '7px', borderRadius: '50%',
+                    background: vacante.estado === 'activa' ? '#059669' : '#dc2626',
+                    animation: vacante.estado === 'activa' ? 'pulseDot 2s ease-in-out infinite' : 'none',
                   }}
                 />
-                {vacante.estado}
+                {vacante.estado === 'activa' ? 'Activa' : vacante.estado}
               </span>
             </div>
           </div>
 
-          {/* Info grid: publicación · cierre · modalidad */}
+          {/* Info grid */}
           <div style={{ marginBottom: '20px' }}>
-            <p
-              style={{
-                margin: '0 0 8px',
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.6px',
-                paddingBottom: '6px',
-                borderBottom: `1px solid ${t.border}`,
-              }}
-            >
+            <p style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px', paddingBottom: '6px', borderBottom: `1px solid ${t.border}` }}>
               Información general
             </p>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '10px',
-              }}
-            >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
               {[
                 { label: 'Publicación', value: formatFecha(vacante.fecha_publicacion), icon: Calendar },
-                { label: 'Cierre', value: formatFecha(vacante.fecha_cierre), icon: Calendar },
-                { label: 'Modalidad', value: vacante.modalidad, icon: MapPin },
+                { label: 'Cierre',      value: formatFecha(vacante.fecha_cierre),      icon: Calendar },
+                { label: 'Modalidad',   value: vacante.modalidad,                      icon: MapPin   },
               ].map(({ label, value, icon: Icon }) => (
                 <div
                   key={label}
-                  style={{
-                    background: '#f8fafc',
-                    border: `1px solid ${t.border}`,
-                    borderRadius: '12px',
-                    padding: '12px 14px',
-                  }}
+                  style={{ background: '#f8fafc', border: `1px solid ${t.border}`, borderRadius: '12px', padding: '12px 14px' }}
                 >
-                  <p
-                    style={{
-                      margin: '0 0 4px',
-                      fontSize: '11px',
-                      color: '#9ca3af',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <Icon size={11} />
-                    {label}
+                  <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Icon size={11} /> {label}
                   </p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#111827' }}>
-                    {value}
-                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#111827' }}>{value}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Descripción */}
-          <div style={{ marginBottom: '20px' }}>
-            <p
-              style={{
-                margin: '0 0 8px',
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.6px',
-                paddingBottom: '6px',
-                borderBottom: `1px solid ${t.border}`,
-              }}
-            >
-              Descripción del puesto
-            </p>
-            <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>
-              {vacante.descripcion_puesto}
-            </p>
-          </div>
+          {vacante.descripcion_puesto && (
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px', paddingBottom: '6px', borderBottom: `1px solid ${t.border}` }}>
+                Descripción del puesto
+              </p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>
+                {vacante.descripcion_puesto}
+              </p>
+            </div>
+          )}
 
           {/* Requisitos */}
-          <div style={{ marginBottom: '20px' }}>
-            <p
-              style={{
-                margin: '0 0 8px',
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.6px',
-                paddingBottom: '6px',
-                borderBottom: `1px solid ${t.border}`,
-              }}
-            >
-              Requisitos
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {(Array.isArray(vacante.requisitos)
-                ? vacante.requisitos
-                : vacante.requisitos?.split('\n').filter(Boolean) ?? []
-              ).map((req, i) => (
-                <li
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: '#374151',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: t.accent,
-                      flexShrink: 0,
-                      marginTop: '5px',
-                    }}
-                  />
-                  {req}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {vacante.requisitos?.length > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px', paddingBottom: '6px', borderBottom: `1px solid ${t.border}` }}>
+                Requisitos
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {(Array.isArray(vacante.requisitos)
+                  ? vacante.requisitos
+                  : vacante.requisitos.split('\n').filter(Boolean)
+                ).map((req, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#374151', lineHeight: 1.4 }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: t.accent, flexShrink: 0, marginTop: '5px' }} />
+                    {req}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Accesibilidad */}
           {vacante.discapacidades?.length > 0 && (
             <div>
-              <p
-                style={{
-                  margin: '0 0 8px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.6px',
-                  paddingBottom: '6px',
-                  borderBottom: `1px solid ${t.border}`,
-                }}
-              >
+              <p style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px', paddingBottom: '6px', borderBottom: `1px solid ${t.border}` }}>
                 Adaptaciones de accesibilidad disponibles
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -678,20 +355,13 @@ const mostrarToast = (tipo) => {
                   <span
                     key={d}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '11px',
-                      color: t.accent,
-                      background: t.accentSoft,
-                      border: `1px solid ${t.accentBorder}`,
-                      padding: '3px 9px',
-                      borderRadius: '6px',
-                      fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                      fontSize: '11px', color: t.accent, background: t.accentSoft,
+                      border: `1px solid ${t.accentBorder}`, padding: '3px 9px',
+                      borderRadius: '6px', fontWeight: 600,
                     }}
                   >
-                    <Accessibility size={10} />
-                    {d}
+                    <Accessibility size={10} /> {d}
                   </span>
                 ))}
               </div>
@@ -702,48 +372,36 @@ const mostrarToast = (tipo) => {
         {/* ── Footer ── */}
         <div
           style={{
-            padding: '16px 24px',
-            borderTop: `1px solid ${t.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            flexShrink: 0,
-            background: '#fff',
+            padding: '16px 24px', borderTop: `1px solid ${t.border}`,
+            display: 'flex', alignItems: 'center', gap: '10px',
+            flexShrink: 0, background: '#fff',
           }}
         >
+          {/* Botón Reportar — rojo */}
           <button
-            style={{
-              background: '#fff',
-              color: t.textSecondary,
-              border: `1px solid ${t.border}`,
-              borderRadius: '12px',
-              padding: '12px 16px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <Bookmark size={14} />
-            Guardar
-          </button>
-          <button
+            onClick={() => mostrarToast('reportado')}
             style={{
               flex: 1,
-              background: t.gradient,
-              color: '#fff',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '12px 20px',
-              fontSize: '13px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
+              background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)',
+              color: '#fff', border: 'none', borderRadius: '12px',
+              padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: '6px',
+              boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35)',
+            }}
+          >
+            <AlertTriangle size={14} />
+            Reportar
+          </button>
+
+          {/* Botón Postularme — azul (igual que antes) */}
+          <button
+            onClick={() => mostrarToast('postulado')}
+            style={{
+              flex: 1, background: t.gradient, color: '#fff', border: 'none',
+              borderRadius: '12px', padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: '6px',
               boxShadow: `0 4px 14px ${t.accentGlow}`,
             }}
           >
@@ -751,51 +409,44 @@ const mostrarToast = (tipo) => {
             Postularme a esta vacante
           </button>
         </div>
+
+        {/* ── Toast ── */}
+        {toast && (
+          <div style={{
+            position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
+            background: '#fff', borderRadius: '14px', border: `1px solid ${t.border}`,
+            boxShadow: '0 8px 32px rgba(15,23,41,0.18)', padding: '14px 20px',
+            display: 'flex', alignItems: 'center', gap: '12px', minWidth: '260px',
+            zIndex: 10, animation: 'toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+          }}>
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '50%',
+              background: toast === 'reportado' ? '#fee2e2' : '#d1fae5',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              {toast === 'reportado'
+                ? <AlertTriangle size={18} color="#dc2626" />
+                : <CheckCircle   size={18} color="#059669" />
+              }
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#111827' }}>
+                {toast === 'reportado' ? '¡Reporte enviado!' : '¡Postulación enviada!'}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                {toast === 'reportado'
+                  ? 'Revisaremos esta vacante a la brevedad'
+                  : 'La empresa recibirá tu perfil pronto'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`
-        @keyframes pulseDot {
-          0%,100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
+        @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes toastIn  { from{opacity:0;transform:translateX(-50%) translateY(-8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
       `}</style>
-
-
-      {toast && (
-  <div style={{
-    position: 'absolute',
-    top: '16px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: '#fff',
-    borderRadius: '14px',
-    border: `1px solid ${t.border}`,
-    boxShadow: '0 8px 32px rgba(15,23,41,0.18)',
-    padding: '14px 20px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    minWidth: '260px',
-    zIndex: 10,
-    animation: 'toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1)',
-  }}>
-    <div style={{
-      width: '36px', height: '36px', borderRadius: '50%',
-      background: toast === 'postulado' ? '#d1fae5' : '#eff6ff',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }}>
-      <CheckCircle size={18} color={toast === 'postulado' ? '#059669' : '#2563eb'} />
-    </div>
-    <div>
-      <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#111827' }}>
-        {toast === 'postulado' ? '¡Postulación enviada!' : '¡Vacante guardada!'}
-      </p>
-      <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6b7280' }}>
-        {toast === 'postulado' ? 'La empresa recibirá tu perfil pronto' : 'La encontrarás en tu lista de guardados'}
-      </p>
-    </div>
-  </div>
-)}
     </div>
   );
 }
@@ -804,15 +455,43 @@ const mostrarToast = (tipo) => {
 export default function Vacantes() {
   const navigate = useNavigate();
 
-  const [search, setSearch] = useState('');
-  const [modalidad, setModalidad] = useState('Todas');
-  const [orden, setOrden] = useState('match');
+  const [vacantes,            setVacantes]            = useState([]);
+  const [cargando,            setCargando]            = useState(true);
+  const [error,               setError]               = useState('');
+  const [search,              setSearch]              = useState('');
+  const [modalidad,           setModalidad]           = useState('Todas');
+  const [orden,               setOrden]               = useState('recientes');
   const [vacanteSeleccionada, setVacanteSeleccionada] = useState(null);
 
-  const modalidades = ['Todas', 'Remoto', 'Híbrido', 'Presencial'];
+  const modalidades = ['Todas', 'Remota', 'Híbrida', 'Presencial'];
+
+  useEffect(() => {
+    const cargarVacantes = async () => {
+      try {
+        const res  = await fetch(`${API_BASE}/obtener_vacantes.php`, {
+          method:      'GET',
+          credentials: 'include',
+        });
+        const json = await res.json();
+
+        if (!json.auth) {
+          window.location.href = '/login';
+          return;
+        }
+
+        setVacantes(json.vacantes ?? []);
+      } catch {
+        setError('No se pudieron cargar las vacantes. Verifica tu conexión.');
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarVacantes();
+  }, []);
 
   const vacantesFiltradas = useMemo(() => {
-    let data = [...VACANTES_RECOMENDADAS];
+    let data = [...vacantes];
 
     if (modalidad !== 'Todas') {
       data = data.filter((v) => v.modalidad === modalidad);
@@ -823,44 +502,46 @@ export default function Vacantes() {
       data = data.filter(
         (v) =>
           v.titulo_puesto.toLowerCase().includes(q) ||
-          v.empresa.toLowerCase().includes(q) ||
+          (v.empresa ?? '').toLowerCase().includes(q) ||
           v.modalidad.toLowerCase().includes(q)
       );
     }
 
-    if (orden === 'match') data.sort((a, b) => b.match - a.match);
-    if (orden === 'recientes') data.sort((a, b) => new Date(b.fecha_publicacion) - new Date(a.fecha_publicacion));
+    if (orden === 'recientes') {
+      data.sort((a, b) => new Date(b.fecha_publicacion) - new Date(a.fecha_publicacion));
+    } else if (orden === 'salario') {
+      data.sort((a, b) => (b.salario_max ?? 0) - (a.salario_max ?? 0));
+    }
 
     return data;
-  }, [search, modalidad, orden]);
+  }, [vacantes, search, modalidad, orden]);
 
-  const mejorMatch = vacantesFiltradas.length
-    ? Math.max(...vacantesFiltradas.map((v) => v.match))
-    : 0;
+  if (cargando) {
+    return (
+      <PortalLayout theme={t} navItems={postulantNav} user={{ nombre: '', rol: 'Postulante' }} pageTitle="Vacantes">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '4px solid #DBEAFE', borderTopColor: '#2563EB', animation: 'spin 0.9s linear infinite' }} />
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          <p style={{ color: '#475569', fontSize: '14px', fontWeight: 600 }}>Cargando vacantes...</p>
+        </div>
+      </PortalLayout>
+    );
+  }
 
   return (
     <PortalLayout
       theme={t}
       navItems={postulantNav}
-      user={MOCK_USER}
+      user={{ nombre: '', rol: 'Postulante' }}
       pageTitle="Vacantes"
-      notifications={3}
       headerActions={
         <button
           onClick={() => navigate('/postulante/postulaciones')}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: t.gradient,
-            border: 'none',
-            borderRadius: '10px',
-            padding: '8px 16px',
-            color: '#fff',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: `0 4px 14px ${t.accentGlow}`,
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: t.gradient, border: 'none', borderRadius: '10px',
+            padding: '8px 16px', color: '#fff', fontSize: '13px', fontWeight: 600,
+            cursor: 'pointer', boxShadow: `0 4px 14px ${t.accentGlow}`,
           }}
         >
           <CheckCircle size={14} />
@@ -868,56 +549,27 @@ export default function Vacantes() {
         </button>
       }
     >
-      {/* ── Animaciones ── */}
       <style>{`
-        @keyframes floatBlob {
-          0%,100%{transform:translate(0,0) scale(1)}
-          50%{transform:translate(15px,-20px) scale(1.05)}
-        }
-        .hero-blob {
-          position:absolute;
-          border-radius:50%;
-          filter:blur(60px);
-          pointer-events:none;
-          animation:floatBlob 10s ease-in-out infinite;
-        }
+        @keyframes floatBlob { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(15px,-20px) scale(1.05)} }
+        .hero-blob { position:absolute; border-radius:50%; filter:blur(60px); pointer-events:none; animation:floatBlob 10s ease-in-out infinite; }
       `}</style>
 
-      {/* ── Modal ── */}
       {vacanteSeleccionada && (
-        <ModalVacante
-          vacante={vacanteSeleccionada}
-          onClose={() => setVacanteSeleccionada(null)}
-        />
+        <ModalVacante vacante={vacanteSeleccionada} onClose={() => setVacanteSeleccionada(null)} />
       )}
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '20px',
-          maxWidth: '1400px',
-          margin: '0 auto',
-          position: 'relative',
-        }}
-      >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
+
         {/* ── Hero ── */}
         <div
           style={{
-            position: 'relative',
-            borderRadius: '20px',
-            overflow: 'hidden',
+            position: 'relative', borderRadius: '20px', overflow: 'hidden',
             background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #0ea5e9 100%)',
-            padding: '32px 28px',
-            color: '#fff',
-            minHeight: '160px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '20px',
+            padding: '32px 28px', color: '#fff', minHeight: '160px',
+            display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '20px',
           }}
         >
-          <div className="hero-blob" style={{ width: '300px', height: '300px', background: 'rgba(255,255,255,0.08)', top: '-80px', right: '-60px', animationDelay: '0s' }} />
+          <div className="hero-blob" style={{ width: '300px', height: '300px', background: 'rgba(255,255,255,0.08)', top: '-80px', right: '-60px' }} />
           <div className="hero-blob" style={{ width: '200px', height: '200px', background: 'rgba(14,165,233,0.25)', bottom: '-60px', left: '30%', animationDelay: '3s' }} />
 
           <div style={{ position: 'relative', zIndex: 1 }}>
@@ -928,30 +580,24 @@ export default function Vacantes() {
               Vacantes compatibles con tu perfil
             </h1>
             <p style={{ margin: 0, fontSize: '14px', opacity: 0.82, maxWidth: '720px', lineHeight: 1.5 }}>
-              Explora oportunidades recomendadas según tus habilidades, experiencia y necesidades de accesibilidad.
+              Mostramos únicamente vacantes adaptadas a tu discapacidad registrada.
             </p>
           </div>
 
           <div
             style={{
-              position: 'relative',
-              zIndex: 1,
-              background: 'rgba(255,255,255,0.12)',
-              borderRadius: '12px',
-              padding: '14px 16px',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              maxWidth: '520px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
+              position: 'relative', zIndex: 1,
+              background: 'rgba(255,255,255,0.12)', borderRadius: '12px',
+              padding: '14px 16px', backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.2)', maxWidth: '520px',
+              display: 'flex', alignItems: 'center', gap: '10px',
             }}
           >
-            <Search size={16} style={{ color: '#fff', opacity: 0.85 }} />
+            <Search size={16} style={{ color: '#fff', opacity: 0.85, flexShrink: 0 }} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar puesto, empresa o modalidad..."
+              placeholder="Buscar puesto o modalidad..."
               style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', color: '#fff', fontSize: '13px' }}
             />
           </div>
@@ -960,34 +606,24 @@ export default function Vacantes() {
         {/* ── KPIs ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
           {[
-            { label: 'Vacantes encontradas', value: vacantesFiltradas.length, icon: Briefcase, color: '#2563eb' },
-            { label: 'Mejor compatibilidad', value: `${mejorMatch}%`, icon: Star, color: '#059669' },
-            { label: 'Vacantes remotas', value: vacantesFiltradas.filter((v) => v.modalidad === 'Remoto').length, icon: Sparkles, color: '#0ea5e9' },
-            { label: 'Filtros activos', value: modalidad === 'Todas' ? 0 : 1, icon: Clock, color: '#7c3aed' },
+            { label: 'Vacantes encontradas',  value: vacantesFiltradas.length,                                             icon: Briefcase, color: '#2563eb' },
+            { label: 'Vacantes remotas',      value: vacantesFiltradas.filter((v) => v.modalidad === 'Remota').length,     icon: Sparkles,  color: '#0ea5e9' },
+            { label: 'Vacantes híbridas',     value: vacantesFiltradas.filter((v) => v.modalidad === 'Híbrida').length,    icon: Clock,     color: '#7c3aed' },
+            { label: 'Vacantes presenciales', value: vacantesFiltradas.filter((v) => v.modalidad === 'Presencial').length, icon: MapPin,    color: '#059669' },
           ].map((s) => (
             <div
               key={s.label}
               style={{
-                background: '#fff',
-                border: `1px solid ${t.border}`,
-                borderRadius: '16px',
-                padding: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
+                background: '#fff', border: `1px solid ${t.border}`, borderRadius: '16px',
+                padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px',
                 boxShadow: '0 1px 4px rgba(15,23,41,0.05)',
               }}
             >
               <div
                 style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '12px',
-                  background: `${s.color}12`,
-                  border: `1px solid ${s.color}25`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  width: '40px', height: '40px', borderRadius: '12px',
+                  background: `${s.color}12`, border: `1px solid ${s.color}25`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
                 <s.icon size={19} style={{ color: s.color }} />
@@ -1004,36 +640,44 @@ export default function Vacantes() {
           ))}
         </div>
 
+        {/* ── Error ── */}
+        {error && (
+          <div style={{ padding: '14px 20px', borderRadius: '14px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: '14px', fontWeight: 600 }}>
+            ⚠️ {error}
+          </div>
+        )}
+
         {/* ── Filtros ── */}
         <Card>
-          <SectionHead title="Filtrar vacantes" sub="Encuentra oportunidades según modalidad y compatibilidad" />
+          <SectionHead title="Filtrar vacantes" sub="Filtra por modalidad u ordena los resultados" />
           <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {modalidades.map((m) => (
               <FilterButton key={m} active={modalidad === m} onClick={() => setModalidad(m)}>
                 {m}
               </FilterButton>
             ))}
-            <FilterButton active={orden === 'match'} onClick={() => setOrden('match')}>
-              Mayor compatibilidad
-            </FilterButton>
+            <div style={{ width: '1px', height: '20px', background: t.border, margin: '0 4px' }} />
             <FilterButton active={orden === 'recientes'} onClick={() => setOrden('recientes')}>
               Más recientes
+            </FilterButton>
+            <FilterButton active={orden === 'salario'} onClick={() => setOrden('salario')}>
+              Mayor salario
             </FilterButton>
           </div>
         </Card>
 
-        {/* ── Vacantes ── */}
+        {/* ── Lista de vacantes ── */}
         <Card>
           <SectionHead
-            title="Vacantes recomendadas para ti"
-            sub="Basadas en tu perfil y discapacidades registradas"
+            title="Vacantes compatibles con tu discapacidad"
+            sub={`${vacantesFiltradas.length} resultado${vacantesFiltradas.length !== 1 ? 's' : ''} encontrado${vacantesFiltradas.length !== 1 ? 's' : ''}`}
           />
 
           {vacantesFiltradas.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0' }}>
               {vacantesFiltradas.map((v, i) => (
                 <div
-                  key={v.id}
+                  key={v.id_vacante}
                   style={{
                     padding: '20px',
                     borderRight: i < vacantesFiltradas.length - 1 ? `1px solid ${t.border}` : 'none',
@@ -1048,65 +692,51 @@ export default function Vacantes() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <div
                       style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '10px',
-                        background: t.accentSoft,
-                        border: `1px solid ${t.accentBorder}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        width: '36px', height: '36px', borderRadius: '10px',
+                        background: t.accentSoft, border: `1px solid ${t.accentBorder}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}
                     >
                       <Briefcase size={16} style={{ color: t.accent }} />
                     </div>
-                    <MatchBadge match={v.match} />
+                    <span
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '5px',
+                        fontSize: '11px', fontWeight: 700, padding: '3px 9px', borderRadius: '999px',
+                        background: v.estado === 'activa' ? '#d1fae5' : '#fee2e2',
+                        color: v.estado === 'activa' ? '#065f46' : '#991b1b',
+                        border: `1px solid ${v.estado === 'activa' ? '#6ee7b7' : '#fca5a5'}`,
+                      }}
+                    >
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: v.estado === 'activa' ? '#059669' : '#dc2626' }} />
+                      {v.estado === 'activa' ? 'Activa' : v.estado}
+                    </span>
                   </div>
 
                   <h3 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: t.textPrimary, lineHeight: 1.3 }}>
                     {v.titulo_puesto}
                   </h3>
 
-                  <p style={{ margin: '0 0 10px', fontSize: '12px', color: t.textSecondary, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Briefcase size={11} />
-                    {v.empresa}
-                  </p>
-
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', marginTop: '8px' }}>
                     <span
                       style={{
-                        fontSize: '11px',
-                        color: t.textMuted,
-                        background: t.bgElevated,
-                        border: `1px solid ${t.border}`,
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3px',
+                        fontSize: '11px', color: t.textMuted, background: t.bgElevated,
+                        border: `1px solid ${t.border}`, padding: '2px 8px', borderRadius: '6px',
+                        display: 'flex', alignItems: 'center', gap: '3px',
                       }}
                     >
-                      <MapPin size={10} />
-                      {v.modalidad}
+                      <MapPin size={10} /> {v.modalidad}
                     </span>
-
-                    {v.discapacidades.map((d) => (
+                    {(v.discapacidades ?? []).map((d) => (
                       <span
                         key={d}
                         style={{
-                          fontSize: '11px',
-                          color: t.accent,
-                          background: t.accentSoft,
-                          border: `1px solid ${t.accentBorder}`,
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '3px',
+                          fontSize: '11px', color: t.accent, background: t.accentSoft,
+                          border: `1px solid ${t.accentBorder}`, padding: '2px 8px',
+                          borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px',
                         }}
                       >
-                        <Accessibility size={9} />
-                        {d}
+                        <Accessibility size={9} /> {d}
                       </span>
                     ))}
                   </div>
@@ -1119,6 +749,12 @@ export default function Vacantes() {
                       Ver detalle <ChevronRight size={13} />
                     </span>
                   </div>
+
+                  {v.fecha_cierre && (
+                    <p style={{ margin: '10px 0 0', fontSize: '11px', color: t.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Clock size={10} /> Cierra: {formatFecha(v.fecha_cierre)}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -1126,15 +762,9 @@ export default function Vacantes() {
             <div style={{ padding: '42px 20px', textAlign: 'center' }}>
               <div
                 style={{
-                  width: '54px',
-                  height: '54px',
-                  borderRadius: '16px',
-                  background: t.accentSoft,
-                  border: `1px solid ${t.accentBorder}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 14px',
+                  width: '54px', height: '54px', borderRadius: '16px',
+                  background: t.accentSoft, border: `1px solid ${t.accentBorder}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
                 }}
               >
                 <Search size={22} style={{ color: t.accent }} />
@@ -1143,7 +773,9 @@ export default function Vacantes() {
                 No encontramos vacantes
               </h3>
               <p style={{ margin: 0, fontSize: '12.5px', color: t.textMuted }}>
-                Intenta cambiar los filtros o buscar otra palabra clave.
+                {vacantes.length === 0
+                  ? 'No hay vacantes activas compatibles con tu discapacidad registrada.'
+                  : 'Intenta cambiar los filtros o buscar otra palabra clave.'}
               </p>
             </div>
           )}
