@@ -1,15 +1,14 @@
 import React from "react";
 import { postulantTheme } from '../../assets/Componentes/Portal/portalTheme';
-
-<<<<<<< HEAD
-const API_BASE = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
-=======
-// ── Ajusta estas rutas según tu estructura de backend ────────
-const API_BASE       = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
-const SESION_URL     = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/sesion.php";
->>>>>>> a75f626925f3bcbf09d08c09aeb8bf1fe609e24b
+import { useSesion } from "../../assets/Hook/Sesion/useSesion";
+import { ENDPOINTS as POSTULANTE_ENDPOINTS } from "../../assets/Hook/Postulante/apiPostulante";
 
 export default function Formulario() {
+  const { user, loading: cargandoSesion, allowed } = useSesion({
+    allowedRoles: ["postulante"],
+    required: true,
+  });
+
   const [openSection, setOpenSection] = React.useState(0);
   const [enviando,    setEnviando]    = React.useState(false);
   const [mensaje,     setMensaje]     = React.useState({ texto: "", tipo: "" });
@@ -46,45 +45,23 @@ export default function Formulario() {
     gradient:     "linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)",
   };
 
-  // ── Verificación inicial: sesión + formulario ya completado ──
+  // Verificación de inicio de seion
   React.useEffect(() => {
-    const verificar = async () => {
-      try {
-        const res  = await fetch(`${API_BASE}/verificar_formulario.php`, {
-          method:      "GET",
-          credentials: "include", // envía la cookie de sesión PHP
-        });
-        const json = await res.json();
+    if (cargandoSesion) return;
 
-        if (!json.auth) {
-          // No hay sesión → redirigir al login
-          setSinSesion(true);
-          setTimeout(() => {
-            window.location.href = "/login"; // ajusta la ruta a tu login
-          }, 2000);
-          return;
-        }
+    if (!allowed || !user?.id) {
+      setSinSesion(true);
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000);
+      return;
+    }
 
-        if (json.completado) {
-          // Ya completó el formulario → ir directo a postulante
-          window.location.href = "/postulante";
-          return;
-        }
+    setSinSesion(false);
+    setCargando(false);
+  }, [allowed, cargandoSesion, user?.id]);
 
-        // Sesión activa y formulario pendiente → mostrar el formulario
-        setCargando(false);
-
-      } catch {
-        // Error de red → mostrar mensaje
-        setMensaje({ texto: "Error de red al verificar la sesión.", tipo: "error" });
-        setCargando(false);
-      }
-    };
-
-    verificar();
-  }, []);
-
-  // ── Handlers ────────────────────────────────────────────────
+  // Handlers
   const handleRadio = (name, value) =>
     setForm(prev => ({ ...prev, [name]: value }));
 
@@ -94,7 +71,7 @@ export default function Formulario() {
   const handleFile = (e) =>
     setForm(prev => ({ ...prev, fotoPerfil: e.target.files[0] || null }));
 
-  // ── Enviar formulario ────────────────────────────────────────
+  // Enviar formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje({ texto: "", tipo: "" });
@@ -128,6 +105,7 @@ export default function Formulario() {
 
     // Armar FormData (necesario para enviar el archivo)
     const data = new FormData();
+    data.append("id_usuario", String(user.id));
     data.append("tipoDiscapacidad",        form.tipoDiscapacidad);
     data.append("descripcionDiscapacidad", form.descripcionDiscapacidad);
     data.append("esfuerzoFisico",          form.esfuerzoFisico);
@@ -138,7 +116,7 @@ export default function Formulario() {
     setEnviando(true);
 
     try {
-      const res  = await fetch(`${API_BASE}/guardar_formulario.php`, {
+      const res  = await fetch(POSTULANTE_ENDPOINTS.formulario.guardar, {
         method:      "POST",
         credentials: "include", // envía la cookie de sesión PHP
         body:        data,      // NO pongas Content-Type; el navegador lo pone solo con FormData
@@ -160,7 +138,7 @@ export default function Formulario() {
     }
   };
 
-  // ── Pantalla de carga / sin sesión ───────────────────────────
+  // Pantalla de carga / sin sesion
   if (cargando || sinSesion) {
     return (
       <div style={{
@@ -187,7 +165,7 @@ export default function Formulario() {
     );
   }
 
-  // ── Formulario principal ─────────────────────────────────────
+  // Formulario principal
   return (
     <div
       style={{
@@ -288,7 +266,7 @@ export default function Formulario() {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {[
-              // ── SECCIÓN 1: DISCAPACIDAD ──
+              // SECCION 1: DISCAPACIDAD
               {
                 icon: '♿',
                 title: 'Sobre la discapacidad',
@@ -380,7 +358,7 @@ export default function Formulario() {
                 ),
               },
 
-              // ── SECCIÓN 2: PERFIL PROFESIONAL ──
+              // SECCION 2: PERFIL PROFESIONAL
               {
                 icon: '💼',
                 title: 'Perfil profesional',
@@ -509,3 +487,4 @@ export default function Formulario() {
     </div>
   );
 }
+

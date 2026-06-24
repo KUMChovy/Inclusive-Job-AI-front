@@ -6,6 +6,12 @@
 export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante';
 
 export const ENDPOINTS = {
+
+  // ── Formulario ───────────────────────────────────────────────
+  formulario: {
+    guardar: `${BASE_URL}/guardar_formulario.php`,
+  },
+
   // Ejemplo de estructura:
 
   // ── Vacantes ───────────────────────────────────────────────
