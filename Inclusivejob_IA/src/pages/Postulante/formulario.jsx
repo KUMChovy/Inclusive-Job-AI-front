@@ -1,12 +1,22 @@
 import React from "react";
 import { postulantTheme } from '../../assets/Componentes/Portal/portalTheme';
 
+<<<<<<< HEAD
 const API_BASE = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
+=======
+// ── Ajusta estas rutas según tu estructura de backend ────────
+const API_BASE       = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
+const SESION_URL     = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/sesion.php";
+>>>>>>> a75f626925f3bcbf09d08c09aeb8bf1fe609e24b
 
 export default function Formulario() {
   const [openSection, setOpenSection] = React.useState(0);
-  const [enviando, setEnviando]       = React.useState(false);
-  const [mensaje,  setMensaje]        = React.useState({ texto: "", tipo: "" });
+  const [enviando,    setEnviando]    = React.useState(false);
+  const [mensaje,     setMensaje]     = React.useState({ texto: "", tipo: "" });
+
+  // Estados de carga inicial
+  const [cargando,   setCargando]    = React.useState(true);  // mientras verifica sesión/formulario
+  const [sinSesion,  setSinSesion]   = React.useState(false); // no hay sesión activa
 
   // Estado del formulario
   const [form, setForm] = React.useState({
@@ -35,6 +45,44 @@ export default function Formulario() {
     border:       "#DBEAFE",
     gradient:     "linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)",
   };
+
+  // ── Verificación inicial: sesión + formulario ya completado ──
+  React.useEffect(() => {
+    const verificar = async () => {
+      try {
+        const res  = await fetch(`${API_BASE}/verificar_formulario.php`, {
+          method:      "GET",
+          credentials: "include", // envía la cookie de sesión PHP
+        });
+        const json = await res.json();
+
+        if (!json.auth) {
+          // No hay sesión → redirigir al login
+          setSinSesion(true);
+          setTimeout(() => {
+            window.location.href = "/login"; // ajusta la ruta a tu login
+          }, 2000);
+          return;
+        }
+
+        if (json.completado) {
+          // Ya completó el formulario → ir directo a postulante
+          window.location.href = "/postulante";
+          return;
+        }
+
+        // Sesión activa y formulario pendiente → mostrar el formulario
+        setCargando(false);
+
+      } catch {
+        // Error de red → mostrar mensaje
+        setMensaje({ texto: "Error de red al verificar la sesión.", tipo: "error" });
+        setCargando(false);
+      }
+    };
+
+    verificar();
+  }, []);
 
   // ── Handlers ────────────────────────────────────────────────
   const handleRadio = (name, value) =>
@@ -91,15 +139,16 @@ export default function Formulario() {
 
     try {
       const res  = await fetch(`${API_BASE}/guardar_formulario.php`, {
-        method: "POST",
-        body:   data,  // No pongas Content-Type, el navegador lo pone solo con FormData
+        method:      "POST",
+        credentials: "include", // envía la cookie de sesión PHP
+        body:        data,      // NO pongas Content-Type; el navegador lo pone solo con FormData
       });
       const json = await res.json();
 
       if (json.success) {
         setMensaje({ texto: "¡Perfil guardado correctamente! Redirigiendo...", tipo: "ok" });
         setTimeout(() => {
-          window.location.href = "/postulante"; // Cambia esta ruta a donde quieras redirigir
+          window.location.href = "/postulante";
         }, 2000);
       } else {
         setMensaje({ texto: json.mensaje || "Error al guardar.", tipo: "error" });
@@ -111,6 +160,34 @@ export default function Formulario() {
     }
   };
 
+  // ── Pantalla de carga / sin sesión ───────────────────────────
+  if (cargando || sinSesion) {
+    return (
+      <div style={{
+        width: "100%", minHeight: "100vh", display: "flex",
+        alignItems: "center", justifyContent: "center",
+        background: "linear-gradient(180deg, #F8FBFF 0%, #EFF6FF 100%)",
+        fontFamily: "'Poppins', system-ui, sans-serif",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: "56px", height: "56px", borderRadius: "999px",
+            border: "4px solid #DBEAFE", borderTopColor: "#2563EB",
+            margin: "0 auto 20px",
+            animation: "spin 0.9s linear infinite",
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <p style={{ color: "#475569", fontSize: "15px", fontWeight: 600 }}>
+            {sinSesion
+              ? "No hay sesión activa. Redirigiendo al login..."
+              : "Verificando tu sesión..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Formulario principal ─────────────────────────────────────
   return (
     <div
       style={{
@@ -179,9 +256,9 @@ export default function Formulario() {
           {/* TARJETAS DE RESUMEN */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
             {[
-              { label: 'Experiencia', value: 'Valorada', desc: 'Tomamos en cuenta tu trayectoria' },
-              { label: 'Perfil laboral', value: 'Inicial', desc: 'Datos clave para conocer tus necesidades' },
-              { label: 'Ajustes requeridos', value: 'Personalizados', desc: 'Información para adaptar oportunidades' },
+              { label: 'Experiencia',       value: 'Valorada',       desc: 'Tomamos en cuenta tu trayectoria' },
+              { label: 'Perfil laboral',    value: 'Inicial',        desc: 'Datos clave para conocer tus necesidades' },
+              { label: 'Ajustes requeridos',value: 'Personalizados', desc: 'Información para adaptar oportunidades' },
             ].map((item) => (
               <div key={item.label} style={{ background: '#FFFFFF', border: '1px solid rgba(37, 99, 235, 0.14)', borderRadius: '18px', padding: '18px', boxShadow: '0 12px 30px rgba(37, 99, 235, 0.08)' }}>
                 <p style={{ margin: 0, fontSize: '12px', color: '#64748B', fontWeight: 700 }}>{item.label}</p>
@@ -210,8 +287,8 @@ export default function Formulario() {
           {/* FORMULARIO */}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {/* ── SECCIÓN 1: DISCAPACIDAD ── */}
             {[
+              // ── SECCIÓN 1: DISCAPACIDAD ──
               {
                 icon: '♿',
                 title: 'Sobre la discapacidad',
@@ -225,7 +302,7 @@ export default function Formulario() {
                         ¿Cuál es tu tipo de discapacidad?
                       </p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                        {['Motriz', 'Visual', 'Auditiva', 'Intelectual', 'Psicosocial', 'Otra', 'Prefiero no decirlo'].map((op) => (
+                        {['Motriz', 'Visual', 'Auditiva', 'Intelectual', 'Psicosocial'].map((op) => (
                           <label
                             key={op}
                             style={{
@@ -264,7 +341,7 @@ export default function Formulario() {
                         placeholder="Describe brevemente tu situación y los ajustes que consideras necesarios..."
                         style={{ width: '100%', boxSizing: 'border-box', padding: '15px', borderRadius: '14px', border: `1px solid ${t.border}`, background: t.bgElevated, color: t.textPrimary, fontSize: '13.5px', outline: 'none', resize: 'none', lineHeight: 1.6 }}
                         onFocus={(e) => { e.currentTarget.style.borderColor = t.accent; e.currentTarget.style.boxShadow = `0 0 0 4px ${t.accentGlow}`; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.boxShadow = 'none'; }}
+                        onBlur={(e)  => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.boxShadow = 'none'; }}
                       />
                     </div>
 
@@ -274,7 +351,7 @@ export default function Formulario() {
                         ¿Puedes realizar esfuerzo físico?
                       </p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                        {['Sí', 'Con algunas limitaciones', 'No'].map((op) => (
+                        {['Sí', 'No'].map((op) => (
                           <label
                             key={op}
                             style={{
@@ -303,6 +380,7 @@ export default function Formulario() {
                 ),
               },
 
+              // ── SECCIÓN 2: PERFIL PROFESIONAL ──
               {
                 icon: '💼',
                 title: 'Perfil profesional',
@@ -323,7 +401,7 @@ export default function Formulario() {
                         placeholder="Ejemplo: Tengo 2 años de experiencia en atención al cliente, ventas o soporte técnico..."
                         style={{ width: '100%', boxSizing: 'border-box', padding: '15px', borderRadius: '14px', border: `1px solid ${t.border}`, background: t.bgElevated, color: t.textPrimary, fontSize: '13.5px', outline: 'none', resize: 'none', lineHeight: 1.6 }}
                         onFocus={(e) => { e.currentTarget.style.borderColor = t.accent; e.currentTarget.style.boxShadow = `0 0 0 4px ${t.accentGlow}`; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.boxShadow = 'none'; }}
+                        onBlur={(e)  => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.boxShadow = 'none'; }}
                       />
                     </div>
 
@@ -340,7 +418,7 @@ export default function Formulario() {
                         placeholder="Ejemplo: Comunicación, manejo de computadora, trabajo en equipo..."
                         style={{ width: '100%', boxSizing: 'border-box', padding: '15px', borderRadius: '14px', border: `1px solid ${t.border}`, background: t.bgElevated, color: t.textPrimary, fontSize: '13.5px', outline: 'none', resize: 'none', lineHeight: 1.6 }}
                         onFocus={(e) => { e.currentTarget.style.borderColor = t.accent; e.currentTarget.style.boxShadow = `0 0 0 4px ${t.accentGlow}`; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.boxShadow = 'none'; }}
+                        onBlur={(e)  => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.boxShadow = 'none'; }}
                       />
                     </div>
 
