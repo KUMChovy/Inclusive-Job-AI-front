@@ -16,11 +16,10 @@ export function useFetch(url, options = {}) {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('admin_token');
       const res = await fetch(url, {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(options.headers || {}),
         },
       });
@@ -52,12 +51,11 @@ export function useApiAction() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('admin_token');
       const res = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
       });

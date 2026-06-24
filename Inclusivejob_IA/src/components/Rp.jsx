@@ -29,7 +29,7 @@ export default function Rp() {
 
     try {
       const response = await fetch(
-        "http://localhost/back-inclusiveJob/API/recuperar_password.php",
+        "http://localhost/inclusijob_back/back-inclusiveJob/API/recuperar_password.php",
         {
           method: "POST",
           headers: {

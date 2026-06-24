@@ -1,7 +1,7 @@
 // src/assets/Hook/Admin/apiAdmin.js
 
 
-export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Administrador/';
+export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Administrador';
 
 export const ENDPOINTS = {
 

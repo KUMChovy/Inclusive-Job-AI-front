@@ -3,7 +3,7 @@
 // Aqui NO va logica de React ni llamadas fetch directas.
 // Cuando backend entregue rutas reales, agregarlas dentro de ENDPOINTS por dominio.
 
-export const BASE_URL = 'http://localhost/back/Modelo/Reclutador';
+export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Reclutador';
 
 export const ENDPOINTS = {
   // Ejemplo de estructura:

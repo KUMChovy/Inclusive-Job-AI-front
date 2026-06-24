@@ -1,12 +1,38 @@
 // src/assets/Componentes/Admin/AdminLayout.jsx
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { useSesion } from '../../Hook/Sesion/useSesion';
+
+const ADMIN_ROLES = ['administrador'];
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user: adminUser, loading: checkingSession, allowed } = useSesion({
+    allowedRoles: ADMIN_ROLES,
+    required: true,
+  });
+
+  useEffect(() => {
+    if (adminUser) {
+      localStorage.setItem('admin_user', JSON.stringify(adminUser));
+    }
+
+    if (!checkingSession && !allowed) {
+      navigate('/login-admin', { replace: true });
+    }
+  }, [adminUser, allowed, checkingSession, navigate]);
+
+  if (checkingSession || !allowed) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+        Validando sesion...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex">
@@ -17,6 +43,7 @@ export default function AdminLayout() {
         onToggle={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        user={adminUser}
       />
 
       {/*
@@ -34,6 +61,7 @@ export default function AdminLayout() {
         <Header
           onMobileMenuOpen={() => setMobileOpen(true)}
           sidebarCollapsed={collapsed}
+          user={adminUser}
         />
 
         

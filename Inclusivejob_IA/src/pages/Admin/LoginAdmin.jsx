@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Accessibility, ShieldCheck, Loader2 } from 'lucide-react';
+import { useSesion } from '../../assets/Hook/Sesion/useSesion';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [mounted, setMounted] = useState(false);
+    const { login } = useSesion({ allowedRoles: ['administrador'], auto: false });
 
     // Trigger de animación de entrada
     useEffect(() => {
@@ -33,27 +35,12 @@ export default function Login() {
         setError('');
 
         try {
-            /* ── API (PHP) ───────────────────────────────────────
-            const res = await fetch('https://tu-api.com/api/auth/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ correo: form.correo, password: form.password }),
+            const { session } = await login({
+                correo: form.correo,
+                password: form.password,
             });
-            const data = await res.json();
-            if (!res.ok || data.rol !== 'administrador') {
-              throw new Error(data.message || 'Acceso no autorizado.');
-            }
-            localStorage.setItem('admin_token', data.token);
-            ─────────────────────────────────────────────────────────── */
 
-            // ── Mock temporal ────────────────────────────────────────
-            await new Promise((r) => setTimeout(r, 1200));
-            if (form.correo !== 'admin@inclusivejob.mx' || form.password !== 'admin123') {
-                throw new Error('Credenciales incorrectas. Verifica tu correo y contraseña.');
-            }
-            localStorage.setItem('admin_token', 'mock-token-admin');
-            // ─────────────────────────────────────────────────────────
-
+            localStorage.setItem('admin_user', JSON.stringify(session.user));
             navigate('/admin');
         } catch (err) {
             setError(err.message || 'Error al iniciar sesión. Intenta nuevamente.');
@@ -111,16 +98,16 @@ export default function Login() {
                     {/* Correo */}
                     <div style={styles.field}>
                         <label style={styles.label} htmlFor="correo">
-                            Correo electrónico
+                            Usuario o correo
                         </label>
                         <input
                             id="correo"
                             name="correo"
-                            type="email"
-                            autoComplete="email"
+                            type="text"
+                            autoComplete="username"
                             value={form.correo}
                             onChange={handleChange}
-                            placeholder="admin@inclusivejob.mx"
+                            placeholder="admin@inclusivejob.mx o usuario"
                             style={{
                                 ...styles.input,
                                 ...(error ? styles.inputError : {}),
@@ -391,7 +378,7 @@ const styles = {
         transition: 'border-color 0.2s, box-shadow 0.2s',
         boxSizing: 'border-box',
     },
-    inputError: { borderColor: 'rgba(239,68,68,0.6)' },
+    inputError: { border: '1px solid rgba(239,68,68,0.6)' },
     passWrap: { position: 'relative' },
     eyeBtn: {
         position: 'absolute',

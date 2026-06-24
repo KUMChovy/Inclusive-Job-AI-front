@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Rp from "../components/Rp";
+import { rutaPorRol } from "../assets/Hook/Sesion/apiSesion";
+import { useSesion } from "../assets/Hook/Sesion/useSesion";
 
 const Registro = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const { login } = useSesion({ allowedRoles: ["administrador", "postulante", "reclutador"], auto: false });
 
   const [form, setForm] = useState({
     correo: "",
@@ -66,60 +69,12 @@ const handleSubmit = async (e) => {
   }
 
   try {
-    // 🔐 1. LOGIN (crea sesión en PHP)
-    const res = await fetch(
-      "http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/login.php",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify(currentData)
-      }
-    );
+    const { session: sesionActual } = await login(currentData);
 
-    const data = await res.json();
-
-    if (!data.success) {
-      alert(data.message || "Error en login");
-      return;
-    }
-
-    // 🔐 2. CONSULTAR SESIÓN REAL
-    const sessionRes = await fetch(
-      "http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/sesion.php",
-      {
-        credentials: "include"
-      }
-    );
-
-    const session = await sessionRes.json();
-
-    if (!session.auth) {
-      alert("Sesión no válida");
-      return;
-    }
-
-    const rol = session.user.rol;
-
-    // 🚀 3. REDIRECCIÓN POR ROL
-    if (rol === "Postulante") {
-      window.location.href = "/postulante";
-      return;
-    }
-
-    if (rol === "Reclutador") {
-      window.location.href = "/reclutador";
-      return;
-    }
-    else{
-    alert("Rol no reconocido");
-    }
-
+    window.location.href = rutaPorRol(sesionActual.user);
   } catch (err) {
     console.error(err);
-    alert("Error de conexión con el servidor");
+    alert(err.message || "Error de conexión con el servidor");
   }
 };
 

@@ -6,7 +6,7 @@ const EMAILJS_SERVICE_ID  = "service_88694gg";
 const EMAILJS_TEMPLATE_ID = "template_2e0bv8e";
 const EMAILJS_PUBLIC_KEY  = "KqSVFeZM9Y4NA0sHN";
 
-const API_BASE = "http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/Postulante";
+const API_BASE = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
 
 // correoUsuario y codigoInicial llegan desde Registro.jsx (reg_pos.php ya generó el código).
 // autoAbrir=true hace que el modal se abra solo, sin necesidad de un botón.

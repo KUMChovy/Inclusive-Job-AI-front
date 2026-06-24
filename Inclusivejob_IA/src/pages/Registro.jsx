@@ -79,8 +79,6 @@ const validar = () => {
 const handleSubmit = async (e) => {
   e.preventDefault();
 
-  if (!isPostulante) return;
-
   const error = validar();
 
   if (error) {
@@ -89,7 +87,11 @@ const handleSubmit = async (e) => {
   }
 
   try {
-    const res = await fetch("http://localhost/inclusivejob_IA/back-inclusiveJob/Modelo/Postulante/reg_pos.php", {
+    const endpoint = isPostulante
+      ? "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reg_pos.php"
+      : "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Reclutador/reg_reclu.php";
+
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

@@ -1,6 +1,5 @@
 
-
-import { Routes, Route } from 'react-router-dom';
+import { Navigate, Outlet, Routes, Route, useLocation } from 'react-router-dom';
 
 // ── Páginas públicas ─────────────────────────────────────────
 import Home        from './pages/Home.jsx';
@@ -37,17 +36,62 @@ import Certificaciones from './pages/Postulante/Certificaciones.jsx';
 import VacantesPos from "./pages/postulante/vacantes.jsx";
 import Mispostulaciones from "./pages/postulante/mispostulaciones.jsx";
 import Misreportes from "./pages/postulante/misreportes.jsx";
+import { useSesion } from './assets/Hook/Sesion/useSesion';
+import { rutaPorRol } from './assets/Hook/Sesion/apiSesion';
 
+function LoadingSesion() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#020617',
+      color: '#cbd5e1',
+      fontFamily: 'system-ui, sans-serif',
+    }}>
+      Validando sesion...
+    </div>
+  );
+}
+
+function PublicOnlyRoute({ children }) {
+  const { user, auth, loading } = useSesion();
+
+  if (loading) {
+    return <LoadingSesion />;
+  }
+
+  if (auth && user) {
+    return <Navigate to={rutaPorRol(user)} replace />;
+  }
+
+  return children;
+}
+
+function ProtectedPortalLayout({ allowedRoles }) {
+  const location = useLocation();
+  const { loading, allowed } = useSesion({ allowedRoles, required: true });
+
+  if (loading) {
+    return <LoadingSesion />;
+  }
+
+  if (!allowed) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return <Outlet />;
+}
 
 function App() {
   return (
     <Routes>
 
       {/* ── Públicas ── */}
-      <Route path="/"            element={<Home />} />
-      <Route path="/login-admin" element={<LoginAdmin />} />
-      <Route path='/Vista' element={<Vista/>}/>
-      <Route path='/login' element={<Login/>}/>
+      <Route path="/" element={<PublicOnlyRoute><Home /></PublicOnlyRoute>} />
+      <Route path="/login-admin" element={<PublicOnlyRoute><LoginAdmin /></PublicOnlyRoute>} />
+      <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
       <Route path='/registro' element={<Registro/>}/>
       <Route path="/verificacion" element={<Verificacion />} />
 
@@ -72,8 +116,11 @@ function App() {
       {/* ================================================================
           RECLUTADOR 
           ================================================================ */}
-      <Route path="/reclutador" element={<ReclutadorDashboard />} />
-      <Route path="reclutador/reportes" element={<Reportesmios />} />
+      <Route element={<ProtectedPortalLayout allowedRoles={['reclutador']} />}>
+        <Route path="/Vista" element={<Vista />} />
+        <Route path="/reclutador" element={<ReclutadorDashboard />} />
+        <Route path="/reclutador/reportes" element={<Reportesmios />} />
+      </Route>
 
       {/* <Route path="/reclutador/empresa"      element={<ReclutadorEmpresa />} /> */}
   
@@ -81,12 +128,14 @@ function App() {
       {/* ================================================================
           POSTULANTE  
           ================================================================ */}
-      <Route path="/postulante" element={<PostulanteDashboard />} />
-      <Route path="/formulario" element={<Formulario />} />
-      <Route path="/postulante/certificaciones" element={<Certificaciones />} />
-      <Route path="/postulante/vacantes" element={<VacantesPos />} />
-      <Route path="/postulante/postulaciones" element={<Mispostulaciones />} />
-      <Route path="/postulante/reportes" element={<Misreportes />} />
+      <Route element={<ProtectedPortalLayout allowedRoles={['postulante']} />}>
+        <Route path="/postulante" element={<PostulanteDashboard />} />
+        <Route path="/formulario" element={<Formulario />} />
+        <Route path="/postulante/certificaciones" element={<Certificaciones />} />
+        <Route path="/postulante/vacantes" element={<VacantesPos />} />
+        <Route path="/postulante/postulaciones" element={<Mispostulaciones />} />
+        <Route path="/postulante/reportes" element={<Misreportes />} />
+      </Route>
       {/* <Route path="/postulante/vacantes"        element={<PostulanteVacantes />} /> */}
     
 

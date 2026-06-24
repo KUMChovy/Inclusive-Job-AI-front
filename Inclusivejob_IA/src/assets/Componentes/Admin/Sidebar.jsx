@@ -1,9 +1,11 @@
 // src/assets/Componentes/Sidebar.jsx
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Users, Briefcase, FileText,
-  Accessibility, Flag, Settings, ChevronLeft, ChevronRight, X
+  Accessibility, Flag, ChevronLeft, ChevronRight, LogOut, X
 } from 'lucide-react';
+import { resolveAssetUrl } from '../../Hook/Sesion/apiSesion';
+import { useSesion } from '../../Hook/Sesion/useSesion';
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -16,7 +18,43 @@ const NAV_ITEMS = [
 
 ];
 
-export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
+function UserAvatar({ user }) {
+  const name = user?.nombre || user?.nombres || 'Administrador';
+  const avatarUrl = resolveAssetUrl(user?.avatar || user?.foto_perfil);
+  const initials = name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+
+  return (
+    <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.nextSibling.style.display = 'block';
+          }}
+        />
+      ) : null}
+      <span className="text-violet-300 text-xs font-bold" style={{ display: avatarUrl ? 'none' : 'block' }}>
+        {initials || 'A'}
+      </span>
+    </div>
+  );
+}
+
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose, user }) {
+  const navigate = useNavigate();
+  const { logout } = useSesion({ auto: false });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate('/login-admin', { replace: true });
+    }
+  };
+
   return (
     <>
       {/* Mobile overlay */}
@@ -117,19 +155,37 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         )}
 
         {/* Admin badge */}
-        {!collapsed && (
-          <div className="p-4 border-t border-slate-700/50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center flex-shrink-0">
-                <span className="text-violet-300 text-xs font-bold">A</span>
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-white text-xs font-semibold truncate">Administrador</p>
-                <p className="text-slate-500 text-xs truncate">Panel de control</p>
-              </div>
+        <div className="p-3 border-t border-slate-700/50">
+          {collapsed ? (
+            <div className="flex flex-col items-center gap-2">
+              <UserAvatar user={user} />
+              <button
+                onClick={handleLogout}
+                className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                aria-label="Cerrar sesion"
+                title="Salir"
+              >
+                <LogOut size={17} />
+              </button>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-3">
+              <UserAvatar user={user} />
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="text-white text-xs font-semibold truncate">{user?.nombre || user?.nombres || 'Administrador'}</p>
+                <p className="text-slate-500 text-xs truncate">{user?.rol || 'Panel de control'}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-9 h-9 flex items-center justify-center flex-shrink-0 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                aria-label="Cerrar sesion"
+                title="Salir"
+              >
+                <LogOut size={17} />
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
     </>
   );

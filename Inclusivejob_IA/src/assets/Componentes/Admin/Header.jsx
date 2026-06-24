@@ -1,6 +1,6 @@
 // src/assets/Componentes/Admin/Header.jsx
 
-import { Menu, Bell, Search, ChevronRight } from 'lucide-react';
+import { Menu, ChevronRight } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 
 const BREADCRUMB_MAP = {

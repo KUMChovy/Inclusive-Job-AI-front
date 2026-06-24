@@ -12,8 +12,10 @@
 //   onMobileClose → () => void
 // ============================================================
 
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, X, LogOut } from 'lucide-react';
+import { resolveAssetUrl } from '../../Hook/Sesion/apiSesion';
+import { useSesion } from '../../Hook/Sesion/useSesion';
 
 export default function PortalSidebar({
   theme,
@@ -24,7 +26,17 @@ export default function PortalSidebar({
   mobileOpen,
   onMobileClose,
 }) {
+  const navigate = useNavigate();
   const t = theme;
+  const { logout } = useSesion({ auto: false });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
+  };
 
   return (
     <>
@@ -178,7 +190,7 @@ export default function PortalSidebar({
         }}>
           {!collapsed ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Avatar name={user.nombre || 'U'} theme={t} size={34} />
+              <Avatar name={user.nombre || 'U'} src={user.avatar || user.foto_perfil} theme={t} size={34} />
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: t.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {user.nombre || 'Usuario'}
@@ -187,13 +199,16 @@ export default function PortalSidebar({
                   {user.rol || t.name}
                 </p>
               </div>
-              <button aria-label="Cerrar sesión" style={{ ...btnStyle(t), flexShrink: 0 }}>
+              <button onClick={handleLogout} aria-label="Cerrar sesión" title="Cerrar sesión" style={{ ...btnStyle(t), flexShrink: 0 }}>
                 <LogOut size={15} />
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <Avatar name={user.nombre || 'U'} theme={t} size={34} />
+            <div style={{ display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <Avatar name={user.nombre || 'U'} src={user.avatar || user.foto_perfil} theme={t} size={34} />
+              <button onClick={handleLogout} aria-label="Cerrar sesión" title="Cerrar sesión" style={btnStyle(t)}>
+                <LogOut size={15} />
+              </button>
             </div>
           )}
         </div>
@@ -220,13 +235,15 @@ export default function PortalSidebar({
 }
 
 // ── Avatar helper ─────────────────────────────────────────────
-function Avatar({ name, theme: t, size = 34 }) {
+function Avatar({ name, src, theme: t, size = 34 }) {
   const initials = name
     .split(' ')
     .slice(0, 2)
     .map((w) => w[0])
     .join('')
     .toUpperCase();
+
+  const avatarUrl = resolveAssetUrl(src);
 
   return (
     <div style={{
@@ -235,9 +252,20 @@ function Avatar({ name, theme: t, size = 34 }) {
       border: `2px solid ${t.accentBorder}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.35, fontWeight: 700,
-      color: t.accent, flexShrink: 0,
+      color: t.accent, flexShrink: 0, overflow: 'hidden',
     }}>
-      {initials}
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.nextSibling.style.display = 'block';
+          }}
+        />
+      ) : null}
+      <span style={{ display: avatarUrl ? 'none' : 'block' }}>{initials}</span>
     </div>
   );
 }
