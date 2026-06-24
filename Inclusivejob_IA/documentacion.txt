@@ -51,3 +51,4 @@ MODIFY COLUMN `id_usuario` int(11) NULL;
 ALTER TABLE usuarios
 MODIFY foto_perfil LONGBLOB;
 -----------------------------------------------------------------------------------------
+que chingue a su madre la ari 
