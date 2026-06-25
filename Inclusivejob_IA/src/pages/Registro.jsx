@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Verificacion from "./Verificacion";
+import { errorAlert, successAlert } from "../assets/Componentes/Admin/alerts";
 
 const Registro = () => {
   const [mode, setMode] = useState("postulante");
@@ -21,6 +22,7 @@ const Registro = () => {
   const isPostulante = mode === "postulante";
 
   const theme = isPostulante ? postulante : reclutador;
+  const alertTheme = buildRegistroAlertTheme(isPostulante);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 900px)");
@@ -82,7 +84,7 @@ const handleSubmit = async (e) => {
   const error = validar();
 
   if (error) {
-    alert(error);
+    await errorAlert("Datos inválidos", error, alertTheme);
     return;
   }
 
@@ -107,14 +109,15 @@ const handleSubmit = async (e) => {
       // ================== NUEVO: mostrar modal de verificación ==================
       setCorreoRegistrado(form.correo);
       setCodigoRegistro(data.codigo); // reg_pos.php ya genera y devuelve el código
+      await successAlert("Código enviado", "Revisa tu correo para completar el registro.", alertTheme);
       setMostrarVerificacion(true);
     } else {
-      alert(data.message || "Error en registro");
+      await errorAlert("No se pudo registrar", data.message || "Error en registro", alertTheme);
     }
 
   } catch (err) {
     console.error(err);
-    alert("Error de conexión con el servidor");
+    await errorAlert("Error de conexión", "No se pudo conectar con el servidor.", alertTheme);
   }
 };;
 
@@ -407,6 +410,32 @@ const handleSubmit = async (e) => {
 };
 
 /* ================= THEMES ================= */
+
+function buildRegistroAlertTheme(isPostulante) {
+  return isPostulante
+    ? {
+        bgSurface: "#f8fbff",
+        textPrimary: "#0f172a",
+        textSecondary: "#475569",
+        textMuted: "#94a3b8",
+        border: "rgba(37,99,235,0.16)",
+        accent: "#2563eb",
+        accentHover: "#1d4ed8",
+        success: "#16a34a",
+        danger: "#dc2626",
+      }
+    : {
+        bgSurface: "#f8fbff",
+        textPrimary: "#0f172a",
+        textSecondary: "#475569",
+        textMuted: "#818cf8",
+        border: "rgba(55,48,163,0.18)",
+        accent: "#3730a3",
+        accentHover: "#1e3a8a",
+        success: "#16a34a",
+        danger: "#dc2626",
+      };
+}
 
 const postulante = {
   background:

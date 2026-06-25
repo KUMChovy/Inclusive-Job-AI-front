@@ -15,6 +15,31 @@ const BASE = {
   },
 };
 
+function themedOptions(theme) {
+  if (!theme) return {};
+
+  return {
+    background: theme.bgSurface || theme.sidebar || '#ffffff',
+    color: theme.textPrimary || '#0f172a',
+    customClass: {
+      popup: '',
+      title: '',
+      htmlContainer: '',
+      confirmButton: '',
+      cancelButton: '',
+    },
+    didOpen: (popup) => {
+      popup.style.border = `1px solid ${theme.border || theme.accentBorder || 'transparent'}`;
+      popup.style.boxShadow = theme.cardShadow || theme.gradientGlow || `0 18px 60px ${theme.accentGlow || 'rgba(15,23,42,0.16)'}`;
+
+      const titleEl = popup.querySelector('.swal2-title');
+      const htmlEl = popup.querySelector('.swal2-html-container');
+      if (titleEl) titleEl.style.color = theme.textPrimary || '#0f172a';
+      if (htmlEl) htmlEl.style.color = theme.textSecondary || theme.textMuted || '#475569';
+    },
+  };
+}
+
 /**
  * Diálogo de confirmación genérico
  * @param {object} opts - { title, html, confirmText, confirmColor }
@@ -27,17 +52,20 @@ export async function confirmAction({
   confirmColor = '#7c3aed',
   cancelText = 'Cancelar',
   icon = 'warning',
+  theme = null,
 } = {}) {
   const result = await Swal.fire({
     ...BASE,
+    ...themedOptions(theme),
     title,
     html,
     icon,
+    iconColor: theme?.accent || undefined,
     showCancelButton: true,
     confirmButtonText: confirmText,
     cancelButtonText: cancelText,
-    confirmButtonColor: confirmColor,
-    cancelButtonColor: '#475569',
+    confirmButtonColor: theme?.accentHover || theme?.accent || confirmColor,
+    cancelButtonColor: theme?.textMuted || '#475569',
   });
   return result.isConfirmed;
 }
@@ -45,28 +73,44 @@ export async function confirmAction({
 /**
  * Alerta de éxito con autocierre
  */
-export function successAlert(title = '¡Listo!', text = '') {
+export function successAlert(title = '¡Listo!', text = '', theme = null) {
   return Swal.fire({
     ...BASE,
+    ...themedOptions(theme),
     title,
     text,
     icon: 'success',
+    iconColor: theme?.success || theme?.accent || undefined,
     timer: 2000,
     showConfirmButton: false,
-    confirmButtonColor: '#7c3aed',
+    confirmButtonColor: theme?.accent || '#7c3aed',
   });
 }
 
 /**
  * Alerta de error
  */
-export function errorAlert(title = 'Error', text = '') {
+export function errorAlert(title = 'Error', text = '', theme = null) {
   return Swal.fire({
     ...BASE,
+    ...themedOptions(theme),
     title,
     text,
     icon: 'error',
-    confirmButtonColor: '#7c3aed',
+    iconColor: theme?.danger || '#ef4444',
+    confirmButtonColor: theme?.accent || '#7c3aed',
+  });
+}
+
+export async function confirmLogout(theme = null) {
+  return confirmAction({
+    title: 'Cerrar sesion',
+    html: '<span>Tu sesion actual se cerrara y tendras que iniciar sesion de nuevo.</span>',
+    confirmText: 'Si, salir',
+    cancelText: 'Cancelar',
+    confirmColor: '#dc2626',
+    icon: 'warning',
+    theme,
   });
 }
 

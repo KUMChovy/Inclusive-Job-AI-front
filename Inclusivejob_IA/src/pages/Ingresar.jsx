@@ -2,6 +2,19 @@ import React, { useState, useEffect } from "react";
 import Rp from "../components/Rp";
 import { rutaPorRol } from "../assets/Hook/Sesion/apiSesion";
 import { useSesion } from "../assets/Hook/Sesion/useSesion";
+import { errorAlert, successAlert } from "../assets/Componentes/Admin/alerts";
+
+const LOGIN_ALERT_THEME = {
+  bgSurface: "#f8fbff",
+  textPrimary: "#0f172a",
+  textSecondary: "#475569",
+  textMuted: "#94a3b8",
+  border: "rgba(37,99,235,0.16)",
+  accent: "#2563eb",
+  accentHover: "#1d4ed8",
+  success: "#16a34a",
+  danger: "#dc2626",
+};
 
 const Registro = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -64,17 +77,18 @@ const handleSubmit = async (e) => {
   const error = validarLogin(currentData);
 
   if (error) {
-    alert(error);
+    await errorAlert("Datos inválidos", error, LOGIN_ALERT_THEME);
     return;
   }
 
   try {
     const { session: sesionActual } = await login(currentData);
+    await successAlert("Sesión iniciada", "Redirigiendo a tu panel...", LOGIN_ALERT_THEME);
 
     window.location.href = rutaPorRol(sesionActual.user);
   } catch (err) {
     console.error(err);
-    alert(err.message || "Error de conexión con el servidor");
+    await errorAlert("No se pudo iniciar sesión", err.message || "Error de conexión con el servidor", LOGIN_ALERT_THEME);
   }
 };
 
@@ -203,7 +217,7 @@ const styles = {
     background: "linear-gradient(135deg,#eef4ff,#dbeafe)",
   },
 
-  /* LEFT — imagen */
+  /* LEFT - imagen */
   leftSide: {
     position: "relative",
     display: "flex",
@@ -262,7 +276,7 @@ const styles = {
     lineHeight: 1.6,
   },
 
-  /* RIGHT — formulario */
+  /* RIGHT - formulario */
   rightSide: {
     display: "flex",
     flexDirection: "column",
@@ -465,3 +479,4 @@ const styles = {
 };
 
 export default Registro;
+

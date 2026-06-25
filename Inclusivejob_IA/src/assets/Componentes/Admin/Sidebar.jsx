@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { resolveAssetUrl } from '../../Hook/Sesion/apiSesion';
 import { useSesion } from '../../Hook/Sesion/useSesion';
+import { confirmLogout, errorAlert } from './alerts';
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -48,10 +49,17 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const { logout } = useSesion({ auto: false });
 
   const handleLogout = async () => {
+    const confirmed = await confirmLogout();
+    if (!confirmed) return;
+
     try {
       await logout();
-    } finally {
       navigate('/login-admin', { replace: true });
+    } catch (err) {
+      await errorAlert('No se pudo cerrar sesion', err.message || 'Intenta nuevamente.');
+      navigate('/login-admin', { replace: true });
+    } finally {
+      onMobileClose?.();
     }
   };
 
