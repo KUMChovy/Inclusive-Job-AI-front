@@ -30,7 +30,7 @@ pnpm add lucide-react //pa' que instalen el lucide-react con los íconos usados 
 
 instalacione------------------------------------------------------------------------------------
 pnpm add @emailjs/browser
-
+pnpm add @react-oauth/google
 
 
 ------------------------modificaciones bd----------------------------------------------
