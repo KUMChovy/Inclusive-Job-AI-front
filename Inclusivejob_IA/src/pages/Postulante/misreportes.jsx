@@ -632,6 +632,7 @@ export default function PostulanteDashboard() {
         'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
         {
           method: 'DELETE',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -663,6 +664,7 @@ export default function PostulanteDashboard() {
       'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
       {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -698,7 +700,11 @@ export default function PostulanteDashboard() {
   async function cargarReportes() {
     try {
       const res = await fetch(
-        'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php'
+        'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
+        {
+          method: 'GET',
+          credentials: 'include',
+        }
       );
 
       const data = await res.json();
