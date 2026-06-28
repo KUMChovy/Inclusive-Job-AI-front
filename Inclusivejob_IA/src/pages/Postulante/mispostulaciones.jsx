@@ -351,7 +351,12 @@ export default function PostulanteDashboard() {
 
   async function cargarPostulaciones() {
     try {
-      const res = await fetch('http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/postulaciones.php');
+      const res = await fetch(
+         'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/postulaciones.php',
+          {
+            credentials: 'include'
+          }
+      );
       const data = await res.json();
       if (data.ok) { setPostulaciones(data.data); }
     } catch (error) {
