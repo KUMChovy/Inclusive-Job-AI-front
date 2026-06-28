@@ -106,7 +106,7 @@ export function rutaPorRol(rol = '') {
     : rolCanonico({ rol });
 
   if (canonico === 'administrador') return '/admin';
-  if (canonico === 'postulante') return '/postulante';
+  if (canonico === 'postulante') return '/formulario';
   if (canonico === 'reclutador') return '/reclutador';
   return '/login';
 }

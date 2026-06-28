@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from 'react';
 import { Navigate, Outlet, Routes, Route, useLocation } from 'react-router-dom';
 
 // ── Páginas públicas ─────────────────────────────────────────
@@ -38,6 +39,7 @@ import Mispostulaciones from "./pages/postulante/mispostulaciones.jsx";
 import Misreportes from "./pages/postulante/misreportes.jsx";
 import { useSesion } from './assets/Hook/Sesion/useSesion';
 import { rutaPorRol } from './assets/Hook/Sesion/apiSesion';
+import { ENDPOINTS as POSTULANTE_ENDPOINTS } from './assets/Hook/Postulante/apiPostulante';
 
 function LoadingSesion() {
   return (
@@ -79,6 +81,65 @@ function ProtectedPortalLayout({ allowedRoles }) {
 
   if (!allowed) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return <Outlet />;
+}
+
+function PostulanteFormularioGate() {
+  const location = useLocation();
+  const [checking, setChecking] = useState(true);
+  const [requiereFormulario, setRequiereFormulario] = useState(false);
+
+  useEffect(() => {
+    let activo = true;
+
+    const consultarFormulario = async () => {
+      setChecking(true);
+
+      try {
+        const res = await fetch(POSTULANTE_ENDPOINTS.formulario.estado, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!activo) return;
+
+        if (!res.ok || data.success === false) {
+          setRequiereFormulario(false);
+          return;
+        }
+
+        setRequiereFormulario(Boolean(data.requiere_formulario || !data.completado));
+      } catch {
+        if (activo) {
+          setRequiereFormulario(false);
+        }
+      } finally {
+        if (activo) {
+          setChecking(false);
+        }
+      }
+    };
+
+    consultarFormulario();
+
+    return () => {
+      activo = false;
+    };
+  }, [location.pathname]);
+
+  if (checking) {
+    return <LoadingSesion />;
+  }
+
+  if (requiereFormulario && location.pathname !== '/formulario') {
+    return <Navigate to="/formulario" replace state={{ from: location }} />;
+  }
+
+  if (!requiereFormulario && location.pathname === '/formulario') {
+    return <Navigate to="/postulante" replace />;
   }
 
   return <Outlet />;
@@ -129,12 +190,14 @@ function App() {
           POSTULANTE  
           ================================================================ */}
       <Route element={<ProtectedPortalLayout allowedRoles={['postulante']} />}>
-        <Route path="/postulante" element={<PostulanteDashboard />} />
-        <Route path="/formulario" element={<Formulario />} />
-        <Route path="/postulante/certificaciones" element={<Certificaciones />} />
-        <Route path="/postulante/vacantes" element={<VacantesPos />} />
-        <Route path="/postulante/postulaciones" element={<Mispostulaciones />} />
-        <Route path="/postulante/reportes" element={<Misreportes />} />
+        <Route element={<PostulanteFormularioGate />}>
+          <Route path="/postulante" element={<PostulanteDashboard />} />
+          <Route path="/formulario" element={<Formulario />} />
+          <Route path="/postulante/certificaciones" element={<Certificaciones />} />
+          <Route path="/postulante/vacantes" element={<VacantesPos />} />
+          <Route path="/postulante/postulaciones" element={<Mispostulaciones />} />
+          <Route path="/postulante/reportes" element={<Misreportes />} />
+        </Route>
       </Route>
       {/* <Route path="/postulante/vacantes"        element={<PostulanteVacantes />} /> */}
     

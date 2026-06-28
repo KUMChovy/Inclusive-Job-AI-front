@@ -18,6 +18,8 @@ const BASE = {
 function themedOptions(theme) {
   if (!theme) return {};
 
+  const isLightTheme = theme.name === 'postulante' || theme.bgSurface === '#ffffff';
+
   return {
     background: theme.bgSurface || theme.sidebar || '#ffffff',
     color: theme.textPrimary || '#0f172a',
@@ -34,8 +36,22 @@ function themedOptions(theme) {
 
       const titleEl = popup.querySelector('.swal2-title');
       const htmlEl = popup.querySelector('.swal2-html-container');
+      const confirmButton = popup.querySelector('.swal2-confirm');
+      const cancelButton = popup.querySelector('.swal2-cancel');
+
       if (titleEl) titleEl.style.color = theme.textPrimary || '#0f172a';
       if (htmlEl) htmlEl.style.color = theme.textSecondary || theme.textMuted || '#475569';
+      if (confirmButton) {
+        confirmButton.style.color = isLightTheme ? (theme.textPrimary || '#0f172a') : '#ffffff';
+        confirmButton.style.fontWeight = '800';
+      }
+      if (cancelButton) {
+        cancelButton.style.color = isLightTheme ? (theme.textPrimary || '#0f172a') : '#ffffff';
+        cancelButton.style.fontWeight = '800';
+        if (isLightTheme) {
+          cancelButton.style.border = `1px solid ${theme.borderHover || theme.border || '#cbd5e1'}`;
+        }
+      }
     },
   };
 }
@@ -65,7 +81,9 @@ export async function confirmAction({
     confirmButtonText: confirmText,
     cancelButtonText: cancelText,
     confirmButtonColor: theme?.accentHover || theme?.accent || confirmColor,
-    cancelButtonColor: theme?.textMuted || '#475569',
+    cancelButtonColor: theme?.name === 'postulante'
+      ? (theme.bgElevated || '#e0ecff')
+      : (theme?.textMuted || '#475569'),
   });
   return result.isConfirmed;
 }

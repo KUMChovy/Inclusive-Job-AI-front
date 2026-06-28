@@ -9,6 +9,7 @@ export const ENDPOINTS = {
 
   // ── Formulario ───────────────────────────────────────────────
   formulario: {
+    estado: `${BASE_URL}/guardar_formulario.php`,
     guardar: `${BASE_URL}/guardar_formulario.php`,
   },
 
