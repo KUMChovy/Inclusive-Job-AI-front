@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Verificacion from "./Verificacion";
 import { errorAlert, successAlert } from "../assets/Componentes/Admin/alerts";
+import {useGoogleDomain}  from "../assets/Hook/Google/useDomain";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Registro = () => {
   const [mode, setMode] = useState("postulante");
   const [isMobile, setIsMobile] = useState(false);
+  const { registrarConGoogle } = useGoogleDomain();
+  const googleBtnRef = useRef(null);
 
-  // ================== NUEVO: estado del formulario ==================
   const [form, setForm] = useState({
     nombres: "",
     correo: "",
@@ -14,112 +17,75 @@ const Registro = () => {
     telefono: ""
   });
 
-  // ================== NUEVO: control del modal de verificación ==================
   const [mostrarVerificacion, setMostrarVerificacion] = useState(false);
   const [correoRegistrado, setCorreoRegistrado] = useState("");
   const [codigoRegistro, setCodigoRegistro] = useState("");
 
   const isPostulante = mode === "postulante";
-
   const theme = isPostulante ? postulante : reclutador;
   const alertTheme = buildRegistroAlertTheme(isPostulante);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 900px)");
-
-    const update = () => {
-      setIsMobile(mq.matches);
-    };
-
+    const update = () => { setIsMobile(mq.matches); };
     update();
-
     mq.addEventListener("change", update);
-
     return () => mq.removeEventListener("change", update);
   }, []);
-const validar = () => {
-  const { nombres, correo, password, telefono } = form;
 
-  // Nombre: solo letras y espacios
-  const nombreRegex = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ ]{3,60}$/;
-
-  // Email estándar
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  // Password segura mínima
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,64}$/;
-
-  // Teléfono México básico (7-15 dígitos)
-  const telefonoRegex = /^[0-9]{7,15}$/;
-
-  if (!nombreRegex.test(nombres)) {
-    return "Nombre inválido";
-  }
-
-  if (!emailRegex.test(correo)) {
-    return "Correo inválido";
-  }
-
-  if (!passwordRegex.test(password)) {
-    return "Contraseña débil";
-  }
-
-  if (!telefonoRegex.test(telefono)) {
-    return "Teléfono inválido";
-  }
-
-  return null;
-};
-  // ================== NUEVO: handlers ==================
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
+  const validar = () => {
+    const { nombres, correo, password, telefono } = form;
+    const nombreRegex = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ ]{3,60}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,64}$/;
+    const telefonoRegex = /^[0-9]{7,15}$/;
+    if (!nombreRegex.test(nombres)) return "Nombre inválido";
+    if (!emailRegex.test(correo)) return "Correo inválido";
+    if (!passwordRegex.test(password)) return "Contraseña débil";
+    if (!telefonoRegex.test(telefono)) return "Teléfono inválido";
+    return null;
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-  const error = validar();
-
-  if (error) {
-    await errorAlert("Datos inválidos", error, alertTheme);
-    return;
-  }
-
-  try {
-    const endpoint = isPostulante
-      ? "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reg_pos.php"
-      : "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Reclutador/reg_reclu.php";
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(form)
-    });
-
-    const data = await res.json();
-
-    console.log("Respuesta API:", data);
-
-    if (data.success) {
-      // ================== NUEVO: mostrar modal de verificación ==================
-      setCorreoRegistrado(form.correo);
-      setCodigoRegistro(data.codigo); // reg_pos.php ya genera y devuelve el código
-      await successAlert("Código enviado", "Revisa tu correo para completar el registro.", alertTheme);
-      setMostrarVerificacion(true);
-    } else {
-      await errorAlert("No se pudo registrar", data.message || "Error en registro", alertTheme);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const error = validar();
+    if (error) {
+      await errorAlert("Datos inválidos", error, alertTheme);
+      return;
     }
+    try {
+      const endpoint = isPostulante
+        ? "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reg_pos.php"
+        : "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Reclutador/reg_reclu.php";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      const data = await res.json();
+      console.log("Respuesta API:", data);
+      if (data.success) {
+        setCorreoRegistrado(form.correo);
+        setCodigoRegistro(data.codigo);
+        await successAlert("Código enviado", "Revisa tu correo para completar el registro.", alertTheme);
+        setMostrarVerificacion(true);
+      } else {
+        await errorAlert("No se pudo registrar", data.message || "Error en registro", alertTheme);
+      }
+    } catch (err) {
+      console.error(err);
+      await errorAlert("Error de conexión", "No se pudo conectar con el servidor.", alertTheme);
+    }
+  };
 
-  } catch (err) {
-    console.error(err);
-    await errorAlert("Error de conexión", "No se pudo conectar con el servidor.", alertTheme);
-  }
-};;
+  const dispararGooglePopup = () => {
+    const btn = googleBtnRef.current?.querySelector("div[role=button], button");
+    if (btn) btn.click();
+  };
 
   return (
     <div
@@ -130,82 +96,41 @@ const handleSubmit = async (e) => {
       }}
     >
       {/* ================= LEFT ================= */}
+      <div style={{ ...styles.leftSide, width: isMobile ? "100%" : "45%" }}>
 
-      <div
-        style={{
-          ...styles.leftSide,
-          width: isMobile ? "100%" : "45%",
-        }}
-      >
         {/* SWITCH */}
-
-        <div
-          style={{
-            ...styles.switchWrapper,
-            background: theme.switchBg,
-          }}
-        >
+        <div style={{ ...styles.switchWrapper, background: theme.switchBg }}>
           <div
             style={{
               ...styles.switchIndicator,
-              transform: isPostulante
-                ? "translateX(0%)"
-                : "translateX(100%)",
+              transform: isPostulante ? "translateX(0%)" : "translateX(100%)",
             }}
           />
-
-          <button
-            onClick={() => setMode("postulante")}
-            style={styles.switchBtn}
-          >
+          <button onClick={() => setMode("postulante")} style={styles.switchBtn}>
             Postulante
           </button>
-
-          <button
-            onClick={() => setMode("reclutador")}
-            style={styles.switchBtn}
-          >
+          <button onClick={() => setMode("reclutador")} style={styles.switchBtn}>
             Reclutador
           </button>
         </div>
 
         {/* CARD */}
+        <div style={{ ...styles.card, width: isMobile ? "88%" : 520 }}>
 
-        <div
-          style={{
-            ...styles.card,
-            width: isMobile ? "88%" : 520,
-          }}
-        >
           {/* LOGO */}
-
           <div style={styles.logoRow}>
             <div style={styles.logoWrapper}>
               <div style={styles.logoGlow} />
               <img src="/logo.webp" alt="InclusiJob IA" style={styles.logo} />
             </div>
-            <a href="/" style={styles.backBtn}>
-              ← Inicio
-            </a>
+            <a href="/" style={styles.backBtn}>← Inicio</a>
           </div>
 
           {/* TITLES */}
-
-          <h1
-            style={{
-              ...styles.title,
-              color: theme.title,
-            }}
-          >
-            Crear cuenta
-          </h1>
-
-          <p style={styles.subtitle}>
-            Únete a InclusiJobIA
-          </p>
+          <h1 style={{ ...styles.title, color: theme.title }}>Crear cuenta</h1>
+          <p style={styles.subtitle}>Únete a InclusiJobIA</p>
 
           {/* FORM */}
-
           <form style={styles.form} onSubmit={handleSubmit}>
             <input
               type="text"
@@ -214,12 +139,8 @@ const handleSubmit = async (e) => {
               maxLength={60}
               value={form.nombres}
               onChange={handleChange}
-              style={{
-                ...styles.input,
-                border: `2px solid ${theme.border}`,
-              }}
+              style={{ ...styles.input, border: `2px solid ${theme.border}` }}
             />
-
             <input
               type="email"
               autoComplete="email"
@@ -228,12 +149,8 @@ const handleSubmit = async (e) => {
               maxLength={100}
               value={form.correo}
               onChange={handleChange}
-              style={{
-                ...styles.input,
-                border: `2px solid ${theme.border}`,
-              }}
+              style={{ ...styles.input, border: `2px solid ${theme.border}` }}
             />
-
             <input
               type="password"
               autoComplete="new-password"
@@ -242,12 +159,8 @@ const handleSubmit = async (e) => {
               maxLength={128}
               value={form.password}
               onChange={handleChange}
-              style={{
-                ...styles.input,
-                border: `2px solid ${theme.border}`,
-              }}
+              style={{ ...styles.input, border: `2px solid ${theme.border}` }}
             />
-
             <input
               type="tel"
               autoComplete="tel"
@@ -256,40 +169,55 @@ const handleSubmit = async (e) => {
               maxLength={15}
               value={form.telefono}
               onChange={handleChange}
-              style={{
-                ...styles.input,
-                border: `2px solid ${theme.border}`,
-              }}
+              style={{ ...styles.input, border: `2px solid ${theme.border}` }}
             />
 
             {/* REGISTER */}
-
             <button
               type="submit"
-              style={{
-                ...styles.registerBtn,
-                background: theme.button,
-              }}
+              style={{ ...styles.registerBtn, background: theme.button }}
             >
               Registrarse
             </button>
 
             {/* DIVIDER */}
-
             <div style={styles.divider}>
               <div style={styles.line}></div>
-
-              <span style={styles.dividerText}>
-                o continuar con
-              </span>
-
+              <span style={styles.dividerText}>o continuar con</span>
               <div style={styles.line}></div>
             </div>
 
-            {/* GOOGLE */}
+            {/* GOOGLE — botón oculto + botón visual tuyo */}
+            <div ref={googleBtnRef} style={{ display: "none" }}>
+              <GoogleLogin
+                ux_mode="popup"
+                auto_select={false}
+                cancel_on_tap_outside={true}
+                onSuccess={async (credentialResponse) => {
+                  try {
+                    const data = await registrarConGoogle({
+  credential: credentialResponse.credential,
+  tipo: mode,
+});
+                    if (data.success) {
+                      await successAlert("Registro exitoso", "Bienvenido a InclusiJob IA", alertTheme);
+                    } else {
+                      await errorAlert("Error", data.message || "No se pudo autenticar con Google", alertTheme);
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    await errorAlert("Error de conexión", "No se pudo conectar con el servidor", alertTheme);
+                  }
+                }}
+                onError={() => {
+                  errorAlert("Error", "No se pudo iniciar sesión con Google", alertTheme);
+                }}
+              />
+            </div>
 
             <button
               type="button"
+              onClick={dispararGooglePopup}
               style={{
                 ...styles.googleBtn,
                 border: `2px solid ${theme.border}`,
@@ -298,105 +226,41 @@ const handleSubmit = async (e) => {
               <img
                 src="https://www.google.com/favicon.ico"
                 alt="Google"
-                style={{
-                  width: 24,
-                  height: 24,
-                }}
+                style={{ width: 24, height: 24 }}
               />
-
               Continuar con Google
             </button>
 
             {/* LOGIN */}
-
             <p style={styles.loginText}>
               ¿Ya tienes cuenta?{" "}
-              <a href="/login" style={styles.loginLink}>
-                inicia sesion
-              </a>
+              <a href="/login" style={styles.loginLink}>inicia sesion</a>
             </p>
           </form>
         </div>
       </div>
 
       {/* ================= RIGHT ================= */}
-
       {!isMobile && (
-        <div
-          style={{
-            ...styles.rightSide,
-            width: "55%",
-          }}
-        >
-          {/* CIRCLE BG */}
-
-          <div
-            style={{
-              ...styles.bigCircle,
-              background: theme.circle,
-            }}
-          ></div>
-
-          {/* FLOATING BALLS */}
-
-          <div
-            style={{
-              ...styles.ball,
-              width: 120,
-              height: 120,
-              top: 80,
-              left: 60,
-            }}
-          ></div>
-
-          <div
-            style={{
-              ...styles.ball,
-              width: 80,
-              height: 80,
-              bottom: 100,
-              right: 120,
-            }}
-          ></div>
-
-          <div
-            style={{
-              ...styles.ball,
-              width: 50,
-              height: 50,
-              top: 180,
-              right: 180,
-            }}
-          ></div>
-
-          {/* IMAGE */}
-
-          <img
-            src={theme.image}
-            alt="Inclusión"
-            style={styles.image}
-          />
-
-          {/* TEXT */}
-
+        <div style={{ ...styles.rightSide, width: "55%" }}>
+          <div style={{ ...styles.bigCircle, background: theme.circle }}></div>
+          <div style={{ ...styles.ball, width: 120, height: 120, top: 80, left: 60 }}></div>
+          <div style={{ ...styles.ball, width: 80, height: 80, bottom: 100, right: 120 }}></div>
+          <div style={{ ...styles.ball, width: 50, height: 50, top: 180, right: 180 }}></div>
+          <img src={theme.image} alt="Inclusión" style={styles.image} />
           <div style={styles.rightContent}>
             <h2 style={styles.rightTitle}>
               Inclusión que genera{" "}
-              <span style={styles.highlight}>
-                oportunidades
-              </span>
+              <span style={styles.highlight}>oportunidades</span>
             </h2>
-
             <p style={styles.rightText}>
-              Conectamos talento diverso con empresas
-              comprometidas usando inteligencia artificial.
+              Conectamos talento diverso con empresas comprometidas usando inteligencia artificial.
             </p>
           </div>
         </div>
       )}
 
-      {/* ================= NUEVO: MODAL DE VERIFICACIÓN ================= */}
-      {/* Se abre solo, automáticamente, justo después de un registro exitoso */}
+      {/* ================= MODAL DE VERIFICACIÓN ================= */}
       {mostrarVerificacion && (
         <Verificacion
           correoUsuario={correoRegistrado}
@@ -414,66 +278,34 @@ const handleSubmit = async (e) => {
 function buildRegistroAlertTheme(isPostulante) {
   return isPostulante
     ? {
-        bgSurface: "#f8fbff",
-        textPrimary: "#0f172a",
-        textSecondary: "#475569",
-        textMuted: "#94a3b8",
-        border: "rgba(37,99,235,0.16)",
-        accent: "#2563eb",
-        accentHover: "#1d4ed8",
-        success: "#16a34a",
-        danger: "#dc2626",
+        bgSurface: "#f8fbff", textPrimary: "#0f172a", textSecondary: "#475569",
+        textMuted: "#94a3b8", border: "rgba(37,99,235,0.16)", accent: "#2563eb",
+        accentHover: "#1d4ed8", success: "#16a34a", danger: "#dc2626",
       }
     : {
-        bgSurface: "#f8fbff",
-        textPrimary: "#0f172a",
-        textSecondary: "#475569",
-        textMuted: "#818cf8",
-        border: "rgba(55,48,163,0.18)",
-        accent: "#3730a3",
-        accentHover: "#1e3a8a",
-        success: "#16a34a",
-        danger: "#dc2626",
+        bgSurface: "#f8fbff", textPrimary: "#0f172a", textSecondary: "#475569",
+        textMuted: "#818cf8", border: "rgba(55,48,163,0.18)", accent: "#3730a3",
+        accentHover: "#1e3a8a", success: "#16a34a", danger: "#dc2626",
       };
 }
 
 const postulante = {
-  background:
-    "linear-gradient(135deg,#eef4ff,#dbeafe)",
-
-  switchBg:
-    "linear-gradient(135deg,#4f46e5,#2563eb)",
-
-  button:
-    "linear-gradient(135deg,#4f46e5,#2563eb)",
-
+  background: "linear-gradient(135deg,#eef4ff,#dbeafe)",
+  switchBg: "linear-gradient(135deg,#4f46e5,#2563eb)",
+  button: "linear-gradient(135deg,#4f46e5,#2563eb)",
   border: "#bfdbfe",
-
   title: "#0f172a",
-
-  circle:
-    "linear-gradient(135deg,#bfdbfe,#60a5fa)",
-
+  circle: "linear-gradient(135deg,#bfdbfe,#60a5fa)",
   image: "/inclu2.png",
 };
 
 const reclutador = {
-  background:
-    "linear-gradient(135deg,#eef4ff,#c7d2fe)",
-
-  switchBg:
-    "linear-gradient(135deg,#1e3a8a,#3730a3)",
-
-  button:
-    "linear-gradient(135deg,#1e3a8a,#3730a3)",
-
+  background: "linear-gradient(135deg,#eef4ff,#c7d2fe)",
+  switchBg: "linear-gradient(135deg,#1e3a8a,#3730a3)",
+  button: "linear-gradient(135deg,#1e3a8a,#3730a3)",
   border: "#93c5fd",
-
   title: "#0f172a",
-
-  circle:
-    "linear-gradient(135deg,#60a5fa,#2563eb)",
-
+  circle: "linear-gradient(135deg,#60a5fa,#2563eb)",
   image: "/inclu3.png",
 };
 
@@ -481,273 +313,102 @@ const reclutador = {
 
 const styles = {
   container: {
-    width: "100%",
-    minHeight: "100vh",
-    display: "flex",
-    overflow: "hidden",
-    fontFamily: "Poppins, sans-serif",
+    width: "100%", minHeight: "100vh", display: "flex",
+    overflow: "hidden", fontFamily: "Poppins, sans-serif",
   },
-
   leftSide: {
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 35,
-    padding: 40,
-    boxSizing: "border-box",
-    zIndex: 5,
+    display: "flex", flexDirection: "column", justifyContent: "center",
+    alignItems: "center", gap: 35, padding: 40, boxSizing: "border-box", zIndex: 5,
   },
-
   rightSide: {
-    position: "relative",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-    padding: 30,
+    position: "relative", display: "flex", flexDirection: "column",
+    justifyContent: "center", alignItems: "center", overflow: "hidden", padding: 30,
   },
-
   bigCircle: {
-    position: "absolute",
-    width: 900,
-    height: 900,
-    borderRadius: "50%",
-    opacity: 0.22,
-    filter: "blur(10px)",
+    position: "absolute", width: 900, height: 900,
+    borderRadius: "50%", opacity: 0.22, filter: "blur(10px)",
   },
-
   ball: {
-    position: "absolute",
-    borderRadius: "50%",
-    background:
-      "linear-gradient(135deg,#2563eb,#60a5fa)",
-    opacity: 0.25,
-    filter: "blur(2px)",
+    position: "absolute", borderRadius: "50%",
+    background: "linear-gradient(135deg,#2563eb,#60a5fa)",
+    opacity: 0.25, filter: "blur(2px)",
   },
-
   image: {
-    width: "85%",
-    maxWidth: 650,
-    objectFit: "contain",
-    zIndex: 3,
+    width: "85%", maxWidth: 650, objectFit: "contain", zIndex: 3,
     filter: "drop-shadow(0 20px 40px rgba(37,99,235,0.15))",
   },
-
-  rightContent: {
-    textAlign: "center",
-    marginTop: 20,
-    maxWidth: 550,
-    zIndex: 3,
-  },
-
+  rightContent: { textAlign: "center", marginTop: 20, maxWidth: 550, zIndex: 3 },
   rightTitle: {
-    fontSize: "clamp(28px, 5vw, 44px)",
-    fontWeight: 800,
-    color: "#0f172a",
-    marginBottom: 15,
+    fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 800,
+    color: "#0f172a", marginBottom: 15,
   },
-
-  highlight: {
-    color: "#4f46e5",
-  },
-
-  rightText: {
-    color: "#64748b",
-    fontSize: 18,
-    lineHeight: 1.6,
-  },
-
+  highlight: { color: "#4f46e5" },
+  rightText: { color: "#64748b", fontSize: 18, lineHeight: 1.6 },
   switchWrapper: {
-    width: "100%",
-    maxWidth: 390,
-    height: 72,
-    borderRadius: 999,
-    display: "flex",
-    position: "relative",
-    padding: 6,
-    overflow: "hidden",
-    boxShadow:
-      "0 10px 30px rgba(37,99,235,0.18)",
+    width: "100%", maxWidth: 390, height: 72, borderRadius: 999,
+    display: "flex", position: "relative", padding: 6, overflow: "hidden",
+    boxShadow: "0 10px 30px rgba(37,99,235,0.18)",
   },
-
   switchIndicator: {
-    position: "absolute",
-    width: "50%",
-    height: "calc(100% - 12px)",
-    background: "rgba(255,255,255,0.22)",
-    borderRadius: 999,
-    top: 6,
-    left: 6,
-    transition: "0.4s ease",
-    backdropFilter: "blur(8px)",
+    position: "absolute", width: "50%", height: "calc(100% - 12px)",
+    background: "rgba(255,255,255,0.22)", borderRadius: 999,
+    top: 6, left: 6, transition: "0.4s ease", backdropFilter: "blur(8px)",
   },
-
   switchBtn: {
-    flex: 1,
-    border: "none",
-    background: "transparent",
-    color: "#fff",
-    fontWeight: 700,
-    cursor: "pointer",
-    zIndex: 2,
-    fontSize: 18,
+    flex: 1, border: "none", background: "transparent",
+    color: "#fff", fontWeight: 700, cursor: "pointer", zIndex: 2, fontSize: 18,
   },
-
   card: {
-    width: "100%",
-    maxWidth: 520,
-    background: "rgba(255,255,255,0.72)",
-    backdropFilter: "blur(20px)",
-    border: "1px solid rgba(255,255,255,0.35)",
-    borderRadius: 40,
-    padding: "50px 45px",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.08)",
+    width: "100%", maxWidth: 520, background: "rgba(255,255,255,0.72)",
+    backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.35)",
+    borderRadius: 40, padding: "50px 45px", boxShadow: "0 20px 50px rgba(0,0,0,0.08)",
   },
-
   logoRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 10,
+    display: "flex", alignItems: "center",
+    justifyContent: "space-between", width: "100%", marginBottom: 10,
   },
-
   backBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "10px 18px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,0.72)",
-    backdropFilter: "blur(10px)",
-    border: "1.5px solid #bfdbfe",
-    color: "#1e3a8a",
-    fontWeight: 600,
-    fontSize: 14,
-    textDecoration: "none",
-    boxShadow: "0 4px 14px rgba(37,99,235,0.08)",
-    transition: "0.2s ease",
-    whiteSpace: "nowrap",
+    display: "flex", alignItems: "center", gap: 6, padding: "10px 18px",
+    borderRadius: 999, background: "rgba(255,255,255,0.72)", backdropFilter: "blur(10px)",
+    border: "1.5px solid #bfdbfe", color: "#1e3a8a", fontWeight: 600, fontSize: 14,
+    textDecoration: "none", boxShadow: "0 4px 14px rgba(37,99,235,0.08)",
+    transition: "0.2s ease", whiteSpace: "nowrap",
   },
-
-  logoWrapper: {
-    position: "relative",
-    width: 130,
-    height: 130,
-    marginBottom: 10,
-  },
-
+  logoWrapper: { position: "relative", width: 130, height: 130, marginBottom: 10 },
   logoGlow: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    borderRadius: "50%",
-    background:
-      "radial-gradient(circle, rgba(96,165,250,0.45), transparent 70%)",
+    position: "absolute", width: "100%", height: "100%", borderRadius: "50%",
+    background: "radial-gradient(circle, rgba(96,165,250,0.45), transparent 70%)",
     filter: "blur(15px)",
   },
-
   logo: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-    borderRadius: "50%",
-    position: "relative",
-    zIndex: 2,
-    boxShadow:
-      "0 10px 30px rgba(37,99,235,0.18)",
+    width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%",
+    position: "relative", zIndex: 2, boxShadow: "0 10px 30px rgba(37,99,235,0.18)",
   },
-
-  title: {
-    fontSize: "clamp(38px, 8vw, 64px)",
-    fontWeight: 900,
-    lineHeight: 1,
-    marginBottom: 12,
-  },
-
-  subtitle: {
-    color: "#64748b",
-    fontSize: 20,
-    marginBottom: 35,
-  },
-
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 18,
-  },
-
+  title: { fontSize: "clamp(38px, 8vw, 64px)", fontWeight: 900, lineHeight: 1, marginBottom: 12 },
+  subtitle: { color: "#64748b", fontSize: 20, marginBottom: 35 },
+  form: { display: "flex", flexDirection: "column", gap: 18 },
   input: {
-    minHeight: 58,
-    height: "auto",
-    borderRadius: 18,
-    padding: "0 22px",
-    fontSize: 16,
-    outline: "none",
-    background: "rgba(255,255,255,0.82)",
-    transition: "0.3s ease",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.03)",
+    minHeight: 58, height: "auto", borderRadius: 18, padding: "0 22px",
+    fontSize: 16, outline: "none", background: "rgba(255,255,255,0.82)",
+    transition: "0.3s ease", boxShadow: "0 4px 10px rgba(0,0,0,0.03)",
   },
-
   registerBtn: {
-    minHeight: 58,
-    border: "none",
-    borderRadius: 18,
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: 18,
-    cursor: "pointer",
-    marginTop: 10,
+    minHeight: 58, border: "none", borderRadius: 18, color: "#fff",
+    fontWeight: 700, fontSize: 18, cursor: "pointer", marginTop: 10,
     boxShadow: "0 10px 25px rgba(37,99,235,0.22)",
   },
-
-  divider: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 5,
-  },
-
-  line: {
-    flex: 1,
-    height: 1,
-    background: "#cbd5e1",
-  },
-
-  dividerText: {
-    color: "#64748b",
-    fontSize: 14,
-  },
-
+  divider: { display: "flex", alignItems: "center", gap: 10, marginTop: 5 },
+  line: { flex: 1, height: 1, background: "#cbd5e1" },
+  dividerText: { color: "#64748b", fontSize: 14 },
   googleBtn: {
-    height: 64,
-    borderRadius: 18,
-    background: "rgba(255,255,255,0.92)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    fontWeight: 600,
-    cursor: "pointer",
-    fontSize: 16,
-    transition: "0.3s ease",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.04)",
+    width: "100%", height: 64, borderRadius: 18,
+    background: "rgba(255,255,255,0.92)", display: "flex",
+    alignItems: "center", justifyContent: "center", gap: 12,
+    fontWeight: 600, cursor: "pointer", fontSize: 16,
+    transition: "0.3s ease", boxShadow: "0 4px 10px rgba(0,0,0,0.04)",
   },
-
-  loginText: {
-    textAlign: "center",
-    marginTop: 10,
-    color: "#64748b",
-    fontSize: 15,
-  },
-
-  loginLink: {
-    color: "#4f46e5",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
+  loginText: { textAlign: "center", marginTop: 10, color: "#64748b", fontSize: 15 },
+  loginLink: { color: "#4f46e5", fontWeight: 700, cursor: "pointer" },
 };
 
 export default Registro;
