@@ -64,7 +64,7 @@ function SectionHead({ title }) {
 }
 
 // ── Modal detalle postulación ─────────────────────────────
-function ModalPostulacion({ postulacion, onClose }) {
+function ModalPostulacion({ postulacion, onClose, onDespostular}) {
   if (!postulacion) return null;
 
   useEffect(() => {
@@ -308,7 +308,7 @@ function ModalPostulacion({ postulacion, onClose }) {
           background: '#fff',
         }}>
           <button
-            onClick={() => console.log('Despostular', postulacion.id)}
+            onClick={() => onDespostular(postulacion.id)}
             style={{
               background: '#fff5f5',
               color: '#dc2626',
@@ -360,6 +360,69 @@ export default function PostulanteDashboard() {
     }
   }
 
+  async function despostular(id) {
+
+    const confirmar =
+    window.confirm(
+    '¿Cancelar esta postulación?'
+    );
+
+    if (!confirmar) return;
+
+    try{
+
+    const res =
+    await fetch(
+    'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/postulaciones.php',
+    {
+    method:'DELETE',
+    credentials:'include',
+    headers:{
+    'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+    id_postulacion:id
+    })
+    }
+    );
+
+    const data =
+    await res.json();
+
+    if(!data.ok){
+
+    alert(
+    data.msg
+    ||
+    'Error'
+    );
+
+    return;
+
+    }
+
+    setPostulaciones((prev)=>
+    prev.filter(
+    (p)=>
+    p.id !== id
+    )
+    );
+
+    setPostulacionSeleccionada(null);
+
+    }
+    catch(error){
+
+    console.log(error);
+
+    alert(
+    'Error al despostular'
+    );
+
+    }
+
+  }
+
   const postulacionesFiltradas = postulaciones.filter((p) => {
     const texto = `${p.vacante||''} ${p.modalidad||''} ${p.estado||''} ${p.fecha||''}`.toLowerCase();
     return texto.includes(busqueda.toLowerCase());
@@ -373,6 +436,7 @@ export default function PostulanteDashboard() {
         <ModalPostulacion
           postulacion={postulacionSeleccionada}
           onClose={() => setPostulacionSeleccionada(null)}
+          onDespostular={despostular}
         />
       )}
 
@@ -461,7 +525,7 @@ export default function PostulanteDashboard() {
                             <Eye size={16} color={t.accent} />
                           </button>
                           <button
-                            onClick={() => console.log('Despostular', p.id)}
+                            onClick={() => despostular(p.id)}
                             style={{
                               width: '40px', height: '40px',
                               border: '1px solid #fecaca',
