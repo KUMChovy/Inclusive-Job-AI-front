@@ -300,37 +300,31 @@ function ModalPostulacion({ postulacion, onClose }) {
 
         {/* ── Footer ── */}
         <div style={{
-          padding: '14px 20px', borderTop: `1px solid ${t.border}`,
-          display: 'flex', gap: '10px', flexShrink: 0,
+          padding: '14px 20px',
+          borderTop: `1px solid ${t.border}`,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          flexShrink: 0,
           background: '#fff',
         }}>
-          <button style={{
-            background: '#fff', color: t.textSecondary,
-            border: `1px solid ${t.border}`, borderRadius: '12px',
-            padding: '10px 14px', fontSize: '13px', fontWeight: 500,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-          }}>
-            <Bookmark size={14} /> Guardar
-          </button>
           <button
             onClick={() => console.log('Despostular', postulacion.id)}
             style={{
-              background: '#fff5f5', color: '#dc2626',
-              border: '1px solid #fecaca', borderRadius: '12px',
-              padding: '10px 14px', fontSize: '13px', fontWeight: 500,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+              background: '#fff5f5',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              borderRadius: '12px',
+              padding: '10px 18px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
-            <X size={14} /> Despostularme
-          </button>
-          <button style={{
-            flex: 1,
-            background: 'linear-gradient(135deg,#1e40af,#2563eb)',
-            color: '#fff', border: 'none', borderRadius: '12px',
-            padding: '10px 18px', fontSize: '13px', fontWeight: 500,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          }}>
-            <CheckCircle size={14} /> Ver empresa
+            <X size={14} />
+            Despostularme
           </button>
         </div>
       </div>
