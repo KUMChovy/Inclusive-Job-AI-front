@@ -11,6 +11,10 @@ export const ENDPOINTS = {
     resumen: `${BASE_URL}/dashboard.php`,
   },
 
+  vacantes: {
+    guardar: `${BASE_URL}/vacantes.php?accion=guardar`,
+  },
+
   // Ejemplo de estructura:
 
   // ── Vacantes ───────────────────────────────────────────────

@@ -10,6 +10,16 @@ export function useReclutadorDashboard() {
   return useFetch(ENDPOINTS.dashboard.resumen);
 }
 
+export function useGuardarVacanteReclutador() {
+  const { execute, loading, error } = useApiAction();
+
+  return {
+    guardarVacante: (data) => execute(ENDPOINTS.vacantes.guardar, 'POST', data),
+    loading,
+    error,
+  };
+}
+
 /**
  * useReclutadorResource - Base temporal para consultar una URL del modulo Reclutador.
  * Usar mientras se definen hooks especificos.
