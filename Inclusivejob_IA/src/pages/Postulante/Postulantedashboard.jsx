@@ -6,73 +6,12 @@ import {
   Search, BookmarkCheck, Award, Accessibility,
   Clock, CheckCircle,
   ArrowRight, Sparkles, MapPin, Briefcase,
-  ChevronRight, Star, FileText, Bell,
+  ChevronRight, FileText, Bell,
 } from 'lucide-react';
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
-
-// ── CountUp ────────────────────────────────────────────────
-function useCountUp(end, duration = 1200) {
-  const [v, setV] = useState(0);
-  const raf = useRef(null);
-  useEffect(() => {
-    const s = performance.now();
-    const step = (now) => {
-      const p = Math.min((now - s) / duration, 1);
-      setV(Math.floor((1 - Math.pow(1 - p, 4)) * end));
-      if (p < 1) raf.current = requestAnimationFrame(step);
-    };
-    raf.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf.current);
-  }, [end, duration]);
-  return v;
-}
-
-// ── Mock data ──────────────────────────────────────────────
-const MOCK_USER = {
-  nombre: 'Ana García Torres',
-  rol: 'Postulante',
-  discapacidades: ['Visual'],
-  completado: 72,
-};
-
-const STATS = [
-  { label: 'Postulaciones',    value: 8,  icon: BookmarkCheck, color: '#2563eb' },
-  { label: 'En proceso',       value: 3,  icon: Clock,         color: '#7c3aed' },
-  { label: 'Aceptadas',        value: 1,  icon: CheckCircle,   color: '#059669' },
-  { label: 'Vacantes nuevas',  value: 24, icon: Sparkles,      color: '#0ea5e9' },
-];
-
-// Perfil del postulante — checklist de completitud
-const PERFIL_CHECKLIST = [
-  { id: 1, label: 'Información personal',    done: true,  path: '/postulante/perfil',          peso: 20 },
-  { id: 2, label: 'CV subido',               done: true,  path: '/postulante/perfil',          peso: 25 },
-  { id: 3, label: 'Foto de perfil',          done: false, path: '/postulante/perfil',          peso: 10 },
-  { id: 4, label: 'Discapacidades registradas', done: true, path: '/postulante/discapacidades', peso: 15 },
-  { id: 5, label: 'Al menos 1 certificación', done: false, path: '/postulante/certificaciones', peso: 20 },
-  { id: 6, label: 'Portafolio / LinkedIn',   done: false, path: '/postulante/perfil',          peso: 10 },
-];
-
-// Consejos del día — rotan para dar variedad
-const TIPS = [
-  { icon: '💡', texto: 'Los perfiles con foto reciben 3x más visitas de reclutadores.' },
-  { icon: '📎', texto: 'Sube tus certificaciones en PDF para destacar entre candidatos.' },
-  { icon: '🎯', texto: 'Postula a vacantes con más del 80% de compatibilidad para mejores resultados.' },
-  { icon: '🔔', texto: 'Activa las notificaciones para no perder vacantes nuevas.' },
-];
-
-const POSTULACIONES = [
-  { id: 1, vacante: 'Desarrollador Frontend', empresa: 'Tech Solutions SA', modalidad: 'Remoto',     estado: 'entrevista', fecha: '2026-05-18' },
-  { id: 2, vacante: 'Diseñadora UX/UI',       empresa: 'CreativeHub CDMX',  modalidad: 'Híbrido',    estado: 'pendiente',  fecha: '2026-05-20' },
-  { id: 3, vacante: 'QA Engineer',             empresa: 'DataCorp MX',       modalidad: 'Presencial', estado: 'pendiente',  fecha: '2026-05-21' },
-];
-
-const VACANTES_RECOMENDADAS = [
-  { id: 1, titulo: 'Frontend React Developer', empresa: 'Innovatech MX',     salario: '$18,000 – $28,000', modalidad: 'Remoto',     match: 96, discapacidades: ['Visual', 'Auditiva'] },
-  { id: 2, titulo: 'Tester Automatizado',      empresa: 'SoftQA CDMX',       salario: '$14,000 – $20,000', modalidad: 'Híbrido',    match: 88, discapacidades: ['Visual', 'Motriz']  },
-  { id: 3, titulo: 'Analista de Datos Jr.',    empresa: 'DataWave México',    salario: '$16,000 – $22,000', modalidad: 'Remoto',     match: 81, discapacidades: ['Visual']           },
-];
+import { usePostulanteDashboard } from '../../assets/Hook/Postulante/useDomain';
 
 const ESTADO_STYLE = {
   pendiente:  { bg: '#fef3c7', text: '#92400e', border: '#fde68a' },
@@ -142,11 +81,11 @@ function SectionHead({ title, sub, action, onAction }) {
   );
 }
 
-function MatchBadge({ match }) {
-  const color = match >= 90 ? '#059669' : match >= 80 ? '#2563eb' : '#7c3aed';
+function CompatibleBadge() {
+  const color = '#2563eb';
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '12px', fontWeight: 700, color, background: `${color}10`, border: `1px solid ${color}25`, padding: '3px 9px', borderRadius: '999px' }}>
-      <Star size={11} style={{ fill: color }} />{match}% match
+      <Sparkles size={11} />Compatible
     </span>
   );
 }
@@ -156,7 +95,21 @@ function MatchBadge({ match }) {
 // ── Componente principal ────────────────────────────────────
 export default function PostulanteDashboard() {
   const navigate = useNavigate();
-  const firstName = MOCK_USER.nombre.split(' ')[0];
+  const { data, loading, error, refetch } = usePostulanteDashboard();
+  const dashboardUser = data?.user ?? {};
+  const perfilCompletado = Number(data?.perfil?.completado ?? 0);
+  const checklist = data?.perfil?.checklist ?? [];
+  const postulacionesRecientes = data?.postulaciones_recientes ?? [];
+  const vacantesRecomendadas = data?.vacantes_recomendadas ?? [];
+  const stats = [
+    { label: 'Postulaciones', value: Number(data?.stats?.postulaciones ?? 0), icon: BookmarkCheck, color: '#2563eb' },
+    { label: 'En proceso', value: Number(data?.stats?.en_proceso ?? 0), icon: Clock, color: '#7c3aed' },
+    { label: 'Aceptadas', value: Number(data?.stats?.aceptadas ?? 0), icon: CheckCircle, color: '#059669' },
+    { label: 'Vacantes nuevas', value: Number(data?.stats?.vacantes_nuevas ?? 0), icon: Sparkles, color: '#0ea5e9' },
+  ];
+  const perfilCompleto = perfilCompletado >= 100;
+  const pasosPendientes = checklist.filter(c => !c.done).length;
+  const firstName = (dashboardUser.nombre || 'Postulante').split(' ')[0];
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
 
@@ -164,9 +117,9 @@ export default function PostulanteDashboard() {
     <PortalLayout
       theme={t}
       navItems={postulantNav}
-      user={MOCK_USER}
+      user={dashboardUser}
       pageTitle="Inicio"
-      notifications={3}
+      notifications={stats[3].value}
       headerActions={
         <button
           onClick={() => navigate('/postulante/vacantes')}
@@ -195,6 +148,22 @@ export default function PostulanteDashboard() {
       `}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
+        {loading && (
+          <Card>
+            <div style={{ padding: '18px 20px', color: t.textSecondary, fontSize: '13px', fontWeight: 600 }}>
+              Cargando tu dashboard...
+            </div>
+          </Card>
+        )}
+
+        {error && (
+          <div style={{ padding: '14px 20px', borderRadius: '14px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <span>No se pudo cargar tu dashboard: {error}</span>
+            <button onClick={refetch} style={{ border: '1px solid #fca5a5', background: '#fff', color: '#991b1b', borderRadius: '8px', padding: '6px 10px', fontWeight: 700, cursor: 'pointer' }}>
+              Reintentar
+            </button>
+          </div>
+        )}
 
         {/* ── Hero / Bienvenida ── */}
         <div style={{
@@ -219,7 +188,7 @@ export default function PostulanteDashboard() {
               {firstName} 👋
             </h1>
             <p style={{ margin: 0, fontSize: '14px', opacity: 0.8 }}>
-              Tienes <strong style={{ color: '#bfdbfe' }}>24 vacantes nuevas</strong> compatibles con tu perfil hoy.
+              Tienes <strong style={{ color: '#bfdbfe' }}>{stats[3].value} vacantes nuevas</strong> compatibles con tu perfil.
             </p>
           </div>
 
@@ -227,20 +196,22 @@ export default function PostulanteDashboard() {
           <div style={{ position: 'relative', zIndex: 1, background: 'rgba(255,255,255,0.12)', borderRadius: '12px', padding: '14px 16px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', maxWidth: '400px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span style={{ fontSize: '12.5px', fontWeight: 600 }}>Perfil completado</span>
-              <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#bfdbfe' }}>{MOCK_USER.completado}%</span>
+              <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#bfdbfe' }}>{perfilCompletado}%</span>
             </div>
             <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.2)' }}>
-              <div style={{ height: '100%', width: `${MOCK_USER.completado}%`, borderRadius: '999px', background: '#fff', transition: 'width 1s ease' }} />
+              <div style={{ height: '100%', width: `${perfilCompletado}%`, borderRadius: '999px', background: '#fff', transition: 'width 1s ease' }} />
             </div>
             <p style={{ margin: '8px 0 0', fontSize: '11px', opacity: 0.75 }}>
-              Completa tu CV y certificaciones para mejorar tus resultados.
+              {perfilCompleto
+                ? 'Tu perfil ya esta completo y listo para recibir mejores oportunidades.'
+                : 'Completa tu CV y certificaciones para mejorar tus resultados.'}
             </p>
           </div>
         </div>
 
         {/* ── KPIs ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
-          {STATS.map((s) => <StatCard key={s.label} {...s} />)}
+          {stats.map((s) => <StatCard key={s.label} {...s} />)}
         </div>
 
         {/* ── Fortaleza del perfil + Postulaciones recientes ── */}
@@ -251,8 +222,8 @@ export default function PostulanteDashboard() {
             <SectionHead
               title="Fortaleza de tu perfil"
               sub="Completa los pasos para aparecer primero ante los reclutadores"
-              action="Editar perfil"
-              onAction={() => navigate('/postulante/perfil')}
+              action="Completar perfil"
+              onAction={() => navigate('/formulario')}
             />
             <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
@@ -269,7 +240,7 @@ export default function PostulanteDashboard() {
                       stroke="url(#ringGrad)" strokeWidth="7"
                       strokeLinecap="round"
                       strokeDasharray={`${2 * Math.PI * 36}`}
-                      strokeDashoffset={`${2 * Math.PI * 36 * (1 - MOCK_USER.completado / 100)}`}
+                      strokeDashoffset={`${2 * Math.PI * 36 * (1 - perfilCompletado / 100)}`}
                       style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
                     />
                     <defs>
@@ -282,29 +253,44 @@ export default function PostulanteDashboard() {
                   {/* Porcentaje centrado */}
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: '20px', fontWeight: 800, color: t.textPrimary, letterSpacing: '-1px', lineHeight: 1 }}>
-                      {MOCK_USER.completado}%
+                      {perfilCompletado}%
                     </span>
                   </div>
                 </div>
 
                 {/* Texto descriptivo */}
                 <div style={{ flex: 1, minWidth: '180px' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '999px', padding: '3px 10px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px' }}>⚡</span>
-                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#92400e' }}>Perfil en construcción</span>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: perfilCompleto ? '#d1fae5' : '#fef3c7',
+                    border: `1px solid ${perfilCompleto ? '#6ee7b7' : '#fde68a'}`,
+                    borderRadius: '999px',
+                    padding: '3px 10px',
+                    marginBottom: '8px',
+                  }}>
+                    <span style={{ fontSize: '12px' }}>{perfilCompleto ? '✓' : '⚡'}</span>
+                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: perfilCompleto ? '#065f46' : '#92400e' }}>
+                      {perfilCompleto ? 'Perfil completado' : 'Perfil en construccion'}
+                    </span>
                   </div>
                   <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: t.textPrimary }}>
-                    Te faltan {PERFIL_CHECKLIST.filter(c => !c.done).length} pasos para el perfil completo
+                    {perfilCompleto
+                      ? 'Tu perfil esta completo y listo para destacar'
+                      : `Te faltan ${pasosPendientes} pasos para el perfil completo`}
                   </p>
                   <p style={{ margin: 0, fontSize: '12.5px', color: t.textSecondary, lineHeight: 1.5 }}>
-                    Un perfil al 100% aparece <strong style={{ color: t.accent }}>4x más</strong> en búsquedas de reclutadores.
+                    {perfilCompleto
+                      ? 'Ya tienes la informacion clave para que los reclutadores evaluen mejor tu perfil.'
+                      : <>Un perfil al 100% aparece <strong style={{ color: t.accent }}>4x mas</strong> en busquedas de reclutadores.</>}
                   </p>
                 </div>
               </div>
 
               {/* Checklist de items */}
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {PERFIL_CHECKLIST.map((item) => (
+                {checklist.map((item) => (
                   <li
                     key={item.id}
                     onClick={() => !item.done && navigate(item.path)}
@@ -357,23 +343,6 @@ export default function PostulanteDashboard() {
                 ))}
               </ul>
 
-              {/* Tip del día */}
-              {(() => {
-                const tip = TIPS[new Date().getDay() % TIPS.length];
-                return (
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: '10px',
-                    background: t.accentSoft, border: `1px solid ${t.accentBorder}`,
-                    borderRadius: '12px', padding: '12px 14px',
-                  }}>
-                    <span style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1 }}>{tip.icon}</span>
-                    <p style={{ margin: 0, fontSize: '12.5px', color: t.accent, fontWeight: 500, lineHeight: 1.5 }}>
-                      <strong>Tip del día:</strong> {tip.texto}
-                    </p>
-                  </div>
-                );
-              })()}
-
             </div>
           </Card>
 
@@ -381,8 +350,8 @@ export default function PostulanteDashboard() {
           <Card>
             <SectionHead title="Estado de postulaciones" action="Ver todas" onAction={() => navigate('/postulante/postulaciones')} />
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-              {POSTULACIONES.map((p, i) => (
-                <li key={p.id} style={{ padding: '14px 20px', borderBottom: i < POSTULACIONES.length - 1 ? `1px solid ${t.border}` : 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {postulacionesRecientes.length > 0 ? postulacionesRecientes.map((p, i) => (
+                <li key={p.id} style={{ padding: '14px 20px', borderBottom: i < postulacionesRecientes.length - 1 ? `1px solid ${t.border}` : 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, color: t.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.vacante}</p>
@@ -400,7 +369,11 @@ export default function PostulanteDashboard() {
                     </span>
                   </div>
                 </li>
-              ))}
+              )) : (
+                <li style={{ padding: '18px 20px', color: t.textMuted, fontSize: '13px' }}>
+                  Aun no tienes postulaciones recientes.
+                </li>
+              )}
             </ul>
           </Card>
         </div>
@@ -414,26 +387,26 @@ export default function PostulanteDashboard() {
             onAction={() => navigate('/postulante/vacantes')}
           />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0' }}>
-            {VACANTES_RECOMENDADAS.map((v, i) => (
+            {vacantesRecomendadas.length > 0 ? vacantesRecomendadas.map((v, i) => (
               <div
                 key={v.id}
                 style={{
                   padding: '20px',
-                  borderRight: i < VACANTES_RECOMENDADAS.length - 1 ? `1px solid ${t.border}` : 'none',
+                  borderRight: i < vacantesRecomendadas.length - 1 ? `1px solid ${t.border}` : 'none',
                   borderBottom: 'none',
                   cursor: 'pointer',
                   transition: 'background 0.15s',
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.background = t.bgElevated}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                onClick={() => navigate(`/postulante/vacantes/${v.id}`)}
+                onClick={() => navigate('/postulante/vacantes')}
               >
                 {/* Match + empresa */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: t.accentSoft, border: `1px solid ${t.accentBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Briefcase size={16} style={{ color: t.accent }} />
                   </div>
-                  <MatchBadge match={v.match} />
+                  <CompatibleBadge />
                 </div>
 
                 <h3 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: t.textPrimary, lineHeight: 1.3 }}>{v.titulo}</h3>
@@ -443,7 +416,7 @@ export default function PostulanteDashboard() {
                   <span style={{ fontSize: '11px', color: t.textMuted, background: t.bgElevated, border: `1px solid ${t.border}`, padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px' }}>
                     <MapPin size={10} />{v.modalidad}
                   </span>
-                  {v.discapacidades.map((d) => (
+                  {(v.discapacidades || []).map((d) => (
                     <span key={d} style={{ fontSize: '11px', color: t.accent, background: t.accentSoft, border: `1px solid ${t.accentBorder}`, padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px' }}>
                       <Accessibility size={9} />{d}
                     </span>
@@ -451,13 +424,17 @@ export default function PostulanteDashboard() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: t.textPrimary }}>{v.salario}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: t.textPrimary }}>{v.salario || formatSalario(v.salario_min, v.salario_max)}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '12px', color: t.accent, fontWeight: 600 }}>
                     Postularme <ChevronRight size={13} />
                   </span>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div style={{ padding: '22px 20px', color: t.textMuted, fontSize: '13px' }}>
+                No encontramos vacantes nuevas compatibles por ahora.
+              </div>
+            )}
           </div>
         </Card>
 
@@ -465,8 +442,8 @@ export default function PostulanteDashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
           {[
             { label: 'Subir certificación', icon: Award,          path: '/postulante/certificaciones', color: '#7c3aed' },
-            { label: 'Editar perfil',        icon: FileText,        path: '/postulante/perfil',          color: '#2563eb' },
-            { label: 'Mis discapacidades',   icon: Accessibility,   path: '/postulante/discapacidades',  color: '#0ea5e9' },
+            { label: 'Actualizar perfil',    icon: FileText,        path: '/formulario',                 color: '#2563eb' },
+            { label: 'Mis discapacidades',   icon: Accessibility,   path: '/formulario',                 color: '#0ea5e9' },
             { label: 'Reportar vacante',     icon: Bell,            path: '/postulante/reportes',        color: '#ef4444' },
           ].map((a) => (
             <button
@@ -495,3 +472,4 @@ export default function PostulanteDashboard() {
     </PortalLayout>
   );
 }
+

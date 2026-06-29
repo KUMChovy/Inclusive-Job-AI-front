@@ -4,6 +4,21 @@
 // Por ahora queda una base minima que recibe URL para que el equipo agregue metodos reales.
 
 import { useApiAction, useFetch } from './useApi';
+import { ENDPOINTS } from './apiReclutador';
+
+export function useReclutadorDashboard() {
+  return useFetch(ENDPOINTS.dashboard.resumen);
+}
+
+export function useGuardarVacanteReclutador() {
+  const { execute, loading, error } = useApiAction();
+
+  return {
+    guardarVacante: (data) => execute(ENDPOINTS.vacantes.guardar, 'POST', data),
+    loading,
+    error,
+  };
+}
 
 /**
  * useReclutadorResource - Base temporal para consultar una URL del modulo Reclutador.

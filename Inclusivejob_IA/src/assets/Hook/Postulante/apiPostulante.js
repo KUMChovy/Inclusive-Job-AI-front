@@ -7,6 +7,10 @@ export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Mode
 
 export const ENDPOINTS = {
 
+  dashboard: {
+    resumen: `${BASE_URL}/dashboard.php`,
+  },
+
   // ── Formulario ───────────────────────────────────────────────
   formulario: {
     estado: `${BASE_URL}/guardar_formulario.php`,
