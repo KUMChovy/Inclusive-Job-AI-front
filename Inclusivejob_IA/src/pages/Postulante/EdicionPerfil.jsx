@@ -1,53 +1,115 @@
 import { useState, useEffect, useRef } from "react";
+import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
+import { postulantTheme } from "../../assets/Componentes/Portal/portalTheme";
+import { postulantNav } from "../../assets/Componentes/Portal/navItems";
 
-const TABS = ["info", "skills", "edu", "accesibilidad"];
-const TAB_LABELS = { info: "Yo", skills: "Skills", edu: "Estudios", accesibilidad: "Accesibilidad" };
+const t = postulantTheme;
+const BASE_URL = "http://localhost/inclusijob_back/back-inclusiveJob";
 
-const DISCAPACIDADES = ["Visual", "Auditiva", "Motriz", "Cognitiva", "Psicosocial", "Múltiple", "Prefiero no decirlo"];
-const DISC_ICONS = { Visual: "👁", Auditiva: "👂", Motriz: "🦽", Cognitiva: "🧠", Psicosocial: "💙", Múltiple: "♿", "Prefiero no decirlo": "🔒" };
-const APOYOS = ["Trabajo remoto", "Horario flexible", "Lector de pantalla", "Intérprete LSM", "Sin escaleras", "Lectura fácil", "Tiempo extra"];
+const TABS       = ["info", "skills", "accesibilidad"];
+const TAB_LABELS = { info: "Yo", skills: "Skills", accesibilidad: "Accesibilidad" };
+
+const DISCAPACIDADES = ["Visual", "Auditiva", "Motriz", "Intelectual", "Psicosocial"];
+const DISC_ICONS     = { Visual:"👁", Auditiva:"👂", Motriz:"🦽", Intelectual:"🧠", Psicosocial:"💙" };
 
 function getInitials(name) {
-  const parts = name.trim().split(" ");
+  if (!name?.trim()) return "?";
+  const parts = name.trim().split(" ").filter(Boolean);
   return parts.length === 1
     ? parts[0][0].toUpperCase()
     : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function parseSkills(raw) {
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
+}
+
+function parseDescDisc(raw) {
+  if (!raw) return { nota: "", porcentaje: "" };
+  const parts = raw.split(" | ");
+  if (parts.length === 2) return { nota: parts[0], porcentaje: parts[1].replace("%", "") };
+  if (/^\d+%$/.test(raw.trim())) return { nota: "", porcentaje: raw.replace("%", "") };
+  return { nota: raw, porcentaje: "" };
+}
+
 export default function PerfilPostulante() {
   const [perfil, setPerfil] = useState({
-    nombre: "Juan Carlos Martínez López",
-    rol: "Desarrollador Web Frontend",
-    email: "juan.martinez@email.com",
-    tel: "+52 55 1234 5678",
-    ciudad: "Ciudad de México",
-    bio: "Me llamo Juan Carlos, soy dev frontend con experiencia en React y Firebase. Me gusta construir interfaces bonitas y funcionales, y aprendo rápido con nuevas tecnologías.",
-    skills: ["React", "JavaScript", "HTML", "CSS", "Firebase", "MySQL", "Git", "GitHub"],
-    carrera: "Ingeniería en Sistemas Computacionales",
-    uni: "Universidad Tecnológica",
-    periodo: "2021–2025",
-    discapacidad: ["Visual"],
-    porcentaje: "40%",
-    certificado: true,
-    apoyos: ["Trabajo remoto", "Lector de pantalla"],
-    nota: "Uso NVDA como lector de pantalla y me manejo perfecto con teclado. Sin problema para trabajar remoto.",
+    nombre: "", nombres: "", apellidos: "",
+    rol: "", email: "", tel: "",
+    foto_perfil: null,
+    experiencia: "", skills: [],
+    discapacidad: [], nota: "", porcentaje: "",
+    portafolio: "", esfuerzo: false,
   });
+  
+  
 
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(null);
-  const [tab, setTab] = useState("info");
-  const [newSkill, setNewSkill] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [open, setOpen]             = useState(false);
+  const [draft, setDraft]           = useState(null);
+  const [tab, setTab]               = useState("info");
+  const [newSkill, setNewSkill]     = useState("");
+  const [saved, setSaved]           = useState(false);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
+  const [saving, setSaving]         = useState(false);
+  const [saveError, setSaveError]   = useState(null);
+  const [fotoFile, setFotoFile]     = useState(null);
+  const [fotoPreview, setFotoPreview] = useState(null);
 
-  const editRef = useRef(null);
-  const headRef = useRef(null);
-  const modalRef = useRef(null);
+  const editRef    = useRef(null);
+  const headRef    = useRef(null);
+  const modalRef   = useRef(null);
+  const fotoInputRef = useRef(null);
 
-  // Focus trap + Escape
+  // ── Cargar perfil ─────────────────────────────────────────
+  useEffect(() => {
+    const fetchPerfil = async () => {
+      try {
+        const res  = await fetch(
+          `${BASE_URL}/Modelo/Postulante/obtener_perfil.php`,
+          { credentials: "include" }
+        );
+        const data = await res.json();
+
+        if (!data.success) {
+          window.location.href = "/login";
+          return;
+        }
+
+        const skills  = parseSkills(data.habilidades);
+        const discObj = parseDescDisc(data.descripcion_discapacidad);
+
+        setPerfil({
+          nombre:      ((data.nombres || "") + " " + (data.apellidos || "")).trim() || "Sin nombre",
+          nombres:     data.nombres     || "",
+          apellidos:   data.apellidos   || "",
+          rol:         data.rol         || "",
+          email:       data.correo      || "",
+          tel:         data.telefono    || "",
+          foto_perfil: data.foto_perfil ? `${BASE_URL}/${data.foto_perfil}` : null,
+          experiencia: data.experiencia || "",
+          skills,
+          discapacidad: data.discapacidad || [],
+          nota:        discObj.nota,
+          porcentaje:  discObj.porcentaje,
+          portafolio:  data.portafolio_url || "",
+          esfuerzo:    !!data.esfuerzo_fisico_posible,
+        });
+        setLoading(false);
+      } catch (err) {
+        console.error("Error al obtener perfil:", err);
+        setError("No se pudo cargar el perfil. Intenta de nuevo.");
+        setLoading(false);
+      }
+    };
+    fetchPerfil();
+  }, []);
+
+  // ── Focus trap ───────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     setTimeout(() => headRef.current?.focus(), 50);
-
     function handleKey(e) {
       if (e.key === "Escape") { cerrar(); return; }
       if (e.key !== "Tab") return;
@@ -65,490 +127,428 @@ export default function PerfilPostulante() {
     return () => document.removeEventListener("keydown", handleKey);
   }, [open]);
 
+  // ── Handlers ─────────────────────────────────────────────
   function abrir() {
-    setDraft({ ...perfil, skills: [...perfil.skills], discapacidad: [...perfil.discapacidad], apoyos: [...perfil.apoyos] });
+    setSaveError(null);
+    setFotoFile(null);
+    setFotoPreview(null);
+    setDraft({ ...perfil, skills: [...perfil.skills], discapacidad: [...perfil.discapacidad] });
     setTab("info");
     setOpen(true);
   }
 
   function cerrar() {
+    if (saving) return;
     setOpen(false);
+    setSaveError(null);
+    setFotoFile(null);
+    setFotoPreview(null);
     setTimeout(() => editRef.current?.focus(), 50);
   }
 
-  function guardar() {
-    setPerfil(draft);
-    cerrar();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  async function guardar() {
+    setSaving(true);
+    setSaveError(null);
+
+    const partes    = (draft.nombre || "").trim().split(" ").filter(Boolean);
+    const nombres   = partes[0]                 || draft.nombres   || "";
+    const apellidos = partes.slice(1).join(" ") || draft.apellidos || "";
+
+    const fd = new FormData();
+    fd.append("nombres",                nombres);
+    fd.append("apellidos",              apellidos);
+    fd.append("telefono",               draft.tel);
+    fd.append("experiencia",            draft.experiencia);
+    fd.append("skills",                 JSON.stringify(draft.skills));
+    fd.append("discapacidad",           JSON.stringify(draft.discapacidad));
+    fd.append("nota",                   draft.nota);
+    fd.append("porcentaje",             draft.porcentaje);
+    fd.append("portafolio_url",         draft.portafolio);
+    fd.append("esfuerzo_fisico_posible", draft.esfuerzo ? "1" : "0");
+    if (fotoFile) fd.append("fotoPerfil", fotoFile);
+
+    try {
+      const res  = await fetch(
+        `${BASE_URL}/Modelo/Postulante/actualizar_perfil.php`,
+        { method: "POST", credentials: "include", body: fd }
+      );
+      const data = await res.json();
+
+      if (!data.ok) {
+        setSaveError(data.msg || "Error al guardar. Intenta de nuevo.");
+        setSaving(false);
+        return;
+      }
+
+      setPerfil(prev => ({
+        ...draft,
+        nombre:      (nombres + " " + apellidos).trim(),
+        nombres,
+        apellidos,
+        foto_perfil: data.foto_perfil || prev.foto_perfil,
+      }));
+      setFotoFile(null);
+      setFotoPreview(null);
+      setSaving(false);
+      cerrar();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error("Error al guardar:", err);
+      setSaveError("No se pudo conectar con el servidor.");
+      setSaving(false);
+    }
   }
 
   function addSkill() {
     const v = newSkill.trim();
-    if (v && !draft.skills.includes(v)) setDraft((d) => ({ ...d, skills: [...d.skills, v] }));
+    if (v && !draft.skills.includes(v)) setDraft(d => ({ ...d, skills: [...d.skills, v] }));
     setNewSkill("");
   }
+  function delSkill(i) { setDraft(d => ({ ...d, skills: d.skills.filter((_, j) => j !== i) })); }
+  function togDisc(x)  { setDraft(d => ({ ...d, discapacidad: d.discapacidad.includes(x) ? d.discapacidad.filter(v => v !== x) : [...d.discapacidad, x] })); }
 
-  function delSkill(i) {
-    setDraft((d) => ({ ...d, skills: d.skills.filter((_, j) => j !== i) }));
-  }
+  const user = { nombre: perfil.nombre, rol: perfil.rol };
 
-  function togDisc(x) {
-    setDraft((d) => ({
-      ...d,
-      discapacidad: d.discapacidad.includes(x)
-        ? d.discapacidad.filter((v) => v !== x)
-        : [...d.discapacidad, x],
-    }));
-  }
+  if (loading) return (
+    <PortalLayout theme={t} navItems={postulantNav} user={{ nombre: "…", rol: "" }} pageTitle="Mi Perfil">
+      <div style={{ textAlign:"center", padding:"40px 0", color:t.textSecondary }}>Cargando perfil…</div>
+    </PortalLayout>
+  );
+  if (error) return (
+    <PortalLayout theme={t} navItems={postulantNav} user={{ nombre: "Error", rol: "" }} pageTitle="Mi Perfil">
+      <div style={{ textAlign:"center", padding:"40px 0", color:"#ef4444" }}>{error}</div>
+    </PortalLayout>
+  );
 
-  function togApoyo(x) {
-    setDraft((d) => ({
-      ...d,
-      apoyos: d.apoyos.includes(x)
-        ? d.apoyos.filter((v) => v !== x)
-        : [...d.apoyos, x],
-    }));
-  }
+  // ── Avatar compartido ─────────────────────────────────────
+  const AvatarImg = ({ size = 72, preview = false }) => {
+    const src = preview
+      ? (fotoPreview || perfil.foto_perfil)
+      : perfil.foto_perfil;
+    return src
+      ? <img src={src} alt="Foto de perfil" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+      : <span>{getInitials(perfil.nombre)}</span>;
+  };
 
   return (
-    <div className="max-w-xl mx-auto py-6 px-4 font-sans">
+    <PortalLayout theme={t} navItems={postulantNav} user={user}
+      pageTitle="Mi Perfil" notifications={0}
+      headerActions={
+        <button ref={editRef} onClick={abrir}
+          aria-label={`Editar perfil de ${perfil.nombre}`} aria-haspopup="dialog"
+          style={{ display:"flex", alignItems:"center", gap:"6px", background:t.gradient, border:"none", borderRadius:"10px", padding:"8px 16px", color:"#fff", fontSize:"13px", fontWeight:600, cursor:"pointer", boxShadow:`0 4px 14px ${t.accentGlow}` }}>
+          ✏️ Editar perfil
+        </button>
+      }>
 
-      {/* Toast */}
-      <div aria-live="polite" aria-atomic="true">
-        {saved && (
-          <div role="status" className="mb-3 bg-green-50 text-green-800 text-sm px-4 py-2 rounded-2xl flex items-center gap-2 border border-green-200">
-            ✓ Perfil guardado
-          </div>
-        )}
-      </div>
+      <div style={{ maxWidth:"1000px", margin:"0 auto" }}>
 
-      {/* CARD PRINCIPAL */}
-      <div className="rounded-3xl overflow-hidden border border-gray-100 bg-white">
-
-        {/* HEADER */}
-        <div className="bg-indigo-600 px-6 pt-8 pb-6 relative">
-          <button
-            ref={editRef}
-            onClick={abrir}
-            aria-label={`Editar perfil de ${perfil.nombre}`}
-            aria-haspopup="dialog"
-            className="absolute top-4 right-4 bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-white transition"
-          >
-            ✏️ Editar
-          </button>
-
-          <div className="flex items-end gap-4">
-            <div
-              aria-hidden="true"
-              className="w-20 h-20 rounded-2xl bg-indigo-200 text-indigo-900 flex items-center justify-center text-2xl font-bold flex-shrink-0 border-2 border-indigo-100 select-none"
-            >
-              {getInitials(perfil.nombre)}
-            </div>
-            <div className="min-w-0 pb-1">
-              <h1 className="text-white font-bold text-xl leading-tight">{perfil.nombre}</h1>
-              <p className="text-indigo-200 text-sm mt-0.5">{perfil.rol}</p>
-            </div>
-          </div>
-
-          {/* Badges discapacidad */}
-          {perfil.discapacidad.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-4" aria-label="Tipo de discapacidad">
-              {perfil.discapacidad.map((d) => (
-                <span
-                  key={d}
-                  className="text-xs bg-white/20 text-white border border-white/25 px-2.5 py-1 rounded-full flex items-center gap-1"
-                >
-                  <span aria-hidden="true">{DISC_ICONS[d]}</span> {d}
-                </span>
-              ))}
-              {perfil.certificado && (
-                <span className="text-xs bg-green-400/25 text-green-100 border border-green-300/30 px-2.5 py-1 rounded-full">
-                  ✓ Cert. SEP
-                </span>
-              )}
+        {/* Toast */}
+        <div aria-live="polite" aria-atomic="true">
+          {saved && (
+            <div role="status" style={{ marginBottom:"16px", background:"rgba(16,185,129,0.1)", color:"#059669", fontSize:"13px", padding:"10px 16px", borderRadius:"12px", border:"1px solid rgba(16,185,129,0.25)", display:"flex", alignItems:"center", gap:"8px" }}>
+              ✓ Perfil guardado correctamente
             </div>
           )}
         </div>
 
-        {/* CONTACTO — fila horizontal */}
-        <div className="border-b border-gray-100 px-6 py-3 flex flex-wrap gap-x-5 gap-y-1">
-          {[["📧", "Correo", perfil.email], ["📱", "Teléfono", perfil.tel], ["📍", "Ciudad", perfil.ciudad]].map(([ic, label, val]) => (
-            <span key={label} className="text-xs text-gray-500 flex items-center gap-1.5">
-              <span aria-hidden="true">{ic}</span>
-              <span className="sr-only">{label}: </span>
-              {val}
-            </span>
-          ))}
-        </div>
+        {/* Card */}
+        <div style={{ background:t.bgSurface, border:`1px solid ${t.border}`, borderRadius:"16px", overflow:"hidden", boxShadow:"0 4px 16px rgba(0,0,0,0.04)" }}>
 
-        {/* CUERPO — grid 2 columnas */}
-        <div className="p-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-
-          <section aria-labelledby="s-bio" className="sm:col-span-2">
-            <h2 id="s-bio" className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Sobre mí</h2>
-            <p className="text-sm text-gray-700 leading-relaxed">{perfil.bio}</p>
-          </section>
-
-          <section aria-labelledby="s-skills">
-            <h2 id="s-skills" className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Skills</h2>
-            <ul className="flex flex-wrap gap-1.5 list-none p-0" aria-label="Habilidades técnicas">
-              {perfil.skills.map((s) => (
-                <li key={s} className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-100">{s}</li>
-              ))}
-            </ul>
-          </section>
-
-          <section aria-labelledby="s-edu">
-            <h2 id="s-edu" className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Formación</h2>
-            <div className="border-l-[3px] border-indigo-500 pl-3" style={{ borderRadius: 0 }}>
-              <p className="text-sm font-semibold text-gray-800">{perfil.carrera}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{perfil.uni} · {perfil.periodo}</p>
-            </div>
-          </section>
-
-          {/* Tarjeta accesibilidad */}
-          {(perfil.discapacidad.length > 0 || perfil.apoyos.length > 0 || perfil.nota) && (
-            <section aria-labelledby="s-acc" className="sm:col-span-2 rounded-2xl p-4 border border-purple-200 bg-purple-50">
-              <h2 id="s-acc" className="text-xs font-semibold text-purple-700 uppercase tracking-widest mb-3">Accesibilidad</h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {perfil.discapacidad.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-purple-600 mb-1.5">Tipo de discapacidad</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {perfil.discapacidad.map((d) => (
-                        <span key={d} className="text-xs px-2.5 py-1 rounded-full bg-purple-200 text-purple-900 border border-purple-300 flex items-center gap-1">
-                          <span aria-hidden="true">{DISC_ICONS[d]}</span> {d}
-                        </span>
-                      ))}
-                      {perfil.porcentaje && (
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-purple-200 text-purple-900 border border-purple-300">{perfil.porcentaje}</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {perfil.apoyos.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-purple-600 mb-1.5">Apoyos que necesito</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {perfil.apoyos.map((a) => (
-                        <span key={a} className="text-xs px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-200">{a}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {perfil.nota && (
-                  <div className="sm:col-span-2 rounded-xl p-3 bg-white border border-purple-200">
-                    <p className="text-xs font-medium text-purple-600 mb-1">Nota para el empleador</p>
-                    <p className="text-xs text-purple-900 leading-relaxed italic">"{perfil.nota}"</p>
-                  </div>
-                )}
+          {/* Header */}
+          <div style={{ background:t.accent, padding:"24px 28px 20px" }}>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:"16px" }}>
+              <div aria-hidden="true" style={{ width:"72px", height:"72px", borderRadius:"12px", background:"rgba(255,255,255,0.2)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"24px", fontWeight:700, flexShrink:0, border:"2px solid rgba(255,255,255,0.3)", overflow:"hidden" }}>
+                <AvatarImg />
               </div>
+              <div>
+                <h1 style={{ margin:0, color:"#fff", fontSize:"20px", fontWeight:700 }}>{perfil.nombre}</h1>
+                <p style={{ margin:"2px 0 0", color:"rgba(255,255,255,0.8)", fontSize:"14px" }}>{perfil.rol}</p>
+              </div>
+            </div>
+            {perfil.discapacidad.length > 0 && (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", marginTop:"16px" }}>
+                {perfil.discapacidad.map(d => (
+                  <span key={d} style={{ fontSize:"12px", background:"rgba(255,255,255,0.2)", color:"#fff", border:"1px solid rgba(255,255,255,0.25)", padding:"3px 12px", borderRadius:"999px", display:"flex", alignItems:"center", gap:"4px" }}>
+                    <span aria-hidden="true">{DISC_ICONS[d]}</span> {d}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Contacto */}
+          <div style={{ borderBottom:`1px solid ${t.border}`, padding:"12px 28px", display:"flex", flexWrap:"wrap", gap:"16px 24px" }}>
+            {[["📧","Correo",perfil.email],["📱","Teléfono",perfil.tel],["🔗","Portafolio",perfil.portafolio]].map(([ic,label,val]) => (
+              <span key={label} style={{ fontSize:"12px", color:t.textSecondary, display:"flex", alignItems:"center", gap:"6px" }}>
+                <span aria-hidden="true">{ic}</span>
+                <span className="sr-only">{label}: </span>
+                {val || "—"}
+              </span>
+            ))}
+          </div>
+
+          {/* Cuerpo */}
+          <div style={{ padding:"24px 28px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"20px" }}>
+
+            <section aria-labelledby="s-exp" style={{ gridColumn:"1 / -1" }}>
+              <h2 id="s-exp" style={{ fontSize:"11px", fontWeight:600, color:t.textMuted, textTransform:"uppercase", letterSpacing:"0.8px", margin:"0 0 6px" }}>Experiencia</h2>
+              <p style={{ fontSize:"14px", color:t.textPrimary, lineHeight:1.6, margin:0 }}>
+                {perfil.experiencia || "Aún no has escrito tu experiencia."}
+              </p>
             </section>
-          )}
+
+            <section aria-labelledby="s-skills">
+              <h2 id="s-skills" style={{ fontSize:"11px", fontWeight:600, color:t.textMuted, textTransform:"uppercase", letterSpacing:"0.8px", margin:"0 0 6px" }}>Habilidades</h2>
+              {perfil.skills.length > 0 ? (
+                <ul style={{ display:"flex", flexWrap:"wrap", gap:"6px", listStyle:"none", padding:0, margin:0 }}>
+                  {perfil.skills.map(s => (
+                    <li key={s} style={{ fontSize:"12px", padding:"3px 12px", borderRadius:"999px", background:t.accentSoft, color:t.accent, border:`1px solid ${t.accentBorder}` }}>{s}</li>
+                  ))}
+                </ul>
+              ) : <p style={{ fontSize:"13px", color:t.textMuted, margin:0 }}>Sin habilidades aún.</p>}
+            </section>
+
+            <section aria-labelledby="s-ef">
+              <h2 id="s-ef" style={{ fontSize:"11px", fontWeight:600, color:t.textMuted, textTransform:"uppercase", letterSpacing:"0.8px", margin:"0 0 6px" }}>Esfuerzo físico</h2>
+              <span style={{ fontSize:"13px", color:t.textPrimary }}>
+                {perfil.esfuerzo ? "✅ Puede realizar esfuerzo físico" : "❌ No puede realizar esfuerzo físico"}
+              </span>
+            </section>
+
+            {(perfil.discapacidad.length > 0 || perfil.nota || perfil.porcentaje) && (
+              <section aria-labelledby="s-acc" style={{ gridColumn:"1 / -1", borderRadius:"12px", padding:"16px", border:`1px solid ${t.accentBorder}`, background:t.accentSoft }}>
+                <h2 id="s-acc" style={{ fontSize:"11px", fontWeight:600, color:t.accent, textTransform:"uppercase", letterSpacing:"0.8px", margin:"0 0 12px" }}>Accesibilidad</h2>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+                  {perfil.discapacidad.length > 0 && (
+                    <div>
+                      <p style={{ fontSize:"11px", fontWeight:500, color:t.accent, margin:"0 0 4px" }}>Tipo de discapacidad</p>
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
+                        {perfil.discapacidad.map(d => (
+                          <span key={d} style={{ fontSize:"12px", padding:"2px 10px", borderRadius:"999px", background:"rgba(255,255,255,0.6)", color:t.textPrimary, border:`1px solid ${t.accentBorder}`, display:"flex", alignItems:"center", gap:"4px" }}>
+                            <span aria-hidden="true">{DISC_ICONS[d]}</span> {d}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {perfil.porcentaje && (
+                    <div>
+                      <p style={{ fontSize:"11px", fontWeight:500, color:t.accent, margin:"0 0 4px" }}>Porcentaje de discapacidad</p>
+                      <span style={{ fontSize:"13px", color:t.textPrimary }}>{perfil.porcentaje}%</span>
+                    </div>
+                  )}
+                  {perfil.nota && (
+                    <div style={{ gridColumn:"1 / -1", borderRadius:"8px", padding:"12px", background:"rgba(255,255,255,0.5)", border:`1px solid ${t.accentBorder}` }}>
+                      <p style={{ fontSize:"11px", fontWeight:500, color:t.accent, margin:"0 0 4px" }}>Nota para el empleador</p>
+                      <p style={{ fontSize:"12px", color:t.textPrimary, fontStyle:"italic", margin:0, lineHeight:1.5 }}>"{perfil.nota}"</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* MODAL */}
+      {/* ── MODAL ── */}
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={(e) => e.target === e.currentTarget && cerrar()}
-        >
-          <div
-            ref={modalRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="mtitle"
-            className="bg-white rounded-3xl w-full max-w-md max-h-[88vh] overflow-hidden flex flex-col border border-gray-100"
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h2 id="mtitle" ref={headRef} tabIndex={-1} className="font-bold text-gray-800 focus:outline-none">
-                Editar perfil
-              </h2>
-              <button
-                onClick={cerrar}
-                aria-label="Cerrar modal"
-                className="text-gray-400 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-xl"
-              >
-                ×
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={e => e.target === e.currentTarget && cerrar()}>
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="mtitle"
+            style={{ background:t.bgSurface, borderRadius:"20px", width:"100%", maxWidth:"480px", maxHeight:"88vh", overflow:"hidden", display:"flex", flexDirection:"column", border:`1px solid ${t.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+
+            {/* Header modal */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 20px", borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+              <h2 id="mtitle" ref={headRef} tabIndex={-1} style={{ fontSize:"16px", fontWeight:700, color:t.textPrimary, margin:0, outline:"none" }}>Editar perfil</h2>
+              <button onClick={cerrar} disabled={saving} aria-label="Cerrar modal"
+                style={{ background:"transparent", border:"none", fontSize:"24px", color:t.textMuted, cursor:saving?"not-allowed":"pointer", width:"32px", height:"32px", display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"8px" }}>×</button>
             </div>
 
             {/* Tabs */}
-            <div role="tablist" aria-label="Secciones del perfil" className="flex px-5 border-b border-gray-100">
-              {TABS.map((t) => (
-                <button
-                  key={t}
-                  role="tab"
-                  aria-selected={tab === t}
-                  aria-controls={`tp-${t}`}
-                  id={`tb-${t}`}
-                  onClick={() => setTab(t)}
-                  onKeyDown={(e) => {
-                    const i = TABS.indexOf(t);
-                    if (e.key === "ArrowRight") setTab(TABS[(i + 1) % TABS.length]);
-                    else if (e.key === "ArrowLeft") setTab(TABS[(i - 1 + TABS.length) % TABS.length]);
-                  }}
-                  className={`text-xs py-3 px-2.5 border-b-2 transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 rounded-t-md ${
-                    tab === t
-                      ? "border-indigo-500 text-indigo-700 font-semibold"
-                      : "border-transparent text-gray-400 hover:text-gray-600"
-                  }`}
-                >
-                  {TAB_LABELS[t]}
+            <div role="tablist" aria-label="Secciones del perfil"
+              style={{ display:"flex", padding:"0 16px", borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+              {TABS.map(tabKey => (
+                <button key={tabKey} role="tab" aria-selected={tab===tabKey}
+                  onClick={() => setTab(tabKey)}
+                  onKeyDown={e => { const i=TABS.indexOf(tabKey); if(e.key==="ArrowRight") setTab(TABS[(i+1)%TABS.length]); else if(e.key==="ArrowLeft") setTab(TABS[(i-1+TABS.length)%TABS.length]); }}
+                  style={{ fontSize:"12px", padding:"10px 12px", borderBottom:`2px solid ${tab===tabKey?t.accent:"transparent"}`, background:"transparent", color:tab===tabKey?t.accent:t.textMuted, fontWeight:tab===tabKey?600:400, cursor:"pointer", outline:"none" }}>
+                  {TAB_LABELS[tabKey]}
                 </button>
               ))}
             </div>
 
-            <div className="overflow-y-auto flex-1 px-5 py-4">
+            {/* Contenido */}
+            <div style={{ overflowY:"auto", flex:1, padding:"16px 20px" }}>
 
-              {/* Info personal */}
-              <div role="tabpanel" id="tp-info" aria-labelledby="tb-info" hidden={tab !== "info"}>
-                {tab === "info" && (
-                  <div className="space-y-3">
-                    {[
-                      ["nombre", "Nombre completo", "text"],
-                      ["rol", "¿A qué te dedicas?", "text"],
-                      ["email", "Correo", "email"],
-                      ["tel", "Teléfono", "tel"],
-                      ["ciudad", "Ciudad", "text"],
-                    ].map(([k, l, t]) => (
-                      <div key={k}>
-                        <label htmlFor={`f-${k}`} className="text-xs font-medium text-gray-600 mb-1 block">{l}</label>
-                        <input
-                          id={`f-${k}`}
-                          type={t}
-                          autoComplete={k === "email" ? "email" : k === "tel" ? "tel" : k === "nombre" ? "name" : "off"}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-                          value={draft[k]}
-                          onChange={(e) => setDraft((d) => ({ ...d, [k]: e.target.value }))}
-                        />
-                      </div>
-                    ))}
-                    <div>
-                      <label htmlFor="f-bio" className="text-xs font-medium text-gray-600 mb-1 block">Sobre mí</label>
-                      <textarea
-                        id="f-bio"
-                        rows={3}
-                        aria-describedby="bio-h"
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-                        value={draft.bio}
-                        onChange={(e) => setDraft((d) => ({ ...d, bio: e.target.value }))}
-                      />
-                      <p id="bio-h" className="text-xs text-gray-400 mt-1">Un párrafo corto está perfecto.</p>
+              {/* TAB: Yo */}
+              {tab === "info" && (
+                <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
+
+                  {/* Foto */}
+                  <div style={{ display:"flex", alignItems:"center", gap:"16px", padding:"12px", background:t.bgElevated, borderRadius:"12px", border:`1px solid ${t.border}` }}>
+                    <div style={{ width:"64px", height:"64px", borderRadius:"10px", overflow:"hidden", border:`2px solid ${t.border}`, flexShrink:0, background:t.accentSoft, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"20px", fontWeight:700, color:t.accent }}>
+                      {fotoPreview
+                        ? <img src={fotoPreview} alt="Preview" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        : perfil.foto_perfil
+                          ? <img src={perfil.foto_perfil} alt="Foto actual" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          : getInitials(draft.nombre)
+                      }
                     </div>
+                    <div>
+                      <button type="button" onClick={() => fotoInputRef.current?.click()}
+                        style={{ background:t.accentSoft, border:`1px solid ${t.accentBorder}`, borderRadius:"8px", padding:"6px 14px", fontSize:"12px", fontWeight:600, color:t.accent, cursor:"pointer" }}>
+                        📷 {perfil.foto_perfil ? "Cambiar foto" : "Subir foto"}
+                      </button>
+                      <p style={{ fontSize:"11px", color:t.textMuted, margin:"4px 0 0" }}>JPG, PNG o WEBP · máx 5 MB</p>
+                      {fotoPreview && (
+                        <button type="button"
+                          onClick={() => { setFotoFile(null); setFotoPreview(null); }}
+                          style={{ background:"transparent", border:"none", fontSize:"11px", color:"#dc2626", cursor:"pointer", padding:0, marginTop:"4px" }}>
+                          × Quitar selección
+                        </button>
+                      )}
+                    </div>
+                    <input ref={fotoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                      style={{ display:"none" }}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setFotoFile(file);
+                        setFotoPreview(URL.createObjectURL(file));
+                      }} />
                   </div>
-                )}
-              </div>
 
-              {/* Skills */}
-              <div role="tabpanel" id="tp-skills" aria-labelledby="tb-skills" hidden={tab !== "skills"}>
-                {tab === "skills" && (
-                  <div className="space-y-3">
-                    <p className="text-xs text-gray-500">Toca × para quitar una skill.</p>
-                    <ul className="flex flex-wrap gap-1.5 min-h-[36px] list-none p-0">
-                      {draft.skills.map((s, i) => (
-                        <li key={s} className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-100 flex items-center gap-1">
-                          {s}
-                          <button
-                            onClick={() => delSkill(i)}
-                            aria-label={`Quitar ${s}`}
-                            className="text-blue-400 hover:text-red-500 focus:outline-none focus:ring-1 focus:ring-red-400 rounded-full ml-0.5"
-                          >
-                            ×
+                  {/* Campos de texto */}
+                  {[["nombre","Nombre completo","text"],["tel","Teléfono","tel"],["portafolio","URL Portafolio","url"]].map(([k,l,type]) => (
+                    <div key={k}>
+                      <label htmlFor={`f-${k}`} style={{ fontSize:"12px", fontWeight:500, color:t.textSecondary, display:"block", marginBottom:"4px" }}>{l}</label>
+                      <input id={`f-${k}`} type={type}
+                        style={{ width:"100%", border:`1px solid ${t.border}`, borderRadius:"10px", padding:"8px 12px", fontSize:"13px", background:t.bgElevated, color:t.textPrimary, outline:"none", boxSizing:"border-box" }}
+                        value={draft[k]} onChange={e => setDraft(d => ({ ...d, [k]:e.target.value }))} />
+                    </div>
+                  ))}
+
+                  <div>
+                    <label htmlFor="f-exp" style={{ fontSize:"12px", fontWeight:500, color:t.textSecondary, display:"block", marginBottom:"4px" }}>Experiencia</label>
+                    <textarea id="f-exp" rows={4}
+                      placeholder="Describe tu experiencia laboral, proyectos, logros…"
+                      style={{ width:"100%", border:`1px solid ${t.border}`, borderRadius:"10px", padding:"8px 12px", fontSize:"13px", background:t.bgElevated, color:t.textPrimary, outline:"none", resize:"vertical", boxSizing:"border-box" }}
+                      value={draft.experiencia} onChange={e => setDraft(d => ({ ...d, experiencia:e.target.value }))} />
+                  </div>
+
+                  <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+                    <button type="button" role="checkbox" aria-checked={draft.esfuerzo}
+                      onClick={() => setDraft(d => ({ ...d, esfuerzo:!d.esfuerzo }))}
+                      style={{ width:"20px", height:"20px", borderRadius:"6px", border:`2px solid ${draft.esfuerzo?t.accent:t.border}`, background:draft.esfuerzo?t.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
+                      {draft.esfuerzo && <span style={{ color:"#fff", fontSize:"14px", fontWeight:700 }}>✓</span>}
+                    </button>
+                    <label onClick={() => setDraft(d => ({ ...d, esfuerzo:!d.esfuerzo }))}
+                      style={{ fontSize:"13px", color:t.textPrimary, cursor:"pointer", userSelect:"none" }}>
+                      Puedo realizar esfuerzo físico
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: Skills */}
+              {tab === "skills" && (
+                <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
+                  <p style={{ fontSize:"12px", color:t.textMuted, margin:0 }}>Toca × para quitar una habilidad.</p>
+                  <ul style={{ display:"flex", flexWrap:"wrap", gap:"6px", minHeight:"36px", listStyle:"none", padding:0, margin:0 }}>
+                    {draft.skills.map((s,i) => (
+                      <li key={s} style={{ fontSize:"12px", padding:"3px 10px", borderRadius:"999px", background:t.accentSoft, color:t.accent, border:`1px solid ${t.accentBorder}`, display:"flex", alignItems:"center", gap:"4px" }}>
+                        {s}
+                        <button onClick={() => delSkill(i)} aria-label={`Quitar ${s}`}
+                          style={{ background:"transparent", border:"none", color:t.accent, cursor:"pointer", fontSize:"14px", padding:"0 2px" }}>×</button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ display:"flex", gap:"8px" }}>
+                    <input type="text" placeholder="Ej: TypeScript"
+                      style={{ flex:1, border:`1px solid ${t.border}`, borderRadius:"10px", padding:"8px 12px", fontSize:"13px", background:t.bgElevated, color:t.textPrimary, outline:"none" }}
+                      value={newSkill} onChange={e => setNewSkill(e.target.value)}
+                      onKeyDown={e => e.key==="Enter" && (e.preventDefault(), addSkill())} />
+                    <button onClick={addSkill}
+                      style={{ background:t.gradient, border:"none", borderRadius:"10px", padding:"8px 16px", color:"#fff", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>
+                      + Agregar
+                    </button>
+                  </div>
+                  <p style={{ fontSize:"11px", color:t.textMuted, margin:0 }}>También puedes presionar Enter.</p>
+                </div>
+              )}
+
+              {/* TAB: Accesibilidad */}
+              {tab === "accesibilidad" && (
+                <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+                  <fieldset style={{ border:"none", padding:0, margin:0 }}>
+                    <legend style={{ fontSize:"12px", fontWeight:600, color:t.textSecondary, marginBottom:"8px" }}>
+                      Tipo de discapacidad <span style={{ fontWeight:400, color:t.textMuted }}>(puedes elegir varias)</span>
+                    </legend>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
+                      {DISCAPACIDADES.map(op => {
+                        const sel = draft.discapacidad.includes(op);
+                        return (
+                          <button key={op} type="button" role="checkbox" aria-checked={sel} onClick={() => togDisc(op)}
+                            style={{ fontSize:"12px", padding:"4px 12px", borderRadius:"999px", border:`1px solid ${sel?t.accent:t.border}`, background:sel?t.accent:t.bgSurface, color:sel?"#fff":t.textSecondary, cursor:"pointer", display:"flex", alignItems:"center", gap:"4px", transition:"all 0.2s" }}>
+                            <span aria-hidden="true">{DISC_ICONS[op]}</span> {op}
                           </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="flex gap-2">
-                      <label htmlFor="ns" className="sr-only">Nueva skill</label>
-                      <input
-                        id="ns"
-                        type="text"
-                        placeholder="Ej: TypeScript"
-                        className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                        value={newSkill}
-                        onChange={(e) => setNewSkill(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSkill())}
-                      />
-                      <button
-                        onClick={addSkill}
-                        aria-label="Agregar skill"
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 whitespace-nowrap transition"
-                      >
-                        + Agregar
-                      </button>
+                        );
+                      })}
                     </div>
-                    <p className="text-xs text-gray-400">También puedes presionar Enter.</p>
+                  </fieldset>
+
+                  <div>
+                    <label htmlFor="f-pct" style={{ fontSize:"12px", fontWeight:600, color:t.textSecondary, display:"block", marginBottom:"4px" }}>
+                      Porcentaje de discapacidad <span style={{ fontWeight:400, color:t.textMuted }}>(opcional)</span>
+                    </label>
+                    <input id="f-pct" type="number" min="0" max="100" placeholder="Ej: 40"
+                      style={{ width:"100%", border:`1px solid ${t.border}`, borderRadius:"10px", padding:"8px 12px", fontSize:"13px", background:t.bgElevated, color:t.textPrimary, outline:"none", boxSizing:"border-box" }}
+                      value={draft.porcentaje} onChange={e => setDraft(d => ({ ...d, porcentaje:e.target.value }))} />
+                    <p style={{ fontSize:"11px", color:t.textMuted, marginTop:"4px" }}>Lo indica tu certificado del IMSS o SEP.</p>
                   </div>
-                )}
-              </div>
 
-              {/* Estudios */}
-              <div role="tabpanel" id="tp-edu" aria-labelledby="tb-edu" hidden={tab !== "edu"}>
-                {tab === "edu" && (
-                  <div className="space-y-3">
-                    {[
-                      ["carrera", "Carrera o grado"],
-                      ["uni", "Institución"],
-                      ["periodo", "Período (ej: 2021–2025)"],
-                    ].map(([k, l]) => (
-                      <div key={k}>
-                        <label htmlFor={`f-${k}`} className="text-xs font-medium text-gray-600 mb-1 block">{l}</label>
-                        <input
-                          id={`f-${k}`}
-                          type="text"
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                          value={draft[k]}
-                          onChange={(e) => setDraft((d) => ({ ...d, [k]: e.target.value }))}
-                        />
-                      </div>
-                    ))}
+                  <div>
+                    <label htmlFor="f-nota" style={{ fontSize:"12px", fontWeight:600, color:t.textSecondary, display:"block", marginBottom:"4px" }}>
+                      Nota para el empleador <span style={{ fontWeight:400, color:t.textMuted }}>(opcional)</span>
+                    </label>
+                    <textarea id="f-nota" rows={3} placeholder="Ej: Uso lector de pantalla, me manejo bien con teclado…"
+                      style={{ width:"100%", border:`1px solid ${t.border}`, borderRadius:"10px", padding:"8px 12px", fontSize:"13px", background:t.bgElevated, color:t.textPrimary, outline:"none", resize:"vertical", boxSizing:"border-box" }}
+                      value={draft.nota} onChange={e => setDraft(d => ({ ...d, nota:e.target.value }))} />
                   </div>
-                )}
-              </div>
-
-              {/* Accesibilidad */}
-              <div role="tabpanel" id="tp-accesibilidad" aria-labelledby="tb-accesibilidad" hidden={tab !== "accesibilidad"}>
-                {tab === "accesibilidad" && (
-                  <div className="space-y-5">
-                    <fieldset>
-                      <legend className="text-xs font-semibold text-gray-700 mb-2">
-                        ¿Qué tipo de discapacidad tienes?{" "}
-                        <span className="font-normal text-gray-400">(puedes elegir varias)</span>
-                      </legend>
-                      <div className="flex flex-wrap gap-2">
-                        {DISCAPACIDADES.map((op) => {
-                          const sel = draft.discapacidad.includes(op);
-                          return (
-                            <button
-                              key={op}
-                              type="button"
-                              role="checkbox"
-                              aria-checked={sel}
-                              onClick={() => togDisc(op)}
-                              className={`text-xs px-3 py-1.5 rounded-full border transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
-                                sel
-                                  ? "bg-indigo-600 text-white border-indigo-600"
-                                  : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300"
-                              }`}
-                            >
-                              <span aria-hidden="true">{DISC_ICONS[op]}</span> {op}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </fieldset>
-
-                    <div>
-                      <label htmlFor="f-pct" className="text-xs font-semibold text-gray-700 mb-1 block">
-                        Porcentaje de discapacidad{" "}
-                        <span className="font-normal text-gray-400">(opcional)</span>
-                      </label>
-                      <input
-                        id="f-pct"
-                        type="text"
-                        placeholder="Ej: 40%"
-                        aria-describedby="pct-h"
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                        value={draft.porcentaje}
-                        onChange={(e) => setDraft((d) => ({ ...d, porcentaje: e.target.value }))}
-                      />
-                      <p id="pct-h" className="text-xs text-gray-400 mt-1">Lo indica tu certificado del IMSS o SEP.</p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked={draft.certificado}
-                        aria-label="Tengo certificado de discapacidad"
-                        onClick={() => setDraft((d) => ({ ...d, certificado: !d.certificado }))}
-                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
-                          draft.certificado ? "bg-indigo-600 border-indigo-600" : "border-gray-300 bg-white"
-                        }`}
-                      >
-                        {draft.certificado && (
-                          <span aria-hidden="true" className="text-white text-xs font-bold leading-none">✓</span>
-                        )}
-                      </button>
-                      <label
-                        onClick={() => setDraft((d) => ({ ...d, certificado: !d.certificado }))}
-                        className="text-sm text-gray-700 cursor-pointer select-none"
-                      >
-                        Tengo certificado de discapacidad (SEP / IMSS)
-                      </label>
-                    </div>
-
-                    <fieldset>
-                      <legend className="text-xs font-semibold text-gray-700 mb-2">
-                        ¿Qué apoyos necesitas?{" "}
-                        <span className="font-normal text-gray-400">(opcional)</span>
-                      </legend>
-                      <div className="flex flex-wrap gap-2">
-                        {APOYOS.map((op) => {
-                          const sel = draft.apoyos.includes(op);
-                          return (
-                            <button
-                              key={op}
-                              type="button"
-                              role="checkbox"
-                              aria-checked={sel}
-                              onClick={() => togApoyo(op)}
-                              className={`text-xs px-3 py-1.5 rounded-full border transition focus:outline-none focus:ring-2 focus:ring-teal-400 ${
-                                sel
-                                  ? "bg-teal-700 text-white border-teal-700"
-                                  : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
-                              }`}
-                            >
-                              {op}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </fieldset>
-
-                    <div>
-                      <label htmlFor="f-nota" className="text-xs font-semibold text-gray-700 mb-1 block">
-                        Nota para el empleador{" "}
-                        <span className="font-normal text-gray-400">(opcional)</span>
-                      </label>
-                      <textarea
-                        id="f-nota"
-                        rows={3}
-                        placeholder="Ej: Uso lector de pantalla, me manejo bien con teclado..."
-                        aria-describedby="nota-h"
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-                        value={draft.nota}
-                        onChange={(e) => setDraft((d) => ({ ...d, nota: e.target.value }))}
-                      />
-                      <p id="nota-h" className="text-xs text-gray-400 mt-1">
-                        Con tus propias palabras, lo que necesites explicar.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-100">
-              <button
-                onClick={cerrar}
-                className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-gray-400"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={guardar}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-5 py-2 rounded-xl transition focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
-              >
-                Guardar
-              </button>
+            {/* Footer modal */}
+            <div style={{ display:"flex", flexDirection:"column", gap:"8px", padding:"12px 20px", borderTop:`1px solid ${t.border}`, flexShrink:0 }}>
+              {saveError && (
+                <div role="alert" style={{ fontSize:"12px", color:"#dc2626", background:"rgba(220,38,38,0.08)", border:"1px solid rgba(220,38,38,0.2)", borderRadius:"8px", padding:"8px 12px" }}>
+                  ⚠️ {saveError}
+                </div>
+              )}
+              <div style={{ display:"flex", justifyContent:"flex-end", gap:"8px" }}>
+                <button onClick={cerrar} disabled={saving}
+                  style={{ background:"transparent", border:`1px solid ${t.border}`, borderRadius:"10px", padding:"8px 16px", fontSize:"13px", fontWeight:500, color:t.textSecondary, cursor:saving?"not-allowed":"pointer", opacity:saving?0.6:1 }}>
+                  Cancelar
+                </button>
+                <button onClick={guardar} disabled={saving} aria-busy={saving}
+                  style={{ background:t.gradient, border:"none", borderRadius:"10px", padding:"8px 20px", fontSize:"13px", fontWeight:600, color:"#fff", cursor:saving?"not-allowed":"pointer", boxShadow:`0 4px 12px ${t.accentGlow}`, opacity:saving?0.8:1, display:"flex", alignItems:"center", gap:"6px" }}>
+                  {saving ? (
+                    <>
+                      <span aria-hidden="true" style={{ display:"inline-block", width:"12px", height:"12px", border:"2px solid rgba(255,255,255,0.4)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
+                      Guardando…
+                    </>
+                  ) : "Guardar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </PortalLayout>
   );
 }

@@ -42,6 +42,7 @@ import Certificaciones from './pages/Postulante/Certificaciones.jsx';
 import VacantesPos from "./pages/postulante/vacantes.jsx";
 import Mispostulaciones from "./pages/postulante/mispostulaciones.jsx";
 import Misreportes from "./pages/postulante/misreportes.jsx";
+import EdicionPerfil from "./pages/Postulante/EdicionPerfil.jsx"
 import { useSesion } from './assets/Hook/Sesion/useSesion';
 import { rutaPorRol } from './assets/Hook/Sesion/apiSesion';
 import { ENDPOINTS as POSTULANTE_ENDPOINTS } from './assets/Hook/Postulante/apiPostulante';
@@ -211,6 +212,8 @@ function App() {
           <Route path="/postulante/vacantes" element={<VacantesPos />} />
           <Route path="/postulante/postulaciones" element={<Mispostulaciones />} />
           <Route path="/postulante/reportes" element={<Misreportes />} />
+          <Route path="/postulante/perfil" element={<EdicionPerfil />} />
+
         </Route>
       </Route>
       {/* <Route path="/postulante/vacantes"        element={<PostulanteVacantes />} /> */}

@@ -137,7 +137,6 @@ const Registro = () => {
                   Ingresar
                 </button>
 
-                <Rp />
 
                 <div style={styles.divider}>
                   <div style={styles.line} />
@@ -193,9 +192,14 @@ const Registro = () => {
 
               </div>
             </form>
+                     
+
           </div>
+           <Rp />
         </div>
+        
       </div>
+            
 
       {/* ================= MODAL ================= */}
     </>

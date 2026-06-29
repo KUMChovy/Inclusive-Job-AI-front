@@ -30,6 +30,7 @@ export default function Rp() {
     try {
       const response = await fetch(
         "http://localhost/inclusijob_back/back-inclusiveJob/API/recuperar_password.php",
+
         {
           method: "POST",
           headers: {
@@ -76,13 +77,10 @@ export default function Rp() {
         type="button"
         onClick={() => setOpen(true)}
         style={{
-          fontSize: "14px",
-          color: "#4f46e5",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          fontWeight: 500,
-          transition: "0.2s ease",
+          background: "none",
+      border: "none",
+      color: "#4f46e5",
+      cursor: "pointer"
         }}
         onMouseEnter={(e) => (e.currentTarget.style.color = "#1e3a8a")}
         onMouseLeave={(e) => (e.currentTarget.style.color = "#4f46e5")}
