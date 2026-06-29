@@ -27,6 +27,10 @@ import Reportes       from './pages/Admin/Reportes.jsx';
 
 // ── Reclutador ───────────────────────────────────────────────
 import ReclutadorDashboard from './pages/Reclutador/Reclutadordashboard.jsx';
+import VacantesReclutador from "./pages/Reclutador/Vacantes.jsx"; 
+import Candidatos from './pages/Reclutador/candidatos.jsx';
+import Perfil from './pages/Reclutador/perfil.jsx';
+import Empresa from './pages/Reclutador/empresa.jsx';
 import Reportesmios from './pages/Reclutador/reportesmios.jsx';
 
 
@@ -181,6 +185,11 @@ function App() {
         <Route path="/Vista" element={<Vista />} />
         <Route path="/reclutador" element={<ReclutadorDashboard />} />
         <Route path="/reclutador/reportes" element={<Reportesmios />} />
+      <Route path="/reclutador/vacantes/nueva" element={<VacantesReclutador />} /> 
+      <Route path="/reclutador/vacantes" element={<VacantesReclutador />} /> {}
+      <Route path="/reclutador/Candidatos" element={<Candidatos />} />
+      <Route path="/reclutador/Perfil" element={<Perfil />} />
+      <Route path="/reclutador/Empresa" element={<Empresa />} />
       </Route>
 
       {/* <Route path="/reclutador/empresa"      element={<ReclutadorEmpresa />} /> */}
