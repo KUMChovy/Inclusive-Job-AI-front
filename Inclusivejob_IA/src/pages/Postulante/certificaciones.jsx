@@ -94,14 +94,18 @@ export default function PostulanteDashboard() {
 
   /* Verifica CV */
   useEffect(() => {
-    fetch(CV_URL)
+    fetch(CV_URL, {
+        credentials: 'include'
+      })
       .then((res) => setTieneCV(res.ok))
       .catch(() => setTieneCV(false));
   }, []);
 
   /* Carga certificaciones */
   useEffect(() => {
-    fetch(CERT_URL)
+    fetch(CERT_URL, {
+      credentials: 'include'
+    })
       .then((r) => r.json())
       .then((data) => setCertificaciones(data.ok ? data.certificaciones : []))
       .catch(() => setCertificaciones([]));
@@ -116,7 +120,7 @@ export default function PostulanteDashboard() {
     try {
       const formData = new FormData();
       formData.append('cv', file);
-      const res  = await fetch(CV_URL, { method:'POST', body:formData });
+      const res  = await fetch(CV_URL, { method:'POST', credentials:'include', body:formData });
       const data = await res.json();
       if (data.ok) {
         alert('✅ CV actualizado correctamente');
@@ -155,7 +159,9 @@ export default function PostulanteDashboard() {
   }
 
   async function recargarCertificaciones() {
-    const r    = await fetch(CERT_URL);
+    const r    = await fetch(CERT_URL, {
+                          credentials:'include'
+                        });
     const data = await r.json();
     setCertificaciones(data.ok ? data.certificaciones : []);
   }
@@ -180,7 +186,7 @@ export default function PostulanteDashboard() {
       if (editandoCert)  formData.append('id',  editandoCert);
       if (formCert.pdf)  formData.append('pdf', formCert.pdf);
 
-      const res  = await fetch(CERT_URL, { method:'POST', body:formData });
+      const res  = await fetch(CERT_URL, { method:'POST', credentials:'include', body:formData });
       const data = await res.json();
 
       if (data.ok) {
@@ -204,6 +210,7 @@ export default function PostulanteDashboard() {
     try {
       const res  = await fetch(CERT_URL, {
         method: 'DELETE',
+        credentials:'include',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({ id }),
       });

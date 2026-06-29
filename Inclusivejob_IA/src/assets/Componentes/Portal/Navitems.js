@@ -32,7 +32,7 @@ export const reclutadorNav = [
     icon: Building2,
   },
   {
-    to: '/reclutador/vacantes',
+    to: '/Reclutador/Vacantes',
     label: 'Mis vacantes',
     icon: Briefcase,
   },
