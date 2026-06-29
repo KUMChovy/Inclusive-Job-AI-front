@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -124,8 +124,186 @@ function FilterButton({ active, children, onClick }) {
   );
 }
 
+//modal de reporte
+function ModalReporte({ vacante, onClose, onReportado }) {
+  const [motivo, setMotivo] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  const motivosSugeridos = [
+    'Información falsa o engañosa',
+    'Oferta discriminatoria',
+    'Requisitos no relacionados con el puesto',
+    'Empresa o contacto sospechoso',
+    'Contenido inapropiado',
+  ];
+
+  const handleEnviar = async () => {
+    if (!motivo.trim()) { setError('Por favor describe el motivo del reporte.'); return; }
+    setEnviando(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/reportes.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_vacante: vacante.id_vacante, motivo: motivo.trim() }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        onReportado(vacante.id_vacante);
+        onClose();
+      } else {
+        setError(json.msg ?? 'No se pudo enviar el reporte.');
+      }
+    } catch {
+      setError('Error de conexión.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(15,23,41,0.55)',
+      zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '500px',
+        border: `1px solid ${t.border}`, boxShadow: '0 20px 60px rgba(15,23,41,0.22)',
+        overflow: 'hidden',
+      }}>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)', padding: '22px 24px 18px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '12px',
+                background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <AlertTriangle size={20} color="#fff" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
+                  Reportar vacante
+                </h2>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
+                  {vacante.titulo_puesto}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} style={{
+              width: '32px', height: '32px', borderRadius: '8px',
+              background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: '#fff',
+            }}>
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          {/* Sugerencias */}
+          <div>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              Motivos frecuentes
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {motivosSugeridos.map((s) => (
+                <button key={s} onClick={() => setMotivo(s)} style={{
+                  border: `1px solid ${motivo === s ? '#fca5a5' : t.border}`,
+                  background: motivo === s ? '#fef2f2' : '#f8fafc',
+                  color: motivo === s ? '#dc2626' : t.textSecondary,
+                  borderRadius: '8px', padding: '6px 12px',
+                  fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Textarea */}
+          <div>
+            <p style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              Describe el problema <span style={{ color: '#dc2626' }}>*</span>
+            </p>
+            <textarea
+              value={motivo}
+              onChange={(e) => { setMotivo(e.target.value); setError(''); }}
+              placeholder="Explica brevemente por qué reportas esta vacante..."
+              maxLength={500}
+              rows={4}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                border: `1px solid ${error ? '#fca5a5' : t.border}`,
+                borderRadius: '12px', padding: '12px 14px',
+                fontSize: '13px', color: '#374151', lineHeight: 1.6,
+                outline: 'none', resize: 'vertical', fontFamily: 'inherit',
+                background: '#fff',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+              {error
+                ? <p style={{ margin: 0, fontSize: '11px', color: '#dc2626', fontWeight: 600 }}>⚠ {error}</p>
+                : <span />
+              }
+              <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>{motivo.length}/500</p>
+            </div>
+          </div>
+
+          {/* Advertencia */}
+          <div style={{
+            background: '#fffbeb', border: '1px solid #fde68a',
+            borderRadius: '10px', padding: '10px 14px',
+            display: 'flex', gap: '8px', alignItems: 'flex-start',
+          }}>
+            <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: '1px' }} />
+            <p style={{ margin: 0, fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
+              Los reportes son revisados por nuestro equipo. El uso indebido puede resultar en la suspensión de tu cuenta.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${t.border}`, display: 'flex', gap: '10px' }}>
+          <button onClick={onClose} style={{
+            flex: 1, background: '#f8fafc', color: t.textSecondary,
+            border: `1px solid ${t.border}`, borderRadius: '12px',
+            padding: '12px 20px', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+          }}>
+            Cancelar
+          </button>
+          <button onClick={handleEnviar} disabled={enviando} style={{
+            flex: 2,
+            background: enviando ? '#9ca3af' : 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)',
+            color: '#fff', border: 'none', borderRadius: '12px',
+            padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+            cursor: enviando ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            boxShadow: enviando ? 'none' : '0 4px 14px rgba(220,38,38,0.35)',
+          }}>
+            {enviando
+              ? <><span style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} /> Enviando...</>
+              : <><AlertTriangle size={14} /> Enviar reporte</>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Modal Detalle Vacante ──────────────────────────────────
-function ModalVacante({ vacante, onClose }) {
+function ModalVacante({ vacante, onClose, onAbrirReporte }) {
   if (!vacante) return null;
 
   useEffect(() => {
@@ -369,46 +547,63 @@ function ModalVacante({ vacante, onClose }) {
           )}
         </div>
 
-        {/* ── Footer ── */}
-        <div
-          style={{
-            padding: '16px 24px', borderTop: `1px solid ${t.border}`,
-            display: 'flex', alignItems: 'center', gap: '10px',
-            flexShrink: 0, background: '#fff',
-          }}
-        >
-          {/* Botón Reportar — rojo */}
-          <button
-            onClick={() => mostrarToast('reportado')}
-            style={{
-              flex: 1,
-              background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)',
-              color: '#fff', border: 'none', borderRadius: '12px',
-              padding: '12px 20px', fontSize: '13px', fontWeight: 700,
-              cursor: 'pointer', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', gap: '6px',
-              boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35)',
-            }}
-          >
-            <AlertTriangle size={14} />
-            Reportar
-          </button>
-
-          {/* Botón Postularme — azul (igual que antes) */}
-          <button
-            onClick={() => mostrarToast('postulado')}
-            style={{
-              flex: 1, background: t.gradient, color: '#fff', border: 'none',
-              borderRadius: '12px', padding: '12px 20px', fontSize: '13px', fontWeight: 700,
-              cursor: 'pointer', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', gap: '6px',
-              boxShadow: `0 4px 14px ${t.accentGlow}`,
-            }}
-          >
-            <CheckCircle size={14} />
-            Postularme a esta vacante
-          </button>
-        </div>
+{/* ── Footer ── */}
+<div style={{
+  padding: '16px 24px', borderTop: `1px solid ${t.border}`,
+  display: 'flex', alignItems: 'center', gap: '10px',
+  flexShrink: 0, background: '#fff',
+}}>
+  {vacante.reportada ? (
+    <>
+      <div style={{
+        flex: 1, background: '#fef2f2', color: '#dc2626',
+        border: '1px solid #fca5a5', borderRadius: '12px',
+        padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+      }}>
+        <AlertTriangle size={14} /> Reportada
+      </div>
+      <button disabled style={{
+        flex: 1, background: '#f1f5f9', color: '#94a3b8',
+        border: '1px solid #e2e8f0', borderRadius: '12px',
+        padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+        cursor: 'not-allowed', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', gap: '6px',
+      }}>
+        <CheckCircle size={14} /> Postularme
+      </button>
+    </>
+  ) : (
+    <>
+      <button
+        onClick={() => onAbrirReporte(vacante)}
+        style={{
+          flex: 1,
+          background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)',
+          color: '#fff', border: 'none', borderRadius: '12px',
+          padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+          cursor: 'pointer', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: '6px',
+          boxShadow: '0 4px 14px rgba(220,38,38,0.35)',
+        }}
+      >
+        <AlertTriangle size={14} /> Reportar
+      </button>
+      <button
+        onClick={() => mostrarToast('postulado')}
+        style={{
+          flex: 1, background: t.gradient, color: '#fff', border: 'none',
+          borderRadius: '12px', padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+          cursor: 'pointer', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: '6px',
+          boxShadow: `0 4px 14px ${t.accentGlow}`,
+        }}
+      >
+        <CheckCircle size={14} /> Postularme a esta vacante
+      </button>
+    </>
+  )}
+</div>
 
         {/* ── Toast ── */}
         {toast && (
@@ -462,6 +657,16 @@ export default function Vacantes() {
   const [modalidad,           setModalidad]           = useState('Todas');
   const [orden,               setOrden]               = useState('recientes');
   const [vacanteSeleccionada, setVacanteSeleccionada] = useState(null);
+
+  const [vacanteParaReportar, setVacanteParaReportar] = useState(null);
+  const marcarReportada = useCallback((idVacante) => {
+    setVacantes((prev) =>
+      prev.map((v) => v.id_vacante === idVacante ? { ...v, reportada: true } : v)
+    );
+    setVacanteSeleccionada((prev) =>
+      prev?.id_vacante === idVacante ? { ...prev, reportada: true } : prev
+    );
+  }, []);
 
   const modalidades = ['Todas', 'Remota', 'Híbrida', 'Presencial'];
 
@@ -555,7 +760,18 @@ export default function Vacantes() {
       `}</style>
 
       {vacanteSeleccionada && (
-        <ModalVacante vacante={vacanteSeleccionada} onClose={() => setVacanteSeleccionada(null)} />
+        <ModalVacante
+          vacante={vacanteSeleccionada}
+          onClose={() => setVacanteSeleccionada(null)}
+          onAbrirReporte={(v) => setVacanteParaReportar(v)}
+        />
+      )}
+      {vacanteParaReportar && (
+        <ModalReporte
+          vacante={vacanteParaReportar}
+          onClose={() => setVacanteParaReportar(null)}
+          onReportado={marcarReportada}
+        />
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
