@@ -24,6 +24,7 @@ export function useFetch(url, options = {}) {
     try {
       const token = localStorage.getItem('postulante_token');
       const res = await fetch(url, {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -67,6 +68,7 @@ export function useApiAction() {
       const token = localStorage.getItem('postulante_token');
       const res = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

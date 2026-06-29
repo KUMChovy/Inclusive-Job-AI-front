@@ -4,6 +4,11 @@
 
 
 import { useApiAction, useFetch } from './useApi';
+import { ENDPOINTS } from './apiPostulante';
+
+export function usePostulanteDashboard() {
+  return useFetch(ENDPOINTS.dashboard.resumen);
+}
 
 /**
  * usePostulanteResource - Base temporal para consultar una URL del modulo Postulante.
