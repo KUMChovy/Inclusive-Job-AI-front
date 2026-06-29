@@ -303,7 +303,7 @@ function ModalReporte({ vacante, onClose, onReportado }) {
 }
 
 // ── Modal Detalle Vacante ──────────────────────────────────
-function ModalVacante({ vacante, onClose, onAbrirReporte }) {
+function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
   if (!vacante) return null;
 
   useEffect(() => {
@@ -316,6 +316,26 @@ function ModalVacante({ vacante, onClose, onAbrirReporte }) {
   const mostrarToast = (tipo) => {
     setToast(tipo);
     setTimeout(() => setToast(null), 3200);
+  };
+
+  const handlePostularse = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/postulaciones.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_vacante: vacante.id_vacante }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        onPostularse(vacante.id_vacante);
+        mostrarToast('postulado');
+      } else {
+        mostrarToast('error');
+      }
+    } catch {
+      mostrarToast('error');
+    }
   };
 
   return (
@@ -547,63 +567,83 @@ function ModalVacante({ vacante, onClose, onAbrirReporte }) {
           )}
         </div>
 
-{/* ── Footer ── */}
-<div style={{
-  padding: '16px 24px', borderTop: `1px solid ${t.border}`,
-  display: 'flex', alignItems: 'center', gap: '10px',
-  flexShrink: 0, background: '#fff',
-}}>
-  {vacante.reportada ? (
-    <>
-      <div style={{
-        flex: 1, background: '#fef2f2', color: '#dc2626',
-        border: '1px solid #fca5a5', borderRadius: '12px',
-        padding: '12px 20px', fontSize: '13px', fontWeight: 700,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-      }}>
-        <AlertTriangle size={14} /> Reportada
-      </div>
-      <button disabled style={{
-        flex: 1, background: '#f1f5f9', color: '#94a3b8',
-        border: '1px solid #e2e8f0', borderRadius: '12px',
-        padding: '12px 20px', fontSize: '13px', fontWeight: 700,
-        cursor: 'not-allowed', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', gap: '6px',
-      }}>
-        <CheckCircle size={14} /> Postularme
-      </button>
-    </>
-  ) : (
-    <>
-      <button
-        onClick={() => onAbrirReporte(vacante)}
-        style={{
-          flex: 1,
-          background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)',
-          color: '#fff', border: 'none', borderRadius: '12px',
-          padding: '12px 20px', fontSize: '13px', fontWeight: 700,
-          cursor: 'pointer', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', gap: '6px',
-          boxShadow: '0 4px 14px rgba(220,38,38,0.35)',
-        }}
-      >
-        <AlertTriangle size={14} /> Reportar
-      </button>
-      <button
-        onClick={() => mostrarToast('postulado')}
-        style={{
-          flex: 1, background: t.gradient, color: '#fff', border: 'none',
-          borderRadius: '12px', padding: '12px 20px', fontSize: '13px', fontWeight: 700,
-          cursor: 'pointer', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', gap: '6px',
-          boxShadow: `0 4px 14px ${t.accentGlow}`,
-        }}
-      >
-        <CheckCircle size={14} /> Postularme a esta vacante
-      </button>
-    </>
-  )}
-</div>
+        {/* ── Footer ── */}
+        <div style={{
+          padding: '16px 24px', borderTop: `1px solid ${t.border}`,
+          display: 'flex', alignItems: 'center', gap: '10px',
+          flexShrink: 0, background: '#fff',
+        }}>
+          {vacante.reportada ? (
+            <>
+              <div style={{
+                flex: 1, background: '#fef2f2', color: '#dc2626',
+                border: '1px solid #fca5a5', borderRadius: '12px',
+                padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              }}>
+                <AlertTriangle size={14} /> Reportada
+              </div>
+              <button disabled style={{
+                flex: 1, background: '#f1f5f9', color: '#94a3b8',
+                border: '1px solid #e2e8f0', borderRadius: '12px',
+                padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+                cursor: 'not-allowed', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '6px',
+              }}>
+                <CheckCircle size={14} /> Postularme
+              </button>
+            </>
+          ) : vacante.postulada ? (
+            <>
+              <button disabled style={{
+                flex: 1, background: '#f1f5f9', color: '#94a3b8',
+                border: '1px solid #e2e8f0', borderRadius: '12px',
+                padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+                cursor: 'not-allowed', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '6px',
+              }}>
+                <AlertTriangle size={14} /> Reportar
+              </button>
+              <div style={{
+                flex: 1, background: '#d1fae5', color: '#065f46',
+                border: '1px solid #6ee7b7', borderRadius: '12px',
+                padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              }}>
+                <CheckCircle size={14} /> Postulado
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => onAbrirReporte(vacante)}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)',
+                  color: '#fff', border: 'none', borderRadius: '12px',
+                  padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '6px',
+                  boxShadow: '0 4px 14px rgba(220,38,38,0.35)',
+                }}
+              >
+                <AlertTriangle size={14} /> Reportar
+              </button>
+              <button
+                onClick={handlePostularse}
+                style={{
+                  flex: 1, background: t.gradient, color: '#fff', border: 'none',
+                  borderRadius: '12px', padding: '12px 20px', fontSize: '13px', fontWeight: 700,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '6px',
+                  boxShadow: `0 4px 14px ${t.accentGlow}`,
+                }}
+              >
+                <CheckCircle size={14} /> Postularme a esta vacante
+              </button>
+            </>
+          )}
+        </div>
 
         {/* ── Toast ── */}
         {toast && (
@@ -667,6 +707,15 @@ export default function Vacantes() {
       prev?.id_vacante === idVacante ? { ...prev, reportada: true } : prev
     );
   }, []);
+
+  const marcarPostulada = useCallback((idVacante) => {
+  setVacantes((prev) =>
+    prev.map((v) => v.id_vacante === idVacante ? { ...v, postulada: true } : v)
+  );
+  setVacanteSeleccionada((prev) =>
+    prev?.id_vacante === idVacante ? { ...prev, postulada: true } : prev
+  );
+}, []);
 
   const modalidades = ['Todas', 'Remota', 'Híbrida', 'Presencial'];
 
@@ -764,6 +813,7 @@ export default function Vacantes() {
           vacante={vacanteSeleccionada}
           onClose={() => setVacanteSeleccionada(null)}
           onAbrirReporte={(v) => setVacanteParaReportar(v)}
+          onPostularse={marcarPostulada}
         />
       )}
       {vacanteParaReportar && (
