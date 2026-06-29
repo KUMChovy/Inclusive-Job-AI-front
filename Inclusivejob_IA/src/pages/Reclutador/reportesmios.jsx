@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Eye, Flag, RefreshCw } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
@@ -38,6 +39,7 @@ function safeDate(value) {
 
 export default function ReclutadorDashboard() {
 
+  const navigate = useNavigate();
   const [reportes, setReportes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -227,7 +229,7 @@ export default function ReclutadorDashboard() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => console.log(row)}
+            onClick={() => navigate(`/reclutador/vacantes/${row.id_vacante}`)}
           >
             <Eye size={14} />
           </Button>
