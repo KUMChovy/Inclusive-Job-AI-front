@@ -4,13 +4,14 @@ import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalThem
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
 import { User, Building, Mail, Phone, Briefcase, Save, CheckCircle, AlertCircle, Clock, ShieldAlert } from "lucide-react";
 
+// Eliminamos el parámetro de ID en la URL de la API
 const API_PERFIL = "http://localhost/backInclusive/back-inclusiveJob/Modelo/Reclutador/perfil.php";
 
 export default function PerfilReclutador() {
-  const usuarioSesion = JSON.parse(localStorage.getItem("usuario")) || { id_usuario: 1 }; 
+  // Ya no necesitamos inicializar el id_usuario desde localStorage aquí, 
+  // el servidor se encarga de identificar la sesión activa.
 
   const [formData, setFormData] = useState({
-    id_usuario: usuarioSesion.id_usuario,
     nombres: "",
     apellidos: "",
     correo: "",
@@ -28,7 +29,10 @@ export default function PerfilReclutador() {
   useEffect(() => {
     const cargarPerfil = async () => {
       try {
-        const res = await fetch(`${API_PERFIL}?accion=obtener&id_usuario=${usuarioSesion.id_usuario}`);
+        // Petición GET con credenciales (credentials: "include") para enviar la cookie PHPSESSID
+        const res = await fetch(`${API_PERFIL}?accion=obtener`, {
+          credentials: "include"
+        });
         const result = await res.json();
         if (result.success) {
           setFormData(result.data);
@@ -44,7 +48,7 @@ export default function PerfilReclutador() {
     };
 
     cargarPerfil();
-  }, [usuarioSesion.id_usuario]);
+  }, []); // Dependencia vacía, la sesión es manejada por el servidor
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,8 +61,10 @@ export default function PerfilReclutador() {
     setIsSaving(true); 
 
     try {
+      // Petición POST con credenciales para sincronizar la sesión
       const res = await fetch(`${API_PERFIL}?accion=actualizar`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
       });
@@ -74,7 +80,8 @@ export default function PerfilReclutador() {
           setMensaje({ texto: "¡Perfil actualizado con éxito!", tipo: "success" });
         }
 
-        // Sincronizar la sesión en localStorage incluyendo el estado de la empresa
+        // Sincronizar la sesión en localStorage incluyendo el estado de la empresa de forma segura,
+        // sin exponer ni alterar el id_usuario del navegador.
         const sesionActual = JSON.parse(localStorage.getItem("usuario")) || {};
         const sesionActualizada = {
           ...sesionActual,
@@ -108,7 +115,7 @@ export default function PerfilReclutador() {
 
   // Función auxiliar para renderizar el Badge de estatus de la empresa
   const renderEmpresaBadge = () => {
-    if (!formData.empresa.trim()) {
+    if (!formData.empresa || !formData.empresa.trim()) {
       return (
         <span style={{ ...badgeStyle, background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid #f59e0b" }}>
           <AlertCircle size={14} /> Empresa Sin Registrar
@@ -148,7 +155,7 @@ export default function PerfilReclutador() {
               <ShieldAlert size={20} /> Acción Requerida: Empresa No Validada
             </div>
             <p style={{ margin: 0, fontSize: 13, color: t.textSecondary }}>
-              Actualmente no tienes permisos para crear o publicar nuevas vacantes. Registra el nombre de tu organización y espera a que nuestro equipo administrativo valide las credenciales comerciales de tu empresa.
+              Currently, you do not have permissions to create or publish new vacancies. Register the name of your organization and wait for our administrative team to validate the commercial credentials of your company.
             </p>
           </div>
         )}
@@ -174,23 +181,23 @@ export default function PerfilReclutador() {
             <div style={gridStyle}>
               <div style={inputGroupStyle}>
                 <label style={labelStyle}>Nombre(s) *</label>
-                <input type="text" name="nombres" value={formData.nombres} onChange={handleChange} required style={inputStyle} />
+                <input type="text" name="nombres" value={formData.nombres || ""} onChange={handleChange} required style={inputStyle} />
               </div>
               <div style={inputGroupStyle}>
                 <label style={labelStyle}>Apellido(s) *</label>
-                <input type="text" name="apellidos" value={formData.apellidos} onChange={handleChange} required style={inputStyle} />
+                <input type="text" name="apellidos" value={formData.apellidos || ""} onChange={handleChange} required style={inputStyle} />
               </div>
               <div style={inputGroupStyle}>
                 <label style={labelStyle}>Correo Electrónico</label>
                 <div style={{ ...inputStyle, background: t.bgElevated, color: t.textMuted, display: "flex", alignItems: "center", gap: 8, cursor: "not-allowed" }}>
-                  <Mail size={14} /> {formData.correo}
+                  <Mail size={14} /> {formData.correo || ""}
                 </div>
               </div>
               <div style={inputGroupStyle}>
                 <label style={labelStyle}>Teléfono de Contacto</label>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                   <Phone size={14} style={{ position: "absolute", left: 12, color: t.textMuted }} />
-                  <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange} style={{ ...inputStyle, paddingLeft: 34 }} placeholder="Ej: +52 55..." />
+                  <input type="tel" name="telefono" value={formData.telefono || ""} onChange={handleChange} style={{ ...inputStyle, paddingLeft: 34 }} placeholder="Ej: +52 55..." />
                 </div>
               </div>
             </div>
@@ -198,7 +205,7 @@ export default function PerfilReclutador() {
 
           {/* SECCIÓN 2: INFORMACIÓN DE LA EMPRESA & VALIDACIÓN */}
           <div style={sectionStyle}>
-            <div style={{ display: "flex", justifyContent: "between", alignItems: "center", borderBottom: `1px solid ${t.border}`, paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${t.border}`, paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
               <h3 style={{ ...sectionTitleStyle, borderBottom: "none", paddingBottom: 0 }}><Building size={18} /> Información Corporativa</h3>
               {renderEmpresaBadge()}
             </div>
@@ -206,19 +213,19 @@ export default function PerfilReclutador() {
             <div style={gridStyle}>
               <div style={inputGroupStyle}>
                 <label style={labelStyle}>Empresa / Organización *</label>
-                <input type="text" name="empresa" value={formData.empresa} onChange={handleChange} required style={inputStyle} placeholder="Ej: InclusiveJob Inc." />
+                <input type="text" name="empresa" value={formData.empresa || ""} onChange={handleChange} required style={inputStyle} placeholder="Ej: InclusiveJob Inc." />
                 <span style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>Nota: Cambiar el nombre de la empresa revocará la verificación actual.</span>
               </div>
               <div style={inputGroupStyle}>
                 <label style={labelStyle}>Puesto o Cargo</label>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                   <Briefcase size={14} style={{ position: "absolute", left: 12, color: t.textMuted }} />
-                  <input type="text" name="puesto" value={formData.puesto} onChange={handleChange} style={{ ...inputStyle, paddingLeft: 34 }} placeholder="Ej: Talent Acquisition Manager" />
+                  <input type="text" name="puesto" value={formData.puesto || ""} onChange={handleChange} style={{ ...inputStyle, paddingLeft: 34 }} placeholder="Ej: Talent Acquisition Manager" />
                 </div>
               </div>
               <div style={inputGroupStyle}>
                 <label style={labelStyle}>Sector Industrial</label>
-                <select name="sector" value={formData.sector} onChange={handleChange} style={selectStyle}>
+                <select name="sector" value={formData.sector || "No especificado"} onChange={handleChange} style={selectStyle}>
                   <option value="No especificado">Selecciona un sector</option>
                   <option value="Tecnología e Informática">Tecnología e Informática</option>
                   <option value="Servicios Generales / Limpieza">Servicios Generales / Limpieza</option>
