@@ -52,3 +52,5 @@ ALTER TABLE usuarios
 MODIFY foto_perfil LONGBLOB;
 -----------------------------------------------------------------------------------------
 que chingue a su madre la ari 
+
+ptm papoi come verga
