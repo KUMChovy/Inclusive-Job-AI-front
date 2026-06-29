@@ -6,6 +6,11 @@
 export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Reclutador';
 
 export const ENDPOINTS = {
+
+  dashboard: {
+    resumen: `${BASE_URL}/dashboard.php`,
+  },
+
   // Ejemplo de estructura:
 
   // ── Vacantes ───────────────────────────────────────────────

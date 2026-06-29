@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Briefcase, Users, Eye, TrendingUp, CheckCircle,
   Clock, XCircle, AlertTriangle, Plus, ArrowRight,
-  Building2, Star,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -14,6 +13,7 @@ import {
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
+import { useReclutadorDashboard } from '../../assets/Hook/Reclutador/useDomain';
 
 // ── CountUp animado ──────────────────────────────────────────
 function useCountUp(end, duration = 1200) {
@@ -182,15 +182,27 @@ function CustomTooltip({ active, payload, label }) {
 // ── Dashboard principal ───────────────────────────────────────
 export default function ReclutadorDashboard() {
   const navigate = useNavigate();
-  const empresaAprobada = MOCK_EMPRESA.estado === 'aprobada';
+  const { data, loading, error, refetch } = useReclutadorDashboard();
+  const currentUser = data?.user || MOCK_USER;
+  const currentEmpresa = data?.empresa || MOCK_EMPRESA;
+  const empresaAprobada = Boolean(currentEmpresa.aprobada ?? currentEmpresa.estado === 'aprobada');
+  const stats = [
+    { label: 'Vacantes activas', value: Number(data?.stats?.vacantes_activas ?? 0), icon: Briefcase, color: '#7c3aed' },
+    { label: 'Candidatos totales', value: Number(data?.stats?.candidatos_totales ?? 0), icon: Users, color: '#8b5cf6' },
+    { label: 'Postulaciones hoy', value: Number(data?.stats?.postulaciones_hoy ?? 0), icon: TrendingUp, color: '#6d28d9' },
+    { label: 'Reportes activos', value: Number(data?.stats?.reportes_activos ?? 0), icon: AlertTriangle, color: '#f59e0b' },
+  ];
+  const chartData = data?.chart ?? CHART_DATA;
+  const vacantesRecientes = data?.vacantes_recientes ?? [];
+  const candidatosRecientes = data?.candidatos_recientes ?? [];
 
   return (
     <PortalLayout
       theme={t}
       navItems={reclutadorNav}
-      user={MOCK_USER}
+      user={currentUser}
       pageTitle="Dashboard"
-      notifications={2}
+      notifications={stats[3].value}
       headerActions={
         empresaAprobada && (
           <button
@@ -210,6 +222,22 @@ export default function ReclutadorDashboard() {
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1400px', margin: '0 auto' }}>
+        {loading && (
+          <Card>
+            <div style={{ padding: '18px 20px', color: t.textSecondary, fontSize: '13px', fontWeight: 600 }}>
+              Cargando tu dashboard...
+            </div>
+          </Card>
+        )}
+
+        {error && (
+          <div style={{ padding: '14px 20px', borderRadius: '14px', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.28)', color: '#fca5a5', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <span>No se pudo cargar tu dashboard: {error}</span>
+            <button onClick={refetch} style={{ border: '1px solid rgba(239,68,68,0.35)', background: t.bgSurface, color: '#fca5a5', borderRadius: '8px', padding: '6px 10px', fontWeight: 700, cursor: 'pointer' }}>
+              Reintentar
+            </button>
+          </div>
+        )}
 
         {/* ── Banner empresa no validada ── */}
         {!empresaAprobada && (
@@ -244,22 +272,22 @@ export default function ReclutadorDashboard() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '18px', fontWeight: 800, color: t.accent,
           }}>
-            {MOCK_USER.nombre.split(' ').slice(0,2).map(w=>w[0]).join('')}
+            {(currentUser.nombre || 'Reclutador').split(' ').slice(0, 2).map((w) => w[0]).join('')}
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: t.textPrimary, letterSpacing: '-0.3px' }}>
-              Bienvenido, {MOCK_USER.nombre.split(' ')[0]} 👋
+              Bienvenido, {(currentUser.nombre || 'Reclutador').split(' ')[0]}
             </h1>
             <p style={{ margin: 0, fontSize: '13px', color: t.textSecondary }}>
               {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
-              {' · '}<span style={{ color: t.accent }}>{MOCK_EMPRESA.nombre}</span>
+              {' - '}<span style={{ color: t.accent }}>{currentEmpresa.nombre}</span>
             </p>
           </div>
         </div>
 
         {/* ── KPI Cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-          {STATS.map((s) => <StatCard key={s.label} {...s} />)}
+          {stats.map((s) => <StatCard key={s.label} {...s} />)}
         </div>
 
         {/* ── Gráfica + Candidatos recientes ── */}
@@ -277,7 +305,7 @@ export default function ReclutadorDashboard() {
                 ))}
               </div>
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={CHART_DATA} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gPost" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.35} />
@@ -303,11 +331,11 @@ export default function ReclutadorDashboard() {
           <Card>
             <SectionHeader title="Candidatos recientes" action="Ver todos" onAction={() => navigate('/reclutador/candidatos')} />
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-              {CANDIDATOS_RECIENTES.map((c, i) => (
+              {candidatosRecientes.length > 0 ? candidatosRecientes.map((c, i) => (
                 <li key={c.id} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 20px',
-                  borderBottom: i < CANDIDATOS_RECIENTES.length - 1 ? `1px solid ${t.border}` : 'none',
+                  borderBottom: i < candidatosRecientes.length - 1 ? `1px solid ${t.border}` : 'none',
                 }}>
                   <div style={{
                     width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0,
@@ -323,7 +351,11 @@ export default function ReclutadorDashboard() {
                   </div>
                   <Badge estado={c.estado} />
                 </li>
-              ))}
+              )) : (
+                <li style={{ padding: '16px 20px', color: t.textMuted, fontSize: '13px' }}>
+                  Aun no hay candidatos recientes.
+                </li>
+              )}
             </ul>
           </Card>
         </div>
@@ -341,8 +373,8 @@ export default function ReclutadorDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {VACANTES_RECIENTES.map((v, i) => (
-                  <tr key={v.id} style={{ borderBottom: i < VACANTES_RECIENTES.length - 1 ? `1px solid ${t.border}` : 'none' }}>
+                {vacantesRecientes.length > 0 ? vacantesRecientes.map((v, i) => (
+                  <tr key={v.id} style={{ borderBottom: i < vacantesRecientes.length - 1 ? `1px solid ${t.border}` : 'none' }}>
                     <td style={{ padding: '13px 20px', color: t.textPrimary, fontWeight: 600 }}>{v.titulo}</td>
                     <td style={{ padding: '13px 20px', color: t.textSecondary }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Users size={13} style={{ color: t.accent }} />{v.postulaciones}</span>
@@ -362,7 +394,13 @@ export default function ReclutadorDashboard() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan="6" style={{ padding: '18px 20px', color: t.textMuted }}>
+                      Aun no tienes vacantes registradas.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
