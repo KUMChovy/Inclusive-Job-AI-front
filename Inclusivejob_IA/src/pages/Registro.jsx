@@ -3,11 +3,219 @@ import Verificacion from "./Verificacion";
 import { errorAlert, successAlert } from "../assets/Componentes/Admin/alerts";
 import {useGoogleDomain}  from "../assets/Hook/Google/useDomain";
 import { GoogleLogin } from "@react-oauth/google";
+import { Eye, EyeOff } from "lucide-react";
+
+/* ================= BARRA DE FUERZA ================= */
+
+const StrengthBar = ({ password }) => {
+  if (!password) return null;
+  let score = 0;
+  if (password.length >= 8)    score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/\d/.test(password))    score++;
+  if (/[\W_]/.test(password)) score++;
+  const labels = ["", "Muy débil", "Débil", "Regular", "Buena", "Fuerte"];
+  const colors = ["", "#ef4444", "#f97316", "#eab308", "#22c55e", "#16a34a"];
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 3 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} style={{
+            flex: 1, height: 4, borderRadius: 999,
+            background: i <= score ? colors[score] : "#e2e8f0",
+            transition: "background 0.3s",
+          }} />
+        ))}
+      </div>
+      <span style={{ fontSize: 12, color: colors[score], fontWeight: 600 }}>{labels[score]}</span>
+    </div>
+  );
+};
+
+/* ================= MODAL CONTRASEÑA ================= */
+
+const PasswordModal = ({ isPostulante, onConfirm, userId, onClose }) => {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,64}$/;
+
+  const theme = isPostulante
+    ? { border: "#bfdbfe", btn: "linear-gradient(135deg,#4f46e5,#2563eb)" }
+    : { border: "#93c5fd", btn: "linear-gradient(135deg,#1e3a8a,#3730a3)" };
+
+const handleConfirm = async () => {
+  if (loading) return;
+
+  if (!passwordRegex.test(password)) {
+    setError("Mínimo 8 caracteres...");
+    return;
+  }
+
+  setLoading(true);
+  setError("");
+
+  try {
+    const result = await onConfirm(password, userId);
+
+    if (!result || result.success === false) {
+      throw new Error(result?.message || "No se pudo actualizar la contraseña");
+    }
+
+    // 1. cerrar modal primero
+    onClose?.();
+
+    // 2. esperar a que React pinte el cierre
+    requestAnimationFrame(async () => {
+      if (result.triggerSuccess) {
+        await successAlert(
+          "Registro exitoso",
+          "Bienvenido a InclusiJob IA",
+          theme
+        );
+      }
+    });
+
+  } catch (err) {
+    setError(err.message || "Error al actualizar contraseña");
+  } finally {
+    setLoading(false);
+  }
+};
+
+  return (
+    <div style={ms.overlay}>
+      <div style={{ ...ms.card, border: `1px solid ${theme.border}` }}>
+
+        <div style={{ ...ms.iconRing, borderColor: theme.border }}>
+          <img
+            src="https://www.google.com/favicon.ico"
+            alt="Google"
+            style={{ width: 34, height: 34, objectFit: "contain" }}
+          />
+        </div>
+
+        <h2 style={ms.title}>Completa tu registro</h2>
+
+        <p style={ms.subtitle}>
+          Debes crear una contraseña para poder activar tu cuenta.
+          No podrás continuar hasta completarlo.
+        </p>
+
+        <div style={ms.inputWrapper}>
+          <input
+            type={visible ? "text" : "password"}
+            autoComplete="new-password"
+            placeholder="Nueva contraseña"
+            maxLength={64}
+            value={password}
+            disabled={loading}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError("");
+            }}
+            style={{
+              ...ms.input,
+              borderColor: error ? "#dc2626" : theme.border,
+              opacity: loading ? 0.7 : 1,
+            }}
+          />
+
+          <button
+            type="button"
+            style={ms.eyeBtn}
+            disabled={loading}
+            onClick={() => setVisible((v) => !v)}
+          >
+            {visible ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
+
+        <StrengthBar password={password} />
+
+        {error && <p style={ms.errorText}>{error}</p>}
+
+        <p style={ms.hint}>
+          Mínimo 8 caracteres · mayúscula · minúscula · número · símbolo
+        </p>
+
+        <button
+          type="button"
+          disabled={loading}
+          style={{
+            ...ms.confirmBtn,
+            background: theme.btn,
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? "not-allowed" : "pointer",
+          }}
+          onClick={handleConfirm}
+        >
+          {loading ? "Guardando..." : "Completar registro"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ms = {
+  overlay: {
+    position: "fixed", inset: 0, zIndex: 9999,
+    background: "rgba(15,23,42,0.45)", backdropFilter: "blur(6px)",
+    display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+  },
+  card: {
+    position: "relative", width: "100%", maxWidth: 440,
+    background: "rgba(255,255,255,0.88)", backdropFilter: "blur(24px)",
+    borderRadius: 32, padding: "48px 40px 40px",
+    boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
+    display: "flex", flexDirection: "column", gap: 14,
+    fontFamily: "Poppins, sans-serif",
+  },
+  closeBtn: {
+    position: "absolute", top: 18, right: 20,
+    background: "transparent", border: "none",
+    fontSize: 18, cursor: "pointer", color: "#94a3b8", padding: 4,
+  },
+  iconRing: {
+    alignSelf: "center", width: 64, height: 64, borderRadius: "50%",
+    border: "2px solid", background: "rgba(255,255,255,0.7)",
+    display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4,
+  },
+  title: { margin: 0, fontSize: 22, fontWeight: 800, color: "#0f172a", textAlign: "center" },
+  subtitle: { margin: 0, fontSize: 14, color: "#64748b", lineHeight: 1.6, textAlign: "center" },
+  inputWrapper: { position: "relative", display: "flex", alignItems: "center" },
+  input: {
+    flex: 1, height: 54, borderRadius: 16, padding: "0 48px 0 18px",
+    fontSize: 15, border: "2px solid", outline: "none",
+    background: "rgba(255,255,255,0.9)",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.04)", transition: "border-color 0.2s",
+    fontFamily: "Poppins, sans-serif",
+  },
+  eyeBtn: {
+    position: "absolute", right: 14,
+    background: "transparent", border: "none",
+    cursor: "pointer", fontSize: 18, padding: 0,
+  },
+  errorText: { margin: 0, fontSize: 13, color: "#dc2626", fontWeight: 500 },
+  hint: { margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.5 },
+  confirmBtn: {
+    marginTop: 6, height: 54, border: "none", borderRadius: 16,
+    color: "#fff", fontWeight: 700, fontSize: 16, cursor: "pointer",
+    fontFamily: "Poppins, sans-serif",
+    boxShadow: "0 10px 25px rgba(37,99,235,0.22)",
+  },
+};
+
+/* ================= REGISTRO ================= */
 
 const Registro = () => {
   const [mode, setMode] = useState("postulante");
   const [isMobile, setIsMobile] = useState(false);
-  const { registrarConGoogle } = useGoogleDomain();
+  const { registrarConGoogle, completarPassword } = useGoogleDomain();
   const googleBtnRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -20,6 +228,9 @@ const Registro = () => {
   const [mostrarVerificacion, setMostrarVerificacion] = useState(false);
   const [correoRegistrado, setCorreoRegistrado] = useState("");
   const [codigoRegistro, setCodigoRegistro] = useState("");
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [alertThemeSnapshot, setAlertThemeSnapshot] = useState(null);
+  const [googleUserId, setGoogleUserId] = useState(null);
 
   const isPostulante = mode === "postulante";
   const theme = isPostulante ? postulante : reclutador;
@@ -193,22 +404,19 @@ const Registro = () => {
                 ux_mode="popup"
                 auto_select={false}
                 cancel_on_tap_outside={true}
-                onSuccess={async (credentialResponse) => {
-                  try {
-                    const data = await registrarConGoogle({
-  credential: credentialResponse.credential,
-  tipo: mode,
-});
-                    if (data.success) {
-                      await successAlert("Registro exitoso", "Bienvenido a InclusiJob IA", alertTheme);
-                    } else {
-                      await errorAlert("Error", data.message || "No se pudo autenticar con Google", alertTheme);
-                    }
-                  } catch (err) {
-                    console.error(err);
-                    await errorAlert("Error de conexión", "No se pudo conectar con el servidor", alertTheme);
-                  }
-                }}
+onSuccess={async (credentialResponse) => {
+  const data = await registrarConGoogle({
+    credential: credentialResponse.credential,
+    tipo: mode,
+  });
+
+  if (data.requiere_password) {
+    setGoogleUserId(data.id_usuario || data.id);   // 👈 ESTE ES EL ID REAL
+    setShowPasswordModal(true);
+  } else {
+    await errorAlert("Error", data.message, alertTheme);
+  }
+}}
                 onError={() => {
                   errorAlert("Error", "No se pudo iniciar sesión con Google", alertTheme);
                 }}
@@ -259,6 +467,33 @@ const Registro = () => {
           </div>
         </div>
       )}
+
+      {/* ================= MODAL CONTRASEÑA GOOGLE ================= */}
+      {showPasswordModal && googleUserId && (
+  <PasswordModal
+    isPostulante={isPostulante}
+    userId={googleUserId}
+    onClose={() => {
+      setShowPasswordModal(false);
+      setGoogleUserId(null);
+    }}
+onConfirm={async (password, userId) => {
+  const res = await completarPassword({
+    id_usuario: userId,
+    password
+  });
+
+  if (!res.success) {
+    return { success: false, message: res.message };
+  }
+
+  return {
+    success: true,
+    triggerSuccess: true
+  };
+}}
+  />
+)}
 
       {/* ================= MODAL DE VERIFICACIÓN ================= */}
       {mostrarVerificacion && (

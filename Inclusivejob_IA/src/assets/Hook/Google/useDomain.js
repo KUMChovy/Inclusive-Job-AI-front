@@ -1,7 +1,13 @@
 import useGoogle from "./useGoogle.js";
 
 export function useGoogleDomain() {
-  const { registrarGoogle, loginGoogle, loading, error } = useGoogle();
+  const {
+    registrarGoogle,
+    loginGoogle,
+    completarPasswordGoogle,
+    loading,
+    error
+  } = useGoogle();
 
   const registrarConGoogle = async ({ credential, tipo }) =>
     await registrarGoogle(credential, tipo);
@@ -9,9 +15,16 @@ export function useGoogleDomain() {
   const loginConGoogle = async ({ credential }) =>
     await loginGoogle(credential);
 
+  // =========================
+  // NUEVO: completar password
+  // =========================
+  const completarPassword = async ({ id_usuario, password }) =>
+    await completarPasswordGoogle(id_usuario, password);
+
   return {
     registrarConGoogle,
     loginConGoogle,
+    completarPassword,
     loading,
     error
   };
