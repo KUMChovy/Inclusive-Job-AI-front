@@ -13,76 +13,6 @@ import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
 import { usePostulanteDashboard } from '../../assets/Hook/Postulante/useDomain';
 
-// ── CountUp ────────────────────────────────────────────────
-function useCountUp(end, duration = 1200) {
-  const [v, setV] = useState(0);
-  const raf = useRef(null);
-  useEffect(() => {
-    const s = performance.now();
-    const step = (now) => {
-      const p = Math.min((now - s) / duration, 1);
-      setV(Math.floor((1 - Math.pow(1 - p, 4)) * end));
-      if (p < 1) raf.current = requestAnimationFrame(step);
-    };
-    raf.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf.current);
-  }, [end, duration]);
-  return v;
-}
-
-function formatSalario(min, max) {
-  const fmt = (n) => `$${Number(n).toLocaleString('es-MX')}`;
-  if (!min && !max) return 'Salario a convenir';
-  if (!max) return `Desde ${fmt(min)} MXN`;
-  if (!min) return `Hasta ${fmt(max)} MXN`;
-  return `${fmt(min)} - ${fmt(max)} MXN`;
-}
-
-// ── Mock data ──────────────────────────────────────────────
-const MOCK_USER = {
-  nombre: 'Ana García Torres',
-  rol: 'Postulante',
-  discapacidades: ['Visual'],
-  completado: 72,
-};
-
-const STATS = [
-  { label: 'Postulaciones',    value: 8,  icon: BookmarkCheck, color: '#2563eb' },
-  { label: 'En proceso',       value: 3,  icon: Clock,         color: '#7c3aed' },
-  { label: 'Aceptadas',        value: 1,  icon: CheckCircle,   color: '#059669' },
-  { label: 'Vacantes nuevas',  value: 24, icon: Sparkles,      color: '#0ea5e9' },
-];
-
-// Perfil del postulante — checklist de completitud
-const PERFIL_CHECKLIST = [
-  { id: 1, label: 'Informacion personal', done: true, path: '/formulario', peso: 20 },
-  { id: 2, label: 'Evaluacion inicial', done: true, path: '/formulario', peso: 25 },
-  { id: 3, label: 'Foto de perfil', done: false, path: '/formulario', peso: 10 },
-  { id: 4, label: 'Discapacidad registrada', done: true, path: '/formulario', peso: 15 },
-  { id: 5, label: 'Al menos 1 certificacion', done: false, path: '/postulante/certificaciones', peso: 20 },
-  { id: 6, label: 'CV o portafolio', done: false, path: '/formulario', peso: 10 },
-];
-
-// Consejos del día — rotan para dar variedad
-const TIPS = [
-  { icon: '💡', texto: 'Los perfiles con foto reciben 3x más visitas de reclutadores.' },
-  { icon: '📎', texto: 'Sube tus certificaciones en PDF para destacar entre candidatos.' },
-  { icon: '🎯', texto: 'Postula a vacantes con más del 80% de compatibilidad para mejores resultados.' },
-  { icon: '🔔', texto: 'Activa las notificaciones para no perder vacantes nuevas.' },
-];
-
-const POSTULACIONES = [
-  { id: 1, vacante: 'Desarrollador Frontend', empresa: 'Tech Solutions SA', modalidad: 'Remoto',     estado: 'entrevista', fecha: '2026-05-18' },
-  { id: 2, vacante: 'Diseñadora UX/UI',       empresa: 'CreativeHub CDMX',  modalidad: 'Híbrido',    estado: 'pendiente',  fecha: '2026-05-20' },
-  { id: 3, vacante: 'QA Engineer',             empresa: 'DataCorp MX',       modalidad: 'Presencial', estado: 'pendiente',  fecha: '2026-05-21' },
-];
-
-const VACANTES_RECOMENDADAS = [
-  { id: 1, titulo: 'Frontend React Developer', empresa: 'Innovatech MX',     salario: '$18,000 – $28,000', modalidad: 'Remoto',     match: 96, discapacidades: ['Visual', 'Auditiva'] },
-  { id: 2, titulo: 'Tester Automatizado',      empresa: 'SoftQA CDMX',       salario: '$14,000 – $20,000', modalidad: 'Híbrido',    match: 88, discapacidades: ['Visual', 'Motriz']  },
-  { id: 3, titulo: 'Analista de Datos Jr.',    empresa: 'DataWave México',    salario: '$16,000 – $22,000', modalidad: 'Remoto',     match: 81, discapacidades: ['Visual']           },
-];
-
 const ESTADO_STYLE = {
   pendiente:  { bg: '#fef3c7', text: '#92400e', border: '#fde68a' },
   entrevista: { bg: '#ede9fe', text: '#5b21b6', border: '#c4b5fd' },
@@ -166,9 +96,9 @@ function CompatibleBadge() {
 export default function PostulanteDashboard() {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = usePostulanteDashboard();
-  const dashboardUser = data?.user || MOCK_USER;
+  const dashboardUser = data?.user ?? {};
   const perfilCompletado = Number(data?.perfil?.completado ?? 0);
-  const checklist = data?.perfil?.checklist ?? PERFIL_CHECKLIST;
+  const checklist = data?.perfil?.checklist ?? [];
   const postulacionesRecientes = data?.postulaciones_recientes ?? [];
   const vacantesRecomendadas = data?.vacantes_recomendadas ?? [];
   const stats = [
@@ -413,23 +343,6 @@ export default function PostulanteDashboard() {
                 ))}
               </ul>
 
-              {/* Tip del día */}
-              {(() => {
-                const tip = TIPS[new Date().getDay() % TIPS.length];
-                return (
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: '10px',
-                    background: t.accentSoft, border: `1px solid ${t.accentBorder}`,
-                    borderRadius: '12px', padding: '12px 14px',
-                  }}>
-                    <span style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1 }}>{tip.icon}</span>
-                    <p style={{ margin: 0, fontSize: '12.5px', color: t.accent, fontWeight: 500, lineHeight: 1.5 }}>
-                      <strong>Tip del día:</strong> {tip.texto}
-                    </p>
-                  </div>
-                );
-              })()}
-
             </div>
           </Card>
 
@@ -559,3 +472,4 @@ export default function PostulanteDashboard() {
     </PortalLayout>
   );
 }
+
