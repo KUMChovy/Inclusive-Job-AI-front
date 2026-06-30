@@ -135,13 +135,14 @@ export async function confirmLogout(theme = null) {
 /**
  * Confirmación de ELIMINAR — siempre rojo
  */
-export async function confirmDelete(entityName = 'este elemento') {
+export async function confirmDelete(entityName = 'este elemento', theme = null) {
   return confirmAction({
     title: '¿Eliminar?',
     html: `<span>¿Seguro que deseas eliminar <strong style="color:#fff">${entityName}</strong>? Esta acción no se puede deshacer.</span>`,
     confirmText: 'Sí, eliminar',
     confirmColor: '#dc2626',
     icon: 'warning',
+    theme,
   });
 }
 

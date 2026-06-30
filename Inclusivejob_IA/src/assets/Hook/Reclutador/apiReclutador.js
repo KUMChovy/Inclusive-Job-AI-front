@@ -1,33 +1,41 @@
 // src/assets/Hook/Reclutador/apiReclutador.js
-// Este archivo centraliza la URL base y los endpoints del modulo Reclutador.
-// Aqui NO va logica de React ni llamadas fetch directas.
-// Cuando backend entregue rutas reales, agregarlas dentro de ENDPOINTS por dominio.
+// Centraliza la URL base y todos los endpoints del modulo Reclutador.
 
-export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Reclutador';
+export const BACKEND_URL = 'http://localhost/inclusijob_back/back-inclusiveJob';
+export const BASE_URL = `${BACKEND_URL}/Modelo/Reclutador`;
+
+const qs = (params = {}) => new URLSearchParams(params).toString();
 
 export const ENDPOINTS = {
-
   dashboard: {
     resumen: `${BASE_URL}/dashboard.php`,
   },
 
-  vacantes: {
-    guardar: `${BASE_URL}/vacantes.php?accion=guardar`,
+  perfil: {
+    obtener: `${BASE_URL}/perfil.php?accion=obtener`,
+    actualizar: `${BASE_URL}/perfil.php?accion=actualizar`,
   },
 
-  // Ejemplo de estructura:
+  empresa: {
+    obtener: `${BASE_URL}/empresa.php?accion=obtener`,
+    actualizar: `${BASE_URL}/empresa.php?accion=actualizar`,
+  },
 
-  // ── Vacantes ───────────────────────────────────────────────
+  vacantes: {
+    listar: `${BASE_URL}/vacantes.php?accion=listar`,
+    crear: `${BASE_URL}/vacantes.php?accion=insertar`,
+    editar: `${BASE_URL}/vacantes.php?accion=editar`,
+    actualizarEstado: `${BASE_URL}/vacantes.php?accion=actualizar_estado`,
+    eliminar: (idVacante) => `${BASE_URL}/vacantes.php?${qs({ accion: 'eliminar', id_vacante: idVacante })}`,
+    detalle: (idVacante) => `${BASE_URL}/mostrar_vacante_detalle.php?${qs({ id: idVacante })}`,
+  },
 
-  // postulaciones: {
-  //   list: `${BASE_URL}/postulaciones.php?accion=listar`,
-  //   detail: (id) => `${BASE_URL}/postulaciones.php?accion=detalle&id=${id}`,
-  // },
+  candidatos: {
+    porVacante: `${BASE_URL}/candidatos.php?accion=listar_por_vacante`,
+    detallePorVacante: (idVacante) => `${BASE_URL}/candidatos.php?${qs({ accion: 'detalles_candidatos', id_vacante: idVacante })}`,
+  },
 
-  // ── Perfil ───────────────────────────────────────────────
-
-    // perfil: {
-  //   detail: `${BASE_URL}/perfil.php?accion=detalle`,
-  //   update: `${BASE_URL}/perfil.php?accion=editar`,
-  // },
+  reportes: {
+    listar: `${BASE_URL}/mostrar_reportes.php`,
+  },
 };

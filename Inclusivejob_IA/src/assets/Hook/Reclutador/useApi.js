@@ -1,84 +1,70 @@
 // src/assets/Hook/Reclutador/useApi.js
 // Hooks genericos para consumir cualquier URL del modulo Reclutador.
-// Este archivo debe mantenerse generico: recibe una URL y ejecuta la peticion.
-// Los endpoints concretos se definen en apiReclutador.js.
 
 import { useCallback, useEffect, useState } from 'react';
 
-/**
- * useFetch - Hook generico para peticiones GET.
- * @param {string|null} url - URL completa del endpoint. Si es null, no hace la peticion.
- * @param {object} options - Opciones extra, por ejemplo headers.
- */
+async function requestJson(url, { method = 'GET', body, headers = {} } = {}) {
+  if (!url) throw new Error('La URL es requerida para ejecutar la peticion.');
+
+  const res = await fetch(url, {
+    method,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok || data.success === false || data.ok === false) {
+    throw new Error(data.message || data.mensaje || `Error ${res.status}: ${res.statusText}`);
+  }
+
+  return data;
+}
+
 export function useFetch(url, options = {}) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(Boolean(url));
   const [error, setError] = useState(null);
 
   const fetchData = useCallback(async () => {
-    if (!url) return;
+    if (!url) return null;
 
     setLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('reclutador_token');
-      const res = await fetch(url, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(options.headers || {}),
-        },
-      });
-
-      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-
-      const json = await res.json();
+      const json = await requestJson(url, { headers: options.headers || {} });
       setData(json);
+      return json;
     } catch (err) {
       setError(err.message);
+      throw err;
     } finally {
       setLoading(false);
     }
   }, [url, options.headers]);
 
   useEffect(() => {
-    fetchData();
+    fetchData().catch(() => {});
   }, [fetchData]);
 
   return { data, loading, error, refetch: fetchData };
 }
 
-/**
- * useApiAction - Hook generico para POST, PUT, PATCH o DELETE.
- * Se usa desde useDomain.js para crear acciones con nombres del negocio.
- */
 export function useApiAction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const execute = useCallback(async (url, method = 'POST', body = null) => {
-    if (!url) throw new Error('La URL es requerida para ejecutar la accion.');
-
+  const execute = useCallback(async (url, method = 'POST', body) => {
     setLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('reclutador_token');
-      const res = await fetch(url, {
-        method,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
-
-      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-
-      return await res.json();
+      return await requestJson(url, { method, body });
     } catch (err) {
       setError(err.message);
       throw err;

@@ -21,6 +21,7 @@ import {
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
+import { errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
 import {
   useGuardarVacanteReclutador,
   useReclutadorDashboard,
@@ -213,27 +214,32 @@ export default function ReclutadorDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM);
 
-  const currentUser = data?.user ?? {};
-  const currentEmpresa = data?.empresa ?? {};
+  const dashboard = data?.data ?? data ?? {};
+  const currentUser = dashboard?.user ?? {};
+  const currentEmpresa = dashboard?.empresa ?? {};
   const empresaAprobada = Boolean(
-    data?.empresa && (currentEmpresa.aprobada ?? currentEmpresa.estado === 'aprobada')
+    currentEmpresa && (currentEmpresa.aprobada ?? currentEmpresa.estado === 'aprobada')
   );
 
   const stats = [
-    { label: 'Vacantes activas', value: Number(data?.stats?.vacantes_activas ?? 0), icon: Briefcase, color: '#7c3aed' },
-    { label: 'Candidatos totales', value: Number(data?.stats?.candidatos_totales ?? 0), icon: Users, color: '#8b5cf6' },
-    { label: 'Postulaciones hoy', value: Number(data?.stats?.postulaciones_hoy ?? 0), icon: TrendingUp, color: '#6d28d9' },
-    { label: 'Reportes activos', value: Number(data?.stats?.reportes_activos ?? 0), icon: AlertTriangle, color: '#f59e0b' },
+    { label: 'Vacantes activas', value: Number(dashboard?.stats?.vacantes_activas ?? 0), icon: Briefcase, color: '#7c3aed' },
+    { label: 'Candidatos totales', value: Number(dashboard?.stats?.candidatos_totales ?? 0), icon: Users, color: '#8b5cf6' },
+    { label: 'Postulaciones hoy', value: Number(dashboard?.stats?.postulaciones_hoy ?? 0), icon: TrendingUp, color: '#6d28d9' },
+    { label: 'Reportes activos', value: Number(dashboard?.stats?.reportes_activos ?? 0), icon: AlertTriangle, color: '#f59e0b' },
   ];
-  const chartData = data?.chart ?? [];
-  const vacantesRecientes = data?.vacantes_recientes ?? [];
-  const candidatosRecientes = data?.candidatos_recientes ?? [];
+  const chartData = dashboard?.chart ?? [];
+  const vacantesRecientes = dashboard?.vacantes_recientes ?? [];
+  const candidatosRecientes = dashboard?.candidatos_recientes ?? [];
 
   const resetForm = () => setFormData(INITIAL_FORM);
 
   const guardarNuevaVacante = async () => {
     if (!empresaAprobada) {
-      alert('No puedes publicar vacantes. Tu empresa se encuentra pendiente de aprobacion.');
+      await errorAlert(
+        'Empresa pendiente',
+        'No puedes publicar vacantes hasta que tu empresa sea validada.',
+        t
+      );
       return;
     }
 
@@ -241,17 +247,17 @@ export default function ReclutadorDashboard() {
       const resultado = await guardarVacante(formData);
 
       if (!resultado?.success) {
-        alert(resultado?.message || 'Error al guardar vacante');
+        await errorAlert('Error al guardar', resultado?.message || 'No se pudo guardar la vacante.', t);
         return;
       }
 
       resetForm();
       setShowModal(false);
       await refetch();
-      alert('Vacante publicada con exito');
+      await successAlert('Vacante publicada', 'La vacante se guardo correctamente.', t);
     } catch (err) {
       console.error('Error al guardar vacante:', err);
-      alert(err.message || 'Error de conexion con el servidor');
+      await errorAlert('Error de conexion', err.message || 'No se pudo conectar con el servidor.', t);
     }
   };
 
