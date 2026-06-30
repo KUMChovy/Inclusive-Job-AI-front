@@ -13,6 +13,33 @@ import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
 import { usePostulanteDashboard } from '../../assets/Hook/Postulante/useDomain';
 
+function useCountUp(end, duration = 1200) {
+  const [v, setV] = useState(0);
+  const raf = useRef(null);
+
+  useEffect(() => {
+    const s = performance.now();
+    const step = (now) => {
+      const p = Math.min((now - s) / duration, 1);
+      setV(Math.floor((1 - Math.pow(1 - p, 4)) * end));
+      if (p < 1) raf.current = requestAnimationFrame(step);
+    };
+
+    raf.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf.current);
+  }, [end, duration]);
+
+  return v;
+}
+
+function formatSalario(min, max) {
+  const fmt = (n) => `$${Number(n).toLocaleString('es-MX')}`;
+  if (!min && !max) return 'Salario a convenir';
+  if (!max) return `Desde ${fmt(min)} MXN`;
+  if (!min) return `Hasta ${fmt(max)} MXN`;
+  return `${fmt(min)} - ${fmt(max)} MXN`;
+}
+
 const ESTADO_STYLE = {
   pendiente:  { bg: '#fef3c7', text: '#92400e', border: '#fde68a' },
   entrevista: { bg: '#ede9fe', text: '#5b21b6', border: '#c4b5fd' },
