@@ -12,6 +12,7 @@ import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
 import { usePostulanteDashboard } from '../../assets/Hook/Postulante/useDomain';
+import ChatBubble from '../../components/ChatBot';
 
 function useCountUp(end, duration = 1200) {
   const [v, setV] = useState(0);
@@ -493,8 +494,8 @@ export default function PostulanteDashboard() {
               <span style={{ fontSize: '13px', fontWeight: 600, color: t.textPrimary, lineHeight: 1.3 }}>{a.label}</span>
             </button>
           ))}
+          <ChatBubble/>
         </div>
-
       </div>
     </PortalLayout>
   );

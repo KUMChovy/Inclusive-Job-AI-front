@@ -11,6 +11,7 @@ import {
 import {
   postulantNav,
 } from '../../assets/Componentes/Portal/navItems';
+import ChatBubble from '../../components/ChatBot';
 
 const MOCK_USER = {
   nombre: 'Luis',
@@ -933,7 +934,7 @@ export default function PostulanteDashboard() {
           )}
         </Card>
       </div>
-
+          <ChatBubble/>
     </PortalLayout>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { postulantTheme } from "../../assets/Componentes/Portal/portalTheme";
 import { postulantNav } from "../../assets/Componentes/Portal/navItems";
+import ChatBubble from "../../components/ChatBot";
 
 const t = postulantTheme;
 const BASE_URL = "http://localhost/inclusijob_back/back-inclusiveJob";
@@ -547,8 +548,10 @@ export default function PerfilPostulante() {
           </div>
         </div>
       )}
+      <ChatBubble/>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </PortalLayout>
+
   );
 }

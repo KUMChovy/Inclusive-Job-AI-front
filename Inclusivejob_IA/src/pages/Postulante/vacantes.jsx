@@ -18,6 +18,7 @@ import {
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+import ChatBubble from '../../components/ChatBot';
 
 // ── URL del backend ────────────────────────────────────────
 const API_BASE = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
@@ -1047,6 +1048,7 @@ export default function Vacantes() {
           )}
         </Card>
       </div>
+      <ChatBubble/>
     </PortalLayout>
   );
 }
