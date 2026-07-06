@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Search,
   Accessibility,
@@ -18,7 +18,7 @@ import {
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
-import ChatBubble from '../../components/ChatBot';
+import { useRecomendacionVacantesIA } from '../../assets/Hook/Postulante/useDomain';
 
 // ── URL del backend ────────────────────────────────────────
 const API_BASE = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
@@ -305,14 +305,14 @@ function ModalReporte({ vacante, onClose, onReportado }) {
 
 // ── Modal Detalle Vacante ──────────────────────────────────
 function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
-  if (!vacante) return null;
-
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
 
   const [toast, setToast] = useState(null); // 'postulado' | 'reportado' | null
+
+  if (!vacante) return null;
 
   const mostrarToast = (tipo) => {
     setToast(tipo);
@@ -486,6 +486,31 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
               </span>
             </div>
           </div>
+
+          {vacante.recomendacion_ia && (
+            <div style={{ marginBottom: '20px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '14px 16px', boxShadow: '0 10px 24px rgba(37,99,235,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
+                <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <Sparkles size={13} /> Recomendacion IA
+                </p>
+                <span style={{ fontSize: '22px', fontWeight: 900, color: '#7c3aed', lineHeight: 1 }}>
+                  {vacante.recomendacion_ia.compatibilidad}%
+                </span>
+              </div>
+              <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#1e3a8a', lineHeight: 1.5 }}>
+                {vacante.recomendacion_ia.motivo}
+              </p>
+              {vacante.recomendacion_ia.puntos_fuertes?.length > 0 && (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {vacante.recomendacion_ia.puntos_fuertes.map((punto, index) => (
+                    <li key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '7px', fontSize: '12px', color: '#2563eb', lineHeight: 1.4 }}>
+                      <CheckCircle size={12} style={{ flexShrink: 0, marginTop: '2px' }} /> {punto}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Info grid */}
           <div style={{ marginBottom: '20px' }}>
@@ -690,10 +715,18 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
 // ── Componente principal ───────────────────────────────────
 export default function Vacantes() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const openedVacanteFromQueryRef = useRef(null);
+  const {
+    recomendarVacantes,
+    loading: cargandoRecomendacion,
+  } = useRecomendacionVacantesIA();
 
   const [vacantes,            setVacantes]            = useState([]);
   const [cargando,            setCargando]            = useState(true);
   const [error,               setError]               = useState('');
+  const [errorRecomendacion,  setErrorRecomendacion]  = useState('');
+  const [recomendacionesIA,   setRecomendacionesIA]   = useState([]);
   const [search,              setSearch]              = useState('');
   const [modalidad,           setModalidad]           = useState('Todas');
   const [orden,               setOrden]               = useState('recientes');
@@ -717,6 +750,39 @@ export default function Vacantes() {
     prev?.id_vacante === idVacante ? { ...prev, postulada: true } : prev
   );
 }, []);
+
+  const abrirVacanteRecomendada = useCallback((recomendacion) => {
+    const idVacante = Number(recomendacion?.id_vacante);
+    const base = vacantes.find((v) => Number(v.id_vacante) === idVacante);
+    const desdeIA = recomendacion?.vacante ?? {};
+
+    setVacanteSeleccionada({
+      ...desdeIA,
+      ...base,
+      empresa: desdeIA.empresa ?? base?.empresa,
+      recomendacion_ia: recomendacion,
+    });
+  }, [vacantes]);
+
+  const handleRecomendarVacantes = useCallback(async () => {
+    setErrorRecomendacion('');
+
+    try {
+      const data = await recomendarVacantes();
+
+      if (!data.auth) {
+        window.location.href = '/login';
+        return;
+      }
+
+      setRecomendacionesIA(data.recomendaciones ?? []);
+      if (!data.recomendaciones?.length) {
+        setErrorRecomendacion(data.message ?? 'No hay vacantes nuevas para recomendar por ahora.');
+      }
+    } catch {
+      setErrorRecomendacion('No se pudieron generar recomendaciones con IA. Intenta de nuevo.');
+    }
+  }, [recomendarVacantes]);
 
   const modalidades = ['Todas', 'Remota', 'Híbrida', 'Presencial'];
 
@@ -770,6 +836,46 @@ export default function Vacantes() {
 
     return data;
   }, [vacantes, search, modalidad, orden]);
+
+  const recomendacionesMap = useMemo(() => {
+    return new Map(recomendacionesIA.map((item) => [Number(item.id_vacante), item]));
+  }, [recomendacionesIA]);
+
+  useEffect(() => {
+    openedVacanteFromQueryRef.current = null;
+  }, [location.search]);
+
+  useEffect(() => {
+    if (cargando) return;
+
+    const idVacante = Number(new URLSearchParams(location.search).get('vacante'));
+    if (!idVacante || openedVacanteFromQueryRef.current === idVacante) return;
+
+    const base = vacantes.find((v) => Number(v.id_vacante) === idVacante);
+    const stateRecommendation = location.state?.recomendacionIA;
+    const recomendacionDesdeState =
+      Number(stateRecommendation?.id_vacante ?? stateRecommendation?.vacante?.id_vacante) === idVacante
+        ? stateRecommendation
+        : null;
+    const recomendacion = recomendacionesMap.get(idVacante) ?? recomendacionDesdeState;
+    const desdeIA = recomendacion?.vacante ?? {};
+
+    if (!base && !Object.keys(desdeIA).length) return;
+
+    const vacanteParaAbrir = {
+      ...desdeIA,
+      ...base,
+      empresa: desdeIA.empresa ?? base?.empresa,
+      recomendacion_ia: recomendacion ?? undefined,
+    };
+    openedVacanteFromQueryRef.current = idVacante;
+
+    const timer = window.setTimeout(() => {
+      setVacanteSeleccionada(vacanteParaAbrir);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [cargando, location.search, location.state, recomendacionesMap, vacantes]);
 
   if (cargando) {
     return (
@@ -868,6 +974,39 @@ export default function Vacantes() {
               style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', color: '#fff', fontSize: '13px' }}
             />
           </div>
+
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleRecomendarVacantes}
+              disabled={cargandoRecomendacion}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '7px',
+                background: cargandoRecomendacion
+                  ? '#7c3aed'
+                  : 'linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)',
+                border: '1px solid rgba(255,255,255,0.45)',
+                borderRadius: '12px',
+                padding: '11px 16px',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 800,
+                cursor: cargandoRecomendacion ? 'not-allowed' : 'pointer',
+                boxShadow: cargandoRecomendacion
+                  ? 'none'
+                  : '0 14px 32px rgba(37,99,235,0.28), 0 0 18px rgba(124,58,237,0.22)',
+              }}
+            >
+              <Sparkles size={15} />
+              {cargandoRecomendacion ? 'Analizando vacantes...' : 'Recomendar con IA'}
+            </button>
+            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.78)' }}>
+              Te muestra 4 vacantes reales con porcentaje de compatibilidad.
+            </span>
+          </div>
+
         </div>
 
         {/* ── KPIs ── */}
@@ -914,6 +1053,67 @@ export default function Vacantes() {
           </div>
         )}
 
+        {(cargandoRecomendacion || errorRecomendacion || recomendacionesIA.length > 0) && (
+          <Card>
+            <SectionHead
+              title="Recomendaciones con IA"
+              sub="4 vacantes elegidas desde las oportunidades ya filtradas por tu discapacidad"
+              action={recomendacionesIA.length > 0 ? 'Actualizar' : null}
+              onAction={handleRecomendarVacantes}
+            />
+
+            {cargandoRecomendacion ? (
+              <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '10px', color: t.textSecondary, fontSize: '13px', fontWeight: 700 }}>
+                <span style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #bae6fd', borderTopColor: '#0891b2', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                Analizando tu perfil y las vacantes disponibles...
+              </div>
+            ) : errorRecomendacion ? (
+              <div style={{ padding: '18px 20px', color: '#b91c1c', background: '#fef2f2', fontSize: '13px', fontWeight: 700 }}>
+                {errorRecomendacion}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0' }}>
+                {recomendacionesIA.map((item, index) => {
+                  const vacante = item.vacante ?? {};
+                  return (
+                    <button
+                      key={item.id_vacante}
+                      onClick={() => abrirVacanteRecomendada(item)}
+                      style={{
+                        textAlign: 'left',
+                        background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)',
+                        border: 'none',
+                        borderRight: index < recomendacionesIA.length - 1 ? '1px solid #dbeafe' : 'none',
+                        borderBottom: '1px solid #dbeafe',
+                        padding: '18px 20px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, color: '#5b21b6', background: '#eef2ff', border: '1px solid #c4b5fd', borderRadius: '999px', padding: '3px 9px' }}>
+                          <Sparkles size={11} /> Match IA
+                        </span>
+                        <span style={{ fontSize: '20px', fontWeight: 900, color: '#2563eb', lineHeight: 1 }}>
+                          {item.compatibilidad}%
+                        </span>
+                      </div>
+                      <h3 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 800, color: t.textPrimary, lineHeight: 1.3 }}>
+                        {vacante.titulo_puesto ?? 'Vacante'}
+                      </h3>
+                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: t.textMuted }}>
+                        {vacante.empresa ?? 'Empresa'} · {vacante.modalidad ?? 'Modalidad'}
+                      </p>
+                      <p style={{ margin: 0, fontSize: '12.5px', color: t.textSecondary, lineHeight: 1.5 }}>
+                        {item.motivo}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* ── Filtros ── */}
         <Card>
           <SectionHead title="Filtrar vacantes" sub="Filtra por modalidad u ordena los resultados" />
@@ -942,19 +1142,22 @@ export default function Vacantes() {
 
           {vacantesFiltradas.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0' }}>
-              {vacantesFiltradas.map((v, i) => (
+              {vacantesFiltradas.map((v, i) => {
+                const recomendacionIA = recomendacionesMap.get(Number(v.id_vacante));
+                return (
                 <div
                   key={v.id_vacante}
                   style={{
                     padding: '20px',
-                    borderRight: i < vacantesFiltradas.length - 1 ? `1px solid ${t.border}` : 'none',
-                    borderBottom: `1px solid ${t.border}`,
+                    borderRight: i < vacantesFiltradas.length - 1 ? `1px solid ${recomendacionIA ? '#bfdbfe' : t.border}` : 'none',
+                    borderBottom: `1px solid ${recomendacionIA ? '#bfdbfe' : t.border}`,
+                    boxShadow: recomendacionIA ? 'inset 0 0 0 2px rgba(37,99,235,0.14), 0 8px 24px rgba(124,58,237,0.08)' : 'none',
                     cursor: 'pointer',
                     transition: 'background 0.15s',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = t.bgElevated)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  onClick={() => setVacanteSeleccionada(v)}
+                  onClick={() => recomendacionIA ? abrirVacanteRecomendada(recomendacionIA) : setVacanteSeleccionada(v)}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <div
@@ -983,6 +1186,12 @@ export default function Vacantes() {
                   <h3 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: t.textPrimary, lineHeight: 1.3 }}>
                     {v.titulo_puesto}
                   </h3>
+
+                  {recomendacionIA && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '6px', fontSize: '11px', fontWeight: 800, color: '#5b21b6', background: '#eef2ff', border: '1px solid #c4b5fd', borderRadius: '999px', padding: '3px 9px' }}>
+                      <Sparkles size={10} /> {recomendacionIA.compatibilidad}% compatible por IA
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', marginTop: '8px' }}>
                     <span
@@ -1023,7 +1232,8 @@ export default function Vacantes() {
                     </p>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div style={{ padding: '42px 20px', textAlign: 'center' }}>
@@ -1048,7 +1258,36 @@ export default function Vacantes() {
           )}
         </Card>
       </div>
-      <ChatBubble/>
+      <button
+        onClick={handleRecomendarVacantes}
+        disabled={cargandoRecomendacion}
+        aria-label="Recomendar vacantes con IA"
+        style={{
+          position: 'fixed',
+          right: 96,
+          bottom: 30,
+          zIndex: 999998,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          minHeight: '48px',
+          padding: '0 18px',
+          borderRadius: '999px',
+          border: '1px solid rgba(255,255,255,0.35)',
+          background: cargandoRecomendacion
+            ? '#7c3aed'
+            : 'linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)',
+          color: '#fff',
+          fontSize: '13px',
+          fontWeight: 900,
+          cursor: cargandoRecomendacion ? 'not-allowed' : 'pointer',
+          boxShadow: '0 14px 32px rgba(37,99,235,0.28), 0 0 18px rgba(124,58,237,0.22)',
+        }}
+      >
+        <Sparkles size={16} />
+        {cargandoRecomendacion ? 'Analizando...' : 'Recomendar con IA'}
+      </button>
     </PortalLayout>
   );
 }

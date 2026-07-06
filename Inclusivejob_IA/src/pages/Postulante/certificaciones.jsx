@@ -8,7 +8,6 @@ import {
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
-import ChatBubble from '../../components/ChatBot';
 
 const MOCK_USER = {
   nombre: 'Luis',
@@ -468,7 +467,6 @@ export default function PostulanteDashboard() {
           </div>
         </div>
       )}
-      <ChatBubble/>
     </PortalLayout>
   );
 }

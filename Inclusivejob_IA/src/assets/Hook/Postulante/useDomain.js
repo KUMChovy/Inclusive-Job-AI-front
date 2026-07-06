@@ -3,11 +3,67 @@
 // Aqui deben vivir hooks por dominio/pantalla: perfil, vacantes, postulaciones, etc.
 
 
+import { useCallback, useState } from 'react';
 import { useApiAction, useFetch } from './useApi';
 import { ENDPOINTS } from './apiPostulante';
 
 export function usePostulanteDashboard() {
   return useFetch(ENDPOINTS.dashboard.resumen);
+}
+
+export function usePostulanteChat() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const enviarMensaje = useCallback(async (mensaje) => {
+    const texto = String(mensaje ?? '').trim();
+
+    if (!texto) {
+      throw new Error('Escribe un mensaje.');
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const body = new URLSearchParams();
+      body.set('mensaje', texto);
+
+      const res = await fetch(ENDPOINTS.chat.responder, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      });
+
+      const respuesta = await res.text();
+
+      if (!res.ok) {
+        throw new Error(respuesta || `Error ${res.status}: ${res.statusText}`);
+      }
+
+      return respuesta;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo contactar al asistente.';
+      setError(message);
+      throw new Error(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { enviarMensaje, loading, error };
+}
+
+export function useRecomendacionVacantesIA() {
+  const { execute, loading, error } = useApiAction();
+
+  const recomendarVacantes = useCallback(() => (
+    execute(ENDPOINTS.ia.recomendarVacantes, 'POST')
+  ), [execute]);
+
+  return { recomendarVacantes, loading, error };
 }
 
 /**

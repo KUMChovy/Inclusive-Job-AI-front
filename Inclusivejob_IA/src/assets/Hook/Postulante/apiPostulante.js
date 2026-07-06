@@ -6,29 +6,32 @@
 export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante';
 
 export const ENDPOINTS = {
-
   dashboard: {
     resumen: `${BASE_URL}/dashboard.php`,
   },
 
-  // ── Formulario ───────────────────────────────────────────────
+  chat: {
+    responder: `${BASE_URL}/chat/chatbot.php`,
+  },
+
+  ia: {
+    recomendarVacantes: `${BASE_URL}/chat/recomendar_vacantes.php`,
+  },
+
+  // Formulario
   formulario: {
     estado: `${BASE_URL}/guardar_formulario.php`,
     guardar: `${BASE_URL}/guardar_formulario.php`,
   },
 
   // Ejemplo de estructura:
-
-  // ── Vacantes ───────────────────────────────────────────────
-
+  //
   // postulaciones: {
   //   list: `${BASE_URL}/postulaciones.php?accion=listar`,
   //   detail: (id) => `${BASE_URL}/postulaciones.php?accion=detalle&id=${id}`,
   // },
-
-  // ── Perfil ───────────────────────────────────────────────
-
-    // perfil: {
+  //
+  // perfil: {
   //   detail: `${BASE_URL}/perfil.php?accion=detalle`,
   //   update: `${BASE_URL}/perfil.php?accion=editar`,
   // },

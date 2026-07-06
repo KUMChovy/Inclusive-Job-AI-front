@@ -1,20 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-
-/**
- * ChatBubble
- * ------------------------------------------------------------
- * Burbuja de chat flotante para React. Se queda fija en la
- * esquina inferior derecha y no afecta el layout del resto de
- * la página (position: fixed).
- *
- * Uso:
- *   import ChatBubble from "./ChatBubble";
- *   ...
- *   <ChatBubble /> // colócalo una sola vez, cerca de la raíz de tu app
- *
- * Para conectar tu backend real, reemplaza la función
- * `getBotReply` por una llamada a tu API (ver comentario dentro).
- */
+import { useNavigate } from "react-router-dom";
+import {
+  usePostulanteChat,
+  useRecomendacionVacantesIA,
+} from "../assets/Hook/Postulante/useDomain";
 
 const COLORS = {
   primary: "#4f46e5",
@@ -23,35 +12,50 @@ const COLORS = {
   border: "#e5e5ea",
 };
 
-async function getBotReply(userText) {
-  // ---------------------------------------------------------
-  // CONECTA TU BACKEND AQUÍ
-  //
-  // const res = await fetch("https://tu-backend.com/api/chat", {
-  //   method: "POST",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify({ message: userText }),
-  // });
-  // const data = await res.json();
-  // return data.reply;
-  // ---------------------------------------------------------
+const CHAT_STORAGE_KEY = "inclusivejob_postulante_chat";
+const DEFAULT_MESSAGES = [
+  { sender: "bot", text: "Hola! En que puedo ayudarte hoy?" },
+];
 
-  const res = await fetch(
-    "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/chat/chatbot.php",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: "mensaje=" + encodeURIComponent(userText),
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error("Error del servidor");
+function loadChatState() {
+  if (typeof window === "undefined") {
+    return { messages: DEFAULT_MESSAGES, open: false, hasUnread: false };
   }
 
-  return await res.text();
+  try {
+    const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
+    if (!raw) {
+      return { messages: DEFAULT_MESSAGES, open: false, hasUnread: false };
+    }
+
+    const parsed = JSON.parse(raw);
+    return {
+      messages: Array.isArray(parsed.messages) && parsed.messages.length
+        ? parsed.messages
+        : DEFAULT_MESSAGES,
+      open: Boolean(parsed.open),
+      hasUnread: Boolean(parsed.hasUnread),
+    };
+  } catch {
+    return { messages: DEFAULT_MESSAGES, open: false, hasUnread: false };
+  }
+}
+
+function saveChatState({ messages, open, hasUnread }) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      CHAT_STORAGE_KEY,
+      JSON.stringify({
+        messages: messages.slice(-40),
+        open,
+        hasUnread,
+      })
+    );
+  } catch {
+    // Si el navegador bloquea localStorage, el chat sigue funcionando en memoria.
+  }
 }
 
 function ChatIcon() {
@@ -78,17 +82,91 @@ function SendIcon() {
   );
 }
 
+function formatVacantesRecomendadas(recomendaciones = []) {
+  if (!recomendaciones.length) {
+    return "No encontre vacantes nuevas para recomendarte por ahora. Revisa que tu perfil y discapacidades esten completos.";
+  }
+
+  return "Estas son mis recomendaciones para ti. Puedes abrir cualquiera para ver el detalle completo.";
+}
+
+function getVacanteId(item) {
+  return Number(item?.id_vacante ?? item?.vacante?.id_vacante ?? 0);
+}
+
+function RecommendationCards({ recomendaciones = [], onOpenVacante }) {
+  if (!recomendaciones.length) return null;
+
+  return (
+    <div style={styles.recommendationsList}>
+      {recomendaciones.map((item) => {
+        const vacante = item.vacante ?? {};
+        const idVacante = getVacanteId(item);
+
+        return (
+          <div key={idVacante || vacante.titulo_puesto} style={styles.recommendationCard}>
+            <div style={styles.recommendationTop}>
+              <span style={styles.recommendationBadge}>
+                {item.compatibilidad ?? 0}% compatible
+              </span>
+              <span style={styles.recommendationMode}>
+                {vacante.modalidad ?? "Modalidad"}
+              </span>
+            </div>
+
+            <strong style={styles.recommendationTitle}>
+              {vacante.titulo_puesto ?? "Vacante"}
+            </strong>
+            <span style={styles.recommendationCompany}>
+              {vacante.empresa ?? "Empresa"}
+            </span>
+            {item.motivo && (
+              <p style={styles.recommendationReason}>{item.motivo}</p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => onOpenVacante(item)}
+              disabled={!idVacante}
+              style={{
+                ...styles.recommendationButton,
+                ...(!idVacante ? styles.recommendationButtonDisabled : {}),
+              }}
+            >
+              Ver vacante
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ChatBubble() {
-  const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { sender: "bot", text: "¡Hola! ¿En qué puedo ayudarte hoy?" },
-  ]);
+  const navigate = useNavigate();
+  const [initialChatState] = useState(() => loadChatState());
+  const [open, setOpen] = useState(initialChatState.open);
+  const [messages, setMessages] = useState(initialChatState.messages);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false);
+  const [hasUnread, setHasUnread] = useState(initialChatState.hasUnread);
 
+  const { enviarMensaje, loading: sendingMessage } = usePostulanteChat();
+  const {
+    recomendarVacantes,
+    loading: recommendingVacantes,
+  } = useRecomendacionVacantesIA();
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const openRef = useRef(open);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    saveChatState({ messages, open, hasUnread });
+  }, [messages, open, hasUnread]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -104,7 +182,7 @@ export default function ChatBubble() {
 
   async function handleSend() {
     const text = input.trim();
-    if (!text || typing) return;
+    if (!text || typing || sendingMessage) return;
 
     setMessages((prev) => [...prev, { sender: "user", text }]);
     setInput("");
@@ -112,13 +190,42 @@ export default function ChatBubble() {
     setTyping(true);
 
     try {
-      const reply = await getBotReply(text);
+      const reply = await enviarMensaje(text);
       setMessages((prev) => [...prev, { sender: "bot", text: reply }]);
-      if (!open) setHasUnread(true);
+      if (!openRef.current) setHasUnread(true);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: "Ocurrió un error, intenta de nuevo." },
+        { sender: "bot", text: "Ocurrio un error, intenta de nuevo." },
+      ]);
+    } finally {
+      setTyping(false);
+    }
+  }
+
+  async function handleRecommendVacantes() {
+    if (typing || sendingMessage || recommendingVacantes) return;
+
+    setMessages((prev) => [...prev, { sender: "user", text: "Recomiendame vacantes" }]);
+    setTyping(true);
+
+    try {
+      const data = await recomendarVacantes();
+      const recomendaciones = data.recomendaciones ?? [];
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          type: "recommendations",
+          text: formatVacantesRecomendadas(recomendaciones),
+          recomendaciones,
+        },
+      ]);
+      if (!openRef.current) setHasUnread(true);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: "No pude generar recomendaciones ahora. Intenta de nuevo en un momento." },
       ]);
     } finally {
       setTyping(false);
@@ -141,9 +248,21 @@ export default function ChatBubble() {
     }
   }
 
+  function handleOpenVacante(item) {
+    const idVacante = getVacanteId(item);
+    if (!idVacante) return;
+
+    navigate(`/postulante/vacantes?vacante=${idVacante}`, {
+      state: { recomendacionIA: item },
+    });
+    setOpen(false);
+    setHasUnread(false);
+  }
+
+  const isSending = typing || sendingMessage || recommendingVacantes;
+
   return (
     <>
-      {/* Botón flotante */}
       <button
         onClick={toggleOpen}
         aria-label={open ? "Cerrar chat" : "Abrir chat"}
@@ -153,7 +272,6 @@ export default function ChatBubble() {
         {hasUnread && !open && <span style={styles.badge}>1</span>}
       </button>
 
-      {/* Ventana de chat */}
       {open && (
         <div style={styles.window}>
           <div style={styles.header}>
@@ -177,13 +295,20 @@ export default function ChatBubble() {
                 style={{
                   ...styles.msg,
                   ...(m.sender === "user" ? styles.msgUser : styles.msgBot),
+                  ...(m.type === "recommendations" ? styles.msgRecommendations : {}),
                 }}
               >
                 {m.text}
+                {m.type === "recommendations" && (
+                  <RecommendationCards
+                    recomendaciones={m.recomendaciones}
+                    onOpenVacante={handleOpenVacante}
+                  />
+                )}
               </div>
             ))}
 
-            {typing && (
+            {isSending && (
               <div style={styles.typingRow}>
                 <span style={{ ...styles.dot, animationDelay: "0s" }} />
                 <span style={{ ...styles.dot, animationDelay: "0.15s" }} />
@@ -191,6 +316,19 @@ export default function ChatBubble() {
               </div>
             )}
             <div ref={messagesEndRef} />
+          </div>
+
+          <div style={styles.quickActions}>
+            <button
+              onClick={handleRecommendVacantes}
+              disabled={isSending}
+              style={{
+                ...styles.quickActionBtn,
+                ...(isSending ? styles.quickActionBtnDisabled : {}),
+              }}
+            >
+              Recomendar vacantes
+            </button>
           </div>
 
           <div style={styles.inputRow}>
@@ -205,11 +343,11 @@ export default function ChatBubble() {
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim() || typing}
+              disabled={!input.trim() || isSending}
               aria-label="Enviar mensaje"
               style={{
                 ...styles.sendBtn,
-                ...(!input.trim() || typing ? styles.sendBtnDisabled : {}),
+                ...(!input.trim() || isSending ? styles.sendBtnDisabled : {}),
               }}
             >
               <SendIcon />
@@ -218,7 +356,6 @@ export default function ChatBubble() {
         </div>
       )}
 
-      {/* Animación de "escribiendo..." (keyframes globales, se inyectan una vez) */}
       <style>{`
         @keyframes chat-typing-bounce {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
@@ -329,6 +466,7 @@ const styles = {
     fontSize: 14,
     lineHeight: 1.4,
     wordWrap: "break-word",
+    whiteSpace: "pre-line",
   },
   msgBot: {
     alignSelf: "flex-start",
@@ -336,6 +474,85 @@ const styles = {
     border: `1px solid ${COLORS.border}`,
     borderBottomLeftRadius: 4,
     color: "#1f1f1f",
+  },
+  msgRecommendations: {
+    maxWidth: "92%",
+    width: "92%",
+  },
+  recommendationsList: {
+    display: "grid",
+    gap: 8,
+    marginTop: 10,
+  },
+  recommendationCard: {
+    border: "1px solid #ddd6fe",
+    borderRadius: 12,
+    background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
+    padding: 10,
+    boxShadow: "0 8px 20px rgba(79, 70, 229, 0.08)",
+  },
+  recommendationTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 7,
+  },
+  recommendationBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    borderRadius: 999,
+    background: "#eef2ff",
+    border: "1px solid #c4b5fd",
+    color: "#5b21b6",
+    fontSize: 11,
+    fontWeight: 800,
+    padding: "3px 8px",
+    whiteSpace: "nowrap",
+  },
+  recommendationMode: {
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: 700,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  recommendationTitle: {
+    display: "block",
+    color: "#111827",
+    fontSize: 13,
+    lineHeight: 1.25,
+    marginBottom: 2,
+  },
+  recommendationCompany: {
+    display: "block",
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: 700,
+    marginBottom: 6,
+  },
+  recommendationReason: {
+    margin: "0 0 9px",
+    color: "#475569",
+    fontSize: 12,
+    lineHeight: 1.35,
+  },
+  recommendationButton: {
+    width: "100%",
+    border: "none",
+    borderRadius: 10,
+    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)",
+    color: "#fff",
+    padding: "8px 10px",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
+    boxShadow: "0 8px 18px rgba(79, 70, 229, 0.22)",
+  },
+  recommendationButtonDisabled: {
+    opacity: 0.55,
+    cursor: "not-allowed",
   },
   msgUser: {
     alignSelf: "flex-end",
@@ -368,6 +585,27 @@ const styles = {
     borderTop: `1px solid ${COLORS.border}`,
     background: "#fff",
     flexShrink: 0,
+  },
+  quickActions: {
+    display: "flex",
+    gap: 8,
+    padding: "8px 10px 0",
+    background: "#fff",
+    borderTop: `1px solid ${COLORS.border}`,
+  },
+  quickActionBtn: {
+    border: `1px solid ${COLORS.primary}`,
+    background: "#eef2ff",
+    color: COLORS.primaryDark,
+    borderRadius: 999,
+    padding: "7px 11px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  quickActionBtnDisabled: {
+    opacity: 0.55,
+    cursor: "not-allowed",
   },
   input: {
     flex: 1,

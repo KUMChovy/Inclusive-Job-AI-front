@@ -39,10 +39,11 @@ import VacanteDetalleReclutador from './pages/Reclutador/VacanteDetalleReclutado
 import PostulanteDashboard from './pages/Postulante/Postulantedashboard.jsx';
 import Formulario          from './pages/Postulante/formulario.jsx';
 import Certificaciones from './pages/Postulante/Certificaciones.jsx';
-import VacantesPos from "./pages/postulante/vacantes.jsx";
-import Mispostulaciones from "./pages/postulante/mispostulaciones.jsx";
-import Misreportes from "./pages/postulante/misreportes.jsx";
+import VacantesPos from "./pages/Postulante/vacantes.jsx";
+import Mispostulaciones from "./pages/Postulante/mispostulaciones.jsx";
+import Misreportes from "./pages/Postulante/misreportes.jsx";
 import EdicionPerfil from "./pages/Postulante/EdicionPerfil.jsx"
+import ChatBubble from './components/ChatBot.jsx';
 import { useSesion } from './assets/Hook/Sesion/useSesion';
 import { rutaPorRol } from './assets/Hook/Sesion/apiSesion';
 import { ENDPOINTS as POSTULANTE_ENDPOINTS } from './assets/Hook/Postulante/apiPostulante';
@@ -151,6 +152,15 @@ function PostulanteFormularioGate() {
   return <Outlet />;
 }
 
+function PostulanteChatLayout() {
+  return (
+    <>
+      <Outlet />
+      <ChatBubble />
+    </>
+  );
+}
+
 function App() {
   return (
     <Routes>
@@ -206,13 +216,15 @@ function App() {
           ================================================================ */}
       <Route element={<ProtectedPortalLayout allowedRoles={['postulante']} />}>
         <Route element={<PostulanteFormularioGate />}>
-          <Route path="/postulante" element={<PostulanteDashboard />} />
-          <Route path="/formulario" element={<Formulario />} />
-          <Route path="/postulante/certificaciones" element={<Certificaciones />} />
-          <Route path="/postulante/vacantes" element={<VacantesPos />} />
-          <Route path="/postulante/postulaciones" element={<Mispostulaciones />} />
-          <Route path="/postulante/reportes" element={<Misreportes />} />
-          <Route path="/postulante/perfil" element={<EdicionPerfil />} />
+          <Route element={<PostulanteChatLayout />}>
+            <Route path="/postulante" element={<PostulanteDashboard />} />
+            <Route path="/formulario" element={<Formulario />} />
+            <Route path="/postulante/certificaciones" element={<Certificaciones />} />
+            <Route path="/postulante/vacantes" element={<VacantesPos />} />
+            <Route path="/postulante/postulaciones" element={<Mispostulaciones />} />
+            <Route path="/postulante/reportes" element={<Misreportes />} />
+            <Route path="/postulante/perfil" element={<EdicionPerfil />} />
+          </Route>
 
         </Route>
       </Route>
