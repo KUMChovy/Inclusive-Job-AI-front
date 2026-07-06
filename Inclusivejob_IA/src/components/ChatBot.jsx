@@ -36,8 +36,22 @@ async function getBotReply(userText) {
   // return data.reply;
   // ---------------------------------------------------------
 
-  await new Promise((resolve) => setTimeout(resolve, 900));
-  return `Recibí tu mensaje: "${userText}". (Respuesta de ejemplo, conecta tu backend para respuestas reales.)`;
+  const res = await fetch(
+    "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/chat/chatbot.php",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "mensaje=" + encodeURIComponent(userText),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Error del servidor");
+  }
+
+  return await res.text();
 }
 
 function ChatIcon() {
