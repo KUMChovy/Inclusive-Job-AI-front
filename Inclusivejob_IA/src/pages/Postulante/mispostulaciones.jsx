@@ -5,6 +5,12 @@ import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
 
+import {
+  confirmDelete,
+  successAlert,
+  errorAlert,
+} from '../../assets/Componentes/Admin/alerts';
+
 const MOCK_USER = { nombre: 'Luis', rol: 'Postulante' };
 
 const ESTADO_STYLE = {
@@ -360,68 +366,53 @@ export default function PostulanteDashboard() {
     }
   }
 
-  async function despostular(id) {
+async function despostular(id) {
+  const confirmado = await confirmDelete('', t);
+  if (!confirmado) return;
 
-    const confirmar =
-    window.confirm(
-    '¿Cancelar esta postulación?'
+  try {
+    const res = await fetch(
+      'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/postulaciones.php',
+      {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_postulacion: id,
+        }),
+      }
     );
 
-    if (!confirmar) return;
+    const data = await res.json();
 
-    try{
-
-    const res =
-    await fetch(
-    'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/postulaciones.php',
-    {
-    method:'DELETE',
-    credentials:'include',
-    headers:{
-    'Content-Type':'application/json'
-    },
-    body:JSON.stringify({
-    id_postulacion:id
-    })
-    }
-    );
-
-    const data =
-    await res.json();
-
-    if(!data.ok){
-
-    alert(
-    data.msg
-    ||
-    'Error'
-    );
-
-    return;
-
+    if (!data.ok) {
+      await errorAlert(
+        'No se pudo despostular',
+        data.msg || 'Ocurrió un error al procesar la solicitud.',
+        t
+      );
+      return;
     }
 
-    setPostulaciones((prev)=>
-    prev.filter(
-    (p)=>
-    p.id !== id
-    )
-    );
-
+    setPostulaciones((prev) => prev.filter((p) => p.id !== id));
     setPostulacionSeleccionada(null);
 
-    }
-    catch(error){
-
-    console.log(error);
-
-    alert(
-    'Error al despostular'
+    await successAlert(
+      'Postulación cancelada',
+      'Te despostulaste correctamente de esta vacante.',
+      t
     );
-
-    }
-
+  } catch (error) {
+    console.log(error);
+    await errorAlert(
+      'Error de conexión',
+      'No se pudo conectar con el servidor.',
+      t
+    );
   }
+}
 
   const postulacionesFiltradas = postulaciones.filter((p) => {
     const texto = `${p.vacante||''} ${p.modalidad||''} ${p.estado||''} ${p.fecha||''}`.toLowerCase();
