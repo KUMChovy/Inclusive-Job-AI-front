@@ -9,6 +9,13 @@ import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
 
+import {
+  confirmAction,
+  confirmDelete,
+  successAlert,
+  errorAlert,
+} from '../../assets/Componentes/Admin/alerts';
+
 const MOCK_USER = {
   nombre: 'Luis',
   rol: 'Postulante',
@@ -123,17 +130,29 @@ export default function PostulanteDashboard() {
       const res  = await fetch(CV_URL, { method:'POST', credentials:'include', body:formData });
       const data = await res.json();
       if (data.ok) {
-        alert('✅ CV actualizado correctamente');
+        await successAlert(
+          'CV actualizado',
+          'Tu currículum se actualizó correctamente.',
+          t
+        );
         setTieneCV(true);
         if (iframeRef.current) {
           iframeRef.current.src = `${CV_URL.split('?')[0]}?t=${Date.now()}`;
         }
       } else {
-        alert(`❌ Error: ${data.msg ?? 'No se pudo actualizar el CV'}`);
+        await errorAlert(
+          'No se pudo actualizar',
+          data.msg ?? 'No se pudo actualizar el CV.',
+          t
+        );
       }
     } catch (e) {
       console.error(e);
-      alert('❌ Error de red al intentar subir el CV.');
+      await errorAlert(
+        'Error de conexión',
+        'No se pudo conectar con el servidor.',
+        t
+      );
     } finally {
       setSubiendo(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -176,6 +195,29 @@ export default function PostulanteDashboard() {
       return;
     }
 
+  async function confirmarGuardarCertificacion() {
+
+  const confirmado = await confirmAction({
+    title: editandoCert
+      ? '¿Guardar cambios?'
+      : '¿Crear certificación?',
+    html: editandoCert
+      ? 'Se actualizará la certificación.'
+      : 'Se registrará la nueva certificación.',
+    confirmText: editandoCert ? 'Guardar' : 'Crear',
+    cancelText: 'Cancelar',
+    icon: 'question',
+    theme: t,
+  });
+
+  if (!confirmado) {
+    setModalCert(true);
+    return;
+  }
+
+  await guardarCertificacion();
+}
+
     try {
       setGuardandoCert(true);
 
@@ -192,20 +234,36 @@ export default function PostulanteDashboard() {
       if (data.ok) {
         await recargarCertificaciones();
         setModalCert(false);
-        alert(editandoCert ? 'Certificación actualizada' : 'Certificación creada');
+        await successAlert(
+          editandoCert ? 'Certificación actualizada' : 'Certificación creada',
+          editandoCert
+            ? 'Los cambios fueron guardados correctamente.'
+            : 'La certificación fue registrada correctamente.',
+          t
+        );
       } else {
-        alert(data.msg);
+        await errorAlert(
+          'No se pudo guardar',
+          data.msg,
+          t
+        );
       }
     } catch (err) {
       console.error(err);
-      alert('Error al guardar');
+      await errorAlert(
+        'Error de conexión',
+        'No se pudo conectar con el servidor.',
+        t
+      );
     } finally {
       setGuardandoCert(false);
     }
   }
 
   async function eliminarCertificacion(id) {
-    if (!window.confirm('¿Eliminar esta certificación?')) return;
+    const confirmado = await confirmDelete('', t);
+
+    if (!confirmado) return;
 
     try {
       const res  = await fetch(CERT_URL, {
@@ -218,13 +276,25 @@ export default function PostulanteDashboard() {
 
       if (data.ok) {
         setCertificaciones(prev => prev.filter(c => c.id !== id));
-        alert('Certificación eliminada');
+        await successAlert(
+          'Certificación eliminada',
+          'La certificación fue eliminada correctamente.',
+          t
+        );
       } else {
-        alert(data.msg);
+        await errorAlert(
+          'No se pudo eliminar',
+          data.msg,
+          t
+        );
       }
     } catch (err) {
       console.error(err);
-      alert('Error eliminando certificación');
+      await errorAlert(
+        'Error de conexión',
+        'No se pudo conectar con el servidor.',
+        t
+      );  
     }
   }
 
