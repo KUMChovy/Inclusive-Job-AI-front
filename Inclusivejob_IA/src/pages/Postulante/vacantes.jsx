@@ -1003,7 +1003,7 @@ export default function Vacantes() {
               {cargandoRecomendacion ? 'Analizando vacantes...' : 'Recomendar con IA'}
             </button>
             <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.78)' }}>
-              Te muestra 4 vacantes reales con porcentaje de compatibilidad.
+              Te muestra vacantes reales con porcentaje de compatibilidad.
             </span>
           </div>
 
@@ -1057,7 +1057,7 @@ export default function Vacantes() {
           <Card>
             <SectionHead
               title="Recomendaciones con IA"
-              sub="4 vacantes elegidas desde las oportunidades ya filtradas por tu discapacidad"
+              sub="Vacantes elegidas por IA desde las oportunidades ya filtradas por tu discapacidad"
               action={recomendacionesIA.length > 0 ? 'Actualizar' : null}
               onAction={handleRecomendarVacantes}
             />
