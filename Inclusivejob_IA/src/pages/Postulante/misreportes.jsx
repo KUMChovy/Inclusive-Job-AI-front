@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
-
 import { MapPin, Eye, X, Briefcase, Star, Calendar, Accessibility, Bookmark, CheckCircle } from 'lucide-react';
-
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
-
 import {
   postulantTheme as t,
 } from '../../assets/Componentes/Portal/portalTheme';
-
 import {
   postulantNav,
 } from '../../assets/Componentes/Portal/navItems';
+
+import {
+  confirmAction,
+  confirmDelete,
+  successAlert,
+  errorAlert,
+} from '../../assets/Componentes/Admin/alerts';
 
 const MOCK_USER = {
   nombre: 'Luis',
@@ -650,15 +653,53 @@ export default function PostulanteDashboard() {
         if (reporteSeleccionado?.id === id) {
           setReporteSeleccionado(null);
         }
+        await successAlert(
+          'Reporte eliminado',
+          'El reporte se eliminó correctamente.',
+          t
+        );
       } else {
-        console.log(data.msg);
+
+        await errorAlert(
+          'No se pudo eliminar',
+          data.msg,
+          t
+        );
       }
     } catch (error) {
-      console.log('Error eliminando reporte:', error);
+      console.log(error);
+      await errorAlert(
+        'Error de conexión',
+        'No se pudo conectar con el servidor.',
+        t
+      );
     }
   }
 
+  async function confirmarEliminarReporte(id) {
+
+    const confirmado = await confirmDelete(
+      '',
+      t
+    );
+
+    if (!confirmado) return;
+
+    await eliminarReporte(id);
+  }
+
   async function editarReporte(id, motivo) {
+
+      const confirmado = await confirmAction({
+        title: '¿Guardar cambios?',
+        html: 'Se actualizará el motivo del reporte.',
+        confirmText: 'Guardar',
+        cancelText: 'Cancelar',
+        icon: 'question',
+        theme: t,
+      });
+
+  if (!confirmado) return;
   try {
     const res = await fetch(
       'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
@@ -685,11 +726,24 @@ export default function PostulanteDashboard() {
       );
 
       setModalEditar(null);
+
+        await successAlert(
+          'Reporte actualizado',
+          'Los cambios fueron guardados correctamente.',
+          t
+        );
+
     } else {
       console.log(data.msg);
     }
   } catch (error) {
-    console.log('Error editando reporte:', error);
+
+    console.log(error);
+    await errorAlert(
+      'Error de conexión',
+      'No se pudo conectar con el servidor.',
+      t
+    );
   }
 }
 
@@ -750,7 +804,10 @@ export default function PostulanteDashboard() {
         <ModalEditarReporte
           reporte={modalEditar}
           onClose={() => setModalEditar(null)}
-          onSave={(motivo) => editarReporte(modalEditar.id, motivo)}
+          onSave={(motivo) => {
+              setModalEditar(null);
+              editarReporte(modalEditar.id, motivo);
+          }}
         />
       )}
 
@@ -910,7 +967,7 @@ export default function PostulanteDashboard() {
 
                         {/* DESHACER / ELIMINAR REPORTE */}
                         <button
-                        onClick={() => eliminarReporte(r.id)}
+                        onClick={() => confirmarEliminarReporte(r.id)}
                         style={{
                             width: '40px',
                             height: '40px',
