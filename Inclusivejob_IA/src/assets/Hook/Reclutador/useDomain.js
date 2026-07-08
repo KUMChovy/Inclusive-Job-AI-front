@@ -1,4 +1,4 @@
-// src/assets/Hook/Reclutador/useDomain.js
+﻿// src/assets/Hook/Reclutador/useDomain.js
 // Conecta endpoints del reclutador con hooks con nombres de negocio.
 
 import { useApiAction, useFetch } from './useApi';
@@ -34,6 +34,10 @@ export function useActualizarEmpresaReclutador() {
     loading,
     error,
   };
+}
+
+export function useDiscapacidadesReclutador() {
+  return useFetch(ENDPOINTS.catalogos.discapacidades);
 }
 
 export function useVacantesReclutador() {
