@@ -31,6 +31,7 @@ export function usePostulanteChat() {
 
       const res = await fetch(ENDPOINTS.chat.responder, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
@@ -56,6 +57,42 @@ export function usePostulanteChat() {
   return { enviarMensaje, loading, error };
 }
 
+export function usePostulanteChatHistorial() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const cargarHistorial = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('postulante_token');
+      const res = await fetch(ENDPOINTS.chat.historial, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.message || `Error ${res.status}: ${res.statusText}`);
+      }
+
+      return data.historial ?? [];
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo cargar el historial del chat.';
+      setError(message);
+      throw new Error(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { cargarHistorial, loading, error };
+}
+
 export function useRecomendacionVacantesIA() {
   const { execute, loading, error } = useApiAction();
 
@@ -64,6 +101,45 @@ export function useRecomendacionVacantesIA() {
   ), [execute]);
 
   return { recomendarVacantes, loading, error };
+}
+
+export function useAnalisisCvIA() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const analizarCV = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('postulante_token');
+      const res = await fetch(ENDPOINTS.ia.analizarCv, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ source: 'session_cv' }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.message || data.msg || `Error ${res.status}: ${res.statusText}`);
+      }
+
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo analizar el CV.';
+      setError(message);
+      throw new Error(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { analizarCV, loading, error };
 }
 
 /**

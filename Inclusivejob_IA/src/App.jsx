@@ -38,7 +38,7 @@ import VacanteDetalleReclutador from './pages/Reclutador/VacanteDetalleReclutado
 // ── Postulante ───────────────────────────────────────────────
 import PostulanteDashboard from './pages/Postulante/Postulantedashboard.jsx';
 import Formulario          from './pages/Postulante/formulario.jsx';
-import Certificaciones from './pages/Postulante/Certificaciones.jsx';
+import Certificaciones from './pages/Postulante/certificaciones.jsx';
 import VacantesPos from "./pages/Postulante/vacantes.jsx";
 import Mispostulaciones from "./pages/Postulante/mispostulaciones.jsx";
 import Misreportes from "./pages/Postulante/misreportes.jsx";

@@ -3,11 +3,16 @@ import { useRef, useState, useEffect } from 'react';
 import {
   ArrowRight, FileText, Eye, Pencil,
   Award, Upload, Loader, Trash2,
+  Sparkles,
 } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+import {
+  useAnalisisCvIA,
+  usePostulanteChatHistorial,
+} from '../../assets/Hook/Postulante/useDomain';
 
 import {
   confirmAction,
@@ -27,6 +32,38 @@ const CV_URL   = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Post
 const CERT_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/certificaciones.php';
 
 const HOY = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+
+function parseStoredChatPayload(value) {
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function cleanAiText(value) {
+  return String(value ?? '')
+    .replace(/\[INSERTAR % O NUMERO\]/gi, '[PORCENTAJE O METRICA]')
+    .replace(/\[INSERTAR % O NÚMERO\]/gi, '[PORCENTAJE O METRICA]')
+    .replace(/\[INSERTAR %\]/gi, '[PORCENTAJE O METRICA]')
+    .replace(/\[INSERTAR NUMERO\]/gi, '[PORCENTAJE O METRICA]')
+    .replace(/\[INSERTAR NÚMERO\]/gi, '[PORCENTAJE O METRICA]')
+    .replace(/\[INSERTAR\]/gi, '[PORCENTAJE O METRICA]');
+}
+
+function cleanAiValue(value) {
+  if (typeof value === 'string') return cleanAiText(value);
+  if (Array.isArray(value)) return value.map(cleanAiValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, cleanAiValue(item)])
+    );
+  }
+  return value;
+}
 
 /* ─── Componentes reutilizables ─────────────────────────── */
 
@@ -75,6 +112,37 @@ function ActionBtn({ icon, label, onClick, disabled = false }) {
   );
 }
 
+function AiGradientBtn({ icon, label, onClick, disabled = false }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display:'inline-flex',
+        alignItems:'center',
+        justifyContent:'center',
+        gap:'8px',
+        minHeight:'48px',
+        padding:'0 18px',
+        borderRadius:'999px',
+        border:'1px solid rgba(255,255,255,0.35)',
+        background: disabled
+          ? '#7c3aed'
+          : 'linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)',
+        color:'#fff',
+        fontSize:'13px',
+        fontWeight:900,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.72 : 1,
+        boxShadow:'0 14px 32px rgba(37,99,235,0.28), 0 0 18px rgba(124,58,237,0.22)',
+        whiteSpace:'nowrap',
+      }}
+    >
+      {icon}{label}
+    </button>
+  );
+}
+
 /* ─── Componente principal ──────────────────────────────── */
 
 export default function PostulanteDashboard() {
@@ -85,6 +153,9 @@ export default function PostulanteDashboard() {
 
   const [subiendo, setSubiendo] = useState(false);
   const [tieneCV, setTieneCV]   = useState(null);
+  const [analisisCV, setAnalisisCV] = useState(null);
+  const { analizarCV, loading: analizandoCV } = useAnalisisCvIA();
+  const { cargarHistorial } = usePostulanteChatHistorial();
 
   const [certificaciones, setCertificaciones] = useState(null);
   const [modalCert,    setModalCert]    = useState(false);
@@ -117,6 +188,30 @@ export default function PostulanteDashboard() {
       .then((data) => setCertificaciones(data.ok ? data.certificaciones : []))
       .catch(() => setCertificaciones([]));
   }, []);
+
+  /* Recupera el ultimo analisis de CV guardado por el chatbot */
+  useEffect(() => {
+    let active = true;
+
+    cargarHistorial()
+      .then((rows) => {
+        if (!active || !Array.isArray(rows)) return;
+
+        const lastCvAnalysis = [...rows]
+          .reverse()
+          .find((row) => row.resultado === 'analizar_cv');
+        const payload = parseStoredChatPayload(lastCvAnalysis?.respuesta_ia);
+
+        if (payload?.analisis) {
+          setAnalisisCV(cleanAiValue(payload.analisis));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [cargarHistorial]);
 
   /* ── Subir CV ── */
   async function subirCV(file) {
@@ -162,6 +257,29 @@ export default function PostulanteDashboard() {
   function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (file) subirCV(file);
+  }
+
+  async function analizarCvActual() {
+    if (tieneCV !== true) {
+      await errorAlert(
+        'No hay CV para analizar',
+        'Sube un CV en PDF antes de pedir recomendaciones.',
+        t
+      );
+      return;
+    }
+
+    try {
+      const data = await analizarCV();
+      setAnalisisCV(data.analisis ? cleanAiValue(data.analisis) : null);
+    } catch (err) {
+      console.error(err);
+      await errorAlert(
+        'No se pudo analizar',
+        err instanceof Error ? err.message : 'No se pudo generar el analisis del CV.',
+        t
+      );
+    }
   }
 
   function abrirNuevaCert() {
@@ -299,6 +417,8 @@ export default function PostulanteDashboard() {
   }
 
   /* ────────────────────────── RENDER ────────────────────── */
+  const cvActionDisabled = analizandoCV || subiendo || tieneCV === null;
+
   return (
     <PortalLayout theme={t} navItems={postulantNav} user={MOCK_USER} pageTitle="Capacitaciones">
       <style>{`
@@ -364,6 +484,12 @@ export default function PostulanteDashboard() {
                   disabled={subiendo}
                   onClick={() => fileInputRef.current?.click()}
                 />
+                <AiGradientBtn
+                  icon={analizandoCV ? <Loader size={13} style={{ animation:'spin 1s linear infinite' }}/> : <Sparkles size={13}/>}
+                  label={analizandoCV ? 'Analizando...' : 'Mejorar CV con IA'}
+                  disabled={analizandoCV || subiendo}
+                  onClick={analizarCvActual}
+                />
               </div>
             )}
           </Card>
@@ -414,7 +540,154 @@ export default function PostulanteDashboard() {
           </Card>
 
         </div>
+
+        {(analizandoCV || analisisCV) && (
+          <div style={{ marginTop:'28px' }}>
+            <Card style={{
+              border:'1px solid rgba(37,99,235,.22)',
+              boxShadow:'0 24px 70px rgba(37,99,235,.14), 0 10px 28px rgba(124,58,237,.10)',
+              background:'linear-gradient(#fff,#fff) padding-box, linear-gradient(135deg,#2563eb,#7c3aed,#0ea5e9) border-box',
+            }}>
+              <SectionHead
+                title="Recomendaciones IA para mejorar tu CV"
+                sub="Analisis basado en texto plano extraido del PDF, no en el diseno visual final"
+              />
+              <div style={{ height:'5px', background:'linear-gradient(90deg,#2563eb,#7c3aed,#0ea5e9)' }} />
+
+              {analizandoCV && (
+                <div style={{ padding:'24px', display:'flex', alignItems:'center', gap:'10px', color:t.textSecondary, fontSize:'13px', fontWeight:700, background:'linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)' }}>
+                  <Loader size={16} color={t.accent} style={{ animation:'spin 1s linear infinite' }} />
+                  Analizando estructura, logros y palabras clave...
+                </div>
+              )}
+
+              {!analizandoCV && analisisCV && (
+                <div style={{ padding:'24px', display:'grid', gap:'20px', background:'linear-gradient(180deg,#f8fbff 0%,#ffffff 42%,#f8fafc 100%)' }}>
+                  <div style={{ padding:'14px 16px', borderRadius:'16px', background:'linear-gradient(135deg,#fff7ed,#fff1f2)', border:'1px solid #fed7aa', color:'#9a3412', fontSize:'13px', lineHeight:1.55, fontWeight:800, boxShadow:'0 12px 26px rgba(234,88,12,.08)' }}>
+                    Estas recomendaciones fueron generadas con IA y pueden contener errores. Revisalas antes de modificar tu CV; el analisis usa texto extraido del PDF, no el formato visual final.
+                  </div>
+
+                  <div style={{ display:'grid', gridTemplateColumns:'minmax(120px, 180px) 1fr', gap:'18px', alignItems:'stretch' }}>
+                    <div style={{ borderRadius:'18px', background:'linear-gradient(135deg,#2563eb,#7c3aed,#0ea5e9)', color:'#fff', padding:'20px', display:'flex', flexDirection:'column', justifyContent:'center', boxShadow:'0 22px 42px rgba(37,99,235,.28), inset 0 1px 0 rgba(255,255,255,.22)' }}>
+                      <span style={{ fontSize:'12px', fontWeight:800, opacity:.85 }}>Compatibilidad ATS</span>
+                      <strong style={{ fontSize:'46px', lineHeight:1, marginTop:'8px' }}>{analisisCV.diagnostico_ats?.puntuacion ?? '-'}/10</strong>
+                    </div>
+                    <div style={{ border:'1px solid #bfdbfe', borderRadius:'18px', padding:'18px', background:'rgba(255,255,255,.86)', boxShadow:'0 14px 30px rgba(15,23,42,.06)' }}>
+                      <h3 style={{ margin:'0 0 8px', fontSize:'16px', color:t.textPrimary }}>Diagnostico general</h3>
+                      <p style={{ margin:0, color:t.textSecondary, fontSize:'14px', lineHeight:1.65 }}>
+                        {analisisCV.diagnostico_ats?.comentario || analisisCV.resumen_chat}
+                      </p>
+                      {analisisCV.diagnostico_ats?.alerta_formato && (
+                        <p style={{ margin:'12px 0 0', color:'#92400e', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'10px', padding:'10px 12px', fontSize:'12px', lineHeight:1.5 }}>
+                          {analisisCV.diagnostico_ats.alerta_formato}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {[
+                    ['Hard skills a reforzar', analisisCV.diagnostico_ats?.hard_skills_faltantes],
+                    ['Soft skills poco visibles', analisisCV.diagnostico_ats?.soft_skills_faltantes],
+                    ['Palabras clave sugeridas', analisisCV.diagnostico_ats?.palabras_clave_sugeridas],
+                  ].map(([title, items]) => (
+                    items?.length > 0 && (
+                      <div key={title} style={{ padding:'16px', borderRadius:'18px', background:'#fff', border:'1px solid #dbeafe', boxShadow:'0 10px 24px rgba(37,99,235,.06)' }}>
+                        <h3 style={{ margin:'0 0 10px', fontSize:'13px', color:t.textPrimary }}>{title}</h3>
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+                          {items.map((item) => (
+                            <span key={item} style={{ padding:'8px 11px', borderRadius:'999px', background:'linear-gradient(135deg,#eef2ff,#ecfeff)', border:'1px solid #c4b5fd', color:'#4c1d95', fontSize:'12px', fontWeight:800 }}>
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  ))}
+
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:'14px' }}>
+                    <div style={{ border:'1px solid #ddd6fe', borderRadius:'18px', padding:'18px', background:'#fff', boxShadow:'0 14px 30px rgba(124,58,237,.08)' }}>
+                      <h3 style={{ margin:'0 0 8px', fontSize:'14px', color:t.textPrimary }}>Auditoria de impacto</h3>
+                      <p style={{ margin:'0 0 12px', color:t.textSecondary, fontSize:'13px', lineHeight:1.6 }}>{analisisCV.auditoria_impacto?.diagnostico}</p>
+                      {analisisCV.auditoria_impacto?.bullets_reescritos_star?.map((item, index) => (
+                        <div key={`${item.original}-${index}`} style={{ borderTop:`1px solid ${t.border}`, paddingTop:'12px', marginTop:'12px' }}>
+                          <p style={{ margin:'0 0 6px', fontSize:'12px', color:t.textMuted }}>Antes: {item.original}</p>
+                          <p style={{ margin:0, fontSize:'13px', color:t.textPrimary, lineHeight:1.55, fontWeight:700 }}>STAR: {item.reescrito}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ border:'1px solid #bae6fd', borderRadius:'18px', padding:'18px', background:'#fff', boxShadow:'0 14px 30px rgba(14,165,233,.08)' }}>
+                      <h3 style={{ margin:'0 0 8px', fontSize:'14px', color:t.textPrimary }}>Resumen profesional</h3>
+                      <p style={{ margin:'0 0 12px', color:t.textSecondary, fontSize:'13px', lineHeight:1.6 }}>{analisisCV.resumen_profesional?.evaluacion}</p>
+                      {analisisCV.resumen_profesional?.version_sugerida && (
+                        <div style={{ padding:'12px 14px', borderRadius:'12px', background:'#ecfeff', border:'1px solid #a5f3fc', color:'#155e75', fontSize:'13px', lineHeight:1.6, fontWeight:700 }}>
+                          {analisisCV.resumen_profesional.version_sugerida}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ border:'1px solid #dbeafe', borderRadius:'18px', padding:'18px', background:'#fff', boxShadow:'0 14px 30px rgba(37,99,235,.06)' }}>
+                    <h3 style={{ margin:'0 0 8px', fontSize:'14px', color:t.textPrimary }}>Contenido y escaneabilidad</h3>
+                    <p style={{ margin:'0 0 14px', color:t.textSecondary, fontSize:'13px', lineHeight:1.6 }}>{analisisCV.estructura_escaneabilidad?.comentario}</p>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'12px' }}>
+                      <div>
+                        <strong style={{ display:'block', marginBottom:'8px', color:'#047857', fontSize:'13px' }}>Hacer</strong>
+                        <ul style={{ margin:0, paddingLeft:'18px', color:t.textSecondary, fontSize:'13px', lineHeight:1.7 }}>
+                          {(analisisCV.estructura_escaneabilidad?.hacer ?? []).map((item) => <li key={item}>{item}</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <strong style={{ display:'block', marginBottom:'8px', color:'#b91c1c', fontSize:'13px' }}>No hacer</strong>
+                        <ul style={{ margin:0, paddingLeft:'18px', color:t.textSecondary, fontSize:'13px', lineHeight:1.7 }}>
+                          {(analisisCV.estructura_escaneabilidad?.no_hacer ?? []).map((item) => <li key={item}>{item}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {analisisCV.nota && (
+                    <p style={{ margin:0, color:t.textMuted, fontSize:'12px', lineHeight:1.5 }}>
+                      {analisisCV.nota}
+                    </p>
+                  )}
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
       </div>
+
+      <button
+        onClick={analizarCvActual}
+        disabled={cvActionDisabled}
+        aria-label="Mejorar CV con IA"
+        style={{
+          position: 'fixed',
+          right: 96,
+          bottom: 30,
+          zIndex: 999998,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          minHeight: '48px',
+          padding: '0 18px',
+          borderRadius: '999px',
+          border: '1px solid rgba(255,255,255,0.35)',
+          background: analizandoCV
+            ? '#7c3aed'
+            : 'linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)',
+          color: '#fff',
+          fontSize: '13px',
+          fontWeight: 900,
+          cursor: cvActionDisabled ? 'not-allowed' : 'pointer',
+          boxShadow: '0 14px 32px rgba(37,99,235,0.28), 0 0 18px rgba(124,58,237,0.22)',
+        }}
+      >
+        <Sparkles size={16} />
+        {analizandoCV ? 'Analizando...' : 'Mejorar CV con IA'}
+      </button>
 
       {/* ── MODAL CERTIFICACIÓN ── */}
       {modalCert && (

@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  useAnalisisCvIA,
   usePostulanteChat,
+  usePostulanteChatHistorial,
   useRecomendacionVacantesIA,
 } from "../assets/Hook/Postulante/useDomain";
 
@@ -12,50 +14,18 @@ const COLORS = {
   border: "#e5e5ea",
 };
 
-const CHAT_STORAGE_KEY = "inclusivejob_postulante_chat";
 const DEFAULT_MESSAGES = [
   { sender: "bot", text: "Hola! En que puedo ayudarte hoy?" },
 ];
 
-function loadChatState() {
-  if (typeof window === "undefined") {
-    return { messages: DEFAULT_MESSAGES, open: false, hasUnread: false };
-  }
-
-  try {
-    const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
-    if (!raw) {
-      return { messages: DEFAULT_MESSAGES, open: false, hasUnread: false };
-    }
-
-    const parsed = JSON.parse(raw);
-    return {
-      messages: Array.isArray(parsed.messages) && parsed.messages.length
-        ? parsed.messages
-        : DEFAULT_MESSAGES,
-      open: Boolean(parsed.open),
-      hasUnread: Boolean(parsed.hasUnread),
-    };
-  } catch {
-    return { messages: DEFAULT_MESSAGES, open: false, hasUnread: false };
-  }
-}
-
-function saveChatState({ messages, open, hasUnread }) {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(
-      CHAT_STORAGE_KEY,
-      JSON.stringify({
-        messages: messages.slice(-40),
-        open,
-        hasUnread,
-      })
-    );
-  } catch {
-    // Si el navegador bloquea localStorage, el chat sigue funcionando en memoria.
-  }
+function cleanAiText(value) {
+  return String(value ?? "")
+    .replace(/\[INSERTAR % O NUMERO\]/gi, "[PORCENTAJE O METRICA]")
+    .replace(/\[INSERTAR % O NÚMERO\]/gi, "[PORCENTAJE O METRICA]")
+    .replace(/\[INSERTAR %\]/gi, "[PORCENTAJE O METRICA]")
+    .replace(/\[INSERTAR NUMERO\]/gi, "[PORCENTAJE O METRICA]")
+    .replace(/\[INSERTAR NÚMERO\]/gi, "[PORCENTAJE O METRICA]")
+    .replace(/\[INSERTAR\]/gi, "[PORCENTAJE O METRICA]");
 }
 
 function ChatIcon() {
@@ -88,6 +58,73 @@ function formatVacantesRecomendadas(recomendaciones = []) {
   }
 
   return "Estas son mis recomendaciones para ti. Puedes abrir cualquiera para ver el detalle completo.";
+}
+
+function formatCvAnalysis(analisis) {
+  if (!analisis) {
+    return "No pude generar recomendaciones para tu CV en este momento.";
+  }
+
+  const score = analisis.diagnostico_ats?.puntuacion;
+  const lines = [];
+  if (score) lines.push(`Puntuacion ATS estimada: ${score}/10.`);
+  lines.push(cleanAiText(analisis.resumen_chat ?? "Revise tu CV y encontre mejoras importantes."));
+
+  if (analisis.nota) {
+    lines.push("", cleanAiText(analisis.nota));
+  }
+
+  lines.push("", "Analisis generado con IA; puede equivocarse.");
+  lines.push("", "Para una mejor lectura ve a la pestaña de certificaciones");
+  return lines.filter((line) => line !== undefined && line !== null).join("\n");
+}
+
+function parseStoredPayload(value) {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function mapHistoryToMessages(rows = []) {
+  if (!rows.length) return DEFAULT_MESSAGES;
+
+  const mapped = [];
+  rows.forEach((row) => {
+    if (row.mensaje_usuario) {
+      mapped.push({ sender: "user", text: row.mensaje_usuario });
+    }
+
+    const payload = parseStoredPayload(row.respuesta_ia);
+    if (row.resultado === "recomendar_vacantes" && payload?.recomendaciones) {
+      mapped.push({
+        sender: "bot",
+        type: "recommendations",
+        text: payload.text || formatVacantesRecomendadas(payload.recomendaciones),
+        recomendaciones: payload.recomendaciones,
+      });
+      return;
+    }
+
+    if (row.resultado === "analizar_cv" && payload?.analisis) {
+      mapped.push({
+        sender: "bot",
+        type: "cv-analysis",
+        text: payload.text ? cleanAiText(payload.text) : formatCvAnalysis(payload.analisis),
+        analisis: payload.analisis,
+      });
+      return;
+    }
+
+    if (row.respuesta_ia) {
+      mapped.push({ sender: "bot", text: payload?.text || row.respuesta_ia });
+    }
+  });
+
+  return mapped.length ? mapped : DEFAULT_MESSAGES;
 }
 
 function getVacanteId(item) {
@@ -144,18 +181,22 @@ function RecommendationCards({ recomendaciones = [], onOpenVacante }) {
 
 export default function ChatBubble() {
   const navigate = useNavigate();
-  const [initialChatState] = useState(() => loadChatState());
-  const [open, setOpen] = useState(initialChatState.open);
-  const [messages, setMessages] = useState(initialChatState.messages);
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState(DEFAULT_MESSAGES);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [hasUnread, setHasUnread] = useState(initialChatState.hasUnread);
+  const [hasUnread, setHasUnread] = useState(false);
 
   const { enviarMensaje, loading: sendingMessage } = usePostulanteChat();
+  const { cargarHistorial } = usePostulanteChatHistorial();
   const {
     recomendarVacantes,
     loading: recommendingVacantes,
   } = useRecomendacionVacantesIA();
+  const {
+    analizarCV,
+    loading: reviewingCv,
+  } = useAnalisisCvIA();
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const openRef = useRef(open);
@@ -165,8 +206,19 @@ export default function ChatBubble() {
   }, [open]);
 
   useEffect(() => {
-    saveChatState({ messages, open, hasUnread });
-  }, [messages, open, hasUnread]);
+    let active = true;
+
+    cargarHistorial()
+      .then((rows) => {
+        if (!active || !rows?.length) return;
+        setMessages(mapHistoryToMessages(rows));
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [cargarHistorial]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -232,6 +284,33 @@ export default function ChatBubble() {
     }
   }
 
+  async function handleReviewCv() {
+    if (typing || sendingMessage || recommendingVacantes || reviewingCv) return;
+
+    setMessages((prev) => [...prev, { sender: "user", text: "Revisar mi CV con IA" }]);
+    setTyping(true);
+
+    try {
+      const data = await analizarCV();
+      const text = data.chat_resumen ? cleanAiText(data.chat_resumen) : formatCvAnalysis(data.analisis);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          type: "cv-analysis",
+          text,
+          analisis: data.analisis,
+        },
+      ]);
+      if (!openRef.current) setHasUnread(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "No pude revisar tu CV ahora. Intenta de nuevo en un momento.";
+      setMessages((prev) => [...prev, { sender: "bot", text: message }]);
+    } finally {
+      setTyping(false);
+    }
+  }
+
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -259,7 +338,13 @@ export default function ChatBubble() {
     setHasUnread(false);
   }
 
-  const isSending = typing || sendingMessage || recommendingVacantes;
+  function handleOpenCertificaciones() {
+    navigate("/postulante/certificaciones");
+    setOpen(false);
+    setHasUnread(false);
+  }
+
+  const isSending = typing || sendingMessage || recommendingVacantes || reviewingCv;
 
   return (
     <>
@@ -305,6 +390,15 @@ export default function ChatBubble() {
                     onOpenVacante={handleOpenVacante}
                   />
                 )}
+                {m.type === "cv-analysis" && (
+                  <button
+                    type="button"
+                    onClick={handleOpenCertificaciones}
+                    style={styles.cvAnalysisButton}
+                  >
+                    Ver recomendaciones completas
+                  </button>
+                )}
               </div>
             ))}
 
@@ -328,6 +422,16 @@ export default function ChatBubble() {
               }}
             >
               Recomendar vacantes
+            </button>
+            <button
+              onClick={handleReviewCv}
+              disabled={isSending}
+              style={{
+                ...styles.quickActionBtn,
+                ...(isSending ? styles.quickActionBtnDisabled : {}),
+              }}
+            >
+              Revisar CV
             </button>
           </div>
 
@@ -553,6 +657,19 @@ const styles = {
   recommendationButtonDisabled: {
     opacity: 0.55,
     cursor: "not-allowed",
+  },
+  cvAnalysisButton: {
+    width: "100%",
+    border: "none",
+    borderRadius: 10,
+    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)",
+    color: "#fff",
+    padding: "8px 10px",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
+    marginTop: 10,
+    boxShadow: "0 8px 18px rgba(79, 70, 229, 0.22)",
   },
   msgUser: {
     alignSelf: "flex-end",

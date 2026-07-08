@@ -12,10 +12,16 @@ export const ENDPOINTS = {
 
   chat: {
     responder: `${BASE_URL}/chat/chatbot.php`,
+    historial: `${BASE_URL}/chat/historial.php`,
+  },
+
+  documentos: {
+    cv: `${BASE_URL}/cv.php`,
   },
 
   ia: {
     recomendarVacantes: `${BASE_URL}/chat/recomendar_vacantes.php`,
+    analizarCv: `${BASE_URL}/chat/analizar_cv.php`,
   },
 
   // Formulario

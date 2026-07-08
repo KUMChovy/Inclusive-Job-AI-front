@@ -83,11 +83,6 @@ export const postulantNav = [
     icon: Award,
   },
   {
-    to: '/postulante/discapacidades',
-    label: 'Mis discapacidades',
-    icon: Accessibility,
-  },
-  {
     to: '/postulante/reportes',
     label: 'Reportes',
     icon: Flag,
