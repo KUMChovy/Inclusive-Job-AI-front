@@ -42,11 +42,6 @@ export const reclutadorNav = [
     icon: Users,
   },
   {
-    to: '/reclutador/reclutadores',
-    label: 'Reclutadores',
-    icon: UserCircle,
-  },
-  {
     to: '/reclutador/reportes',
     label: 'Reportes',
     icon: Flag,

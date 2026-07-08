@@ -3,6 +3,7 @@ import { AlertCircle, Building, CheckCircle, Clock, FileText, Globe, MapPin, Sav
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
+import BubleChat from "../Reclutador/ChatBot.jsx";
 import { useActualizarEmpresaReclutador, useEmpresaReclutador } from "../../assets/Hook/Reclutador/useDomain";
 
 const INITIAL_COMPANY = {
@@ -99,6 +100,7 @@ export default function MiEmpresa() {
           </div>
         </form>
       </div>
+      <BubleChat/>
     </PortalLayout>
   );
 }

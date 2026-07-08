@@ -42,4 +42,8 @@ export const ENDPOINTS = {
   reportes: {
     listar: `${BASE_URL}/mostrar_reportes.php`,
   },
+
+  chat: {
+  responder: `${BASE_URL}/chat/chatbot.php`,
+  },
 };

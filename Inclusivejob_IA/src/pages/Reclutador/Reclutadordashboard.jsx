@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import BubleChat from "../Reclutador/ChatBot.jsx";
 import {
   AlertTriangle,
   ArrowRight,
@@ -516,6 +517,7 @@ export default function ReclutadorDashboard() {
           </div>
         </div>
       )}
+      <BubleChat/>
     </PortalLayout>
   );
 }

@@ -3,6 +3,7 @@ import { ArrowLeft, Briefcase, Code, Eye, FileText, GraduationCap, Mail, Phone, 
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
+import BubleChat from "../Reclutador/ChatBot.jsx";
 import { useCandidatosVacanteReclutador, useVacantesConCandidatosReclutador } from "../../assets/Hook/Reclutador/useDomain";
 
 export default function Candidatos() {
@@ -136,6 +137,7 @@ export default function Candidatos() {
           </div>
         </div>
       )}
+      <BubleChat/>
     </PortalLayout>
   );
 }

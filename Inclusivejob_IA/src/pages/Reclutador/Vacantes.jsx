@@ -5,6 +5,7 @@ import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalThem
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { confirmDelete, errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
 import { useDiscapacidadesReclutador, useGuardarVacanteReclutador, useVacantesReclutador } from '../../assets/Hook/Reclutador/useDomain';
+import BubleChat from "../Reclutador/ChatBot.jsx";
 
 const INITIAL_FORM = {
   titulo_puesto: '',
@@ -217,6 +218,7 @@ export default function VacantesReclutador() {
           />
         )}
       </div>
+      <BubleChat/>
     </PortalLayout>
   );
 }

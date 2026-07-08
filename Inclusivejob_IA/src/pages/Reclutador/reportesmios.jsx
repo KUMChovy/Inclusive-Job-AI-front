@@ -7,6 +7,7 @@ import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { Button, ErrorBanner, PageHeader, SearchBar } from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
+import BubleChat from "../Reclutador/ChatBot.jsx";
 import { useReportesReclutador } from '../../assets/Hook/Reclutador/useDomain';
 
 const LIMITE = 15;
@@ -166,6 +167,7 @@ export default function ReportesMios() {
           </div>
         </div>
       )}
+      <BubleChat/>
     </PortalLayout>
   );
 }

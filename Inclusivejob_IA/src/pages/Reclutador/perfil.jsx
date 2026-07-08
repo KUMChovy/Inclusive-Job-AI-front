@@ -3,6 +3,7 @@ import { AlertCircle, Briefcase, Building, CheckCircle, Clock, Mail, Phone, Save
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
+import BubleChat from "../Reclutador/ChatBot.jsx";
 import { useActualizarPerfilReclutador, usePerfilReclutador } from "../../assets/Hook/Reclutador/useDomain";
 
 const INITIAL_FORM = {
@@ -149,6 +150,7 @@ export default function PerfilReclutador() {
           </div>
         </form>
       </div>
+      <BubleChat/>
     </PortalLayout>
   );
 }
