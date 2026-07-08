@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Edit, FileText, Loader2, MapPin, Plus, RefreshCw, Search, ToggleLeft, ToggleRight, Trash2, X } from 'lucide-react';
+﻿import { useEffect, useMemo, useState } from 'react';
+import { Accessibility, Edit, FileText, Loader2, MapPin, Plus, RefreshCw, Search, ToggleLeft, ToggleRight, Trash2, X } from 'lucide-react';
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { confirmDelete, errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
-import { useGuardarVacanteReclutador, useVacantesReclutador } from '../../assets/Hook/Reclutador/useDomain';
+import { useDiscapacidadesReclutador, useGuardarVacanteReclutador, useVacantesReclutador } from '../../assets/Hook/Reclutador/useDomain';
 
 const INITIAL_FORM = {
   titulo_puesto: '',
@@ -14,10 +14,12 @@ const INITIAL_FORM = {
   salario_min: '',
   salario_max: '',
   estado: 'activa',
+  discapacidades: [],
 };
 
 export default function VacantesReclutador() {
   const { data, loading, error, refetch } = useVacantesReclutador();
+  const { data: discapacidadesData, loading: loadingDiscapacidades, error: errorDiscapacidades } = useDiscapacidadesReclutador();
   const { guardarVacante, editarVacante, actualizarEstadoVacante, eliminarVacante, loading: saving } = useGuardarVacanteReclutador();
   const [vacantes, setVacantes] = useState([]);
   const [busqueda, setBusqueda] = useState('');
@@ -31,6 +33,12 @@ export default function VacantesReclutador() {
     if (data?.data) setVacantes(data.data);
   }, [data]);
 
+  const catalogoDiscapacidades = useMemo(() => {
+    const payload = discapacidadesData?.data;
+    if (Array.isArray(payload)) return payload;
+    return payload?.discapacidades ?? [];
+  }, [discapacidadesData]);
+
   const handleOpenModal = (vacante = null) => {
     setEditingVacante(vacante);
     setFormData(vacante ? {
@@ -41,6 +49,7 @@ export default function VacantesReclutador() {
       salario_min: vacante.salario_min || '',
       salario_max: vacante.salario_max || '',
       estado: vacante.estado || 'activa',
+      discapacidades: getVacanteDiscapacidadIds(vacante),
     } : INITIAL_FORM);
     setIsModalOpen(true);
   };
@@ -137,6 +146,7 @@ export default function VacantesReclutador() {
         </div>
 
         {error && <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+        {errorDiscapacidades && <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">No se pudo cargar el catalogo de discapacidades: {errorDiscapacidades}</div>}
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-3xl">
@@ -165,7 +175,7 @@ export default function VacantesReclutador() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#182032] border-b border-slate-800 text-slate-400 font-bold text-xs uppercase">
-                  {['Titulo', 'Modalidad', 'Salario', 'Estado', 'Publicacion', 'Acciones'].map((h) => <th key={h} className="px-6 py-4">{h}</th>)}
+                  {['Titulo', 'Modalidad', 'Discapacidad', 'Salario', 'Estado', 'Publicacion', 'Acciones'].map((h) => <th key={h} className="px-6 py-4">{h}</th>)}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-sm">
@@ -173,6 +183,7 @@ export default function VacantesReclutador() {
                   <tr key={vacante.id_vacante} className="hover:bg-[#172033]/40 transition">
                     <td className="px-6 py-4 font-semibold text-white">{vacante.titulo_puesto}</td>
                     <td className="px-6 py-4"><span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-blue-950/60 text-blue-400"><MapPin className="h-3.5 w-3.5" />{vacante.modalidad}</span></td>
+                    <td className="px-6 py-4"><DiscapacidadBadges discapacidades={vacante.discapacidades} /></td>
                     <td className="px-6 py-4 text-slate-300">{formatPrecio(vacante.salario_min)} - {formatPrecio(vacante.salario_max)}</td>
                     <td className="px-6 py-4"><Estado estado={vacante.estado} /></td>
                     <td className="px-6 py-4 text-slate-400">{safeDate(vacante.fecha_publicacion)}</td>
@@ -198,6 +209,8 @@ export default function VacantesReclutador() {
             editingVacante={editingVacante}
             formData={formData}
             setFormData={setFormData}
+            discapacidades={catalogoDiscapacidades}
+            loadingDiscapacidades={loadingDiscapacidades}
             saving={saving}
             onClose={() => setIsModalOpen(false)}
             onSubmit={handleGuardarVacante}
@@ -208,7 +221,13 @@ export default function VacantesReclutador() {
   );
 }
 
-function VacanteModal({ editingVacante, formData, setFormData, saving, onClose, onSubmit }) {
+function VacanteModal({ editingVacante, formData, setFormData, discapacidades, loadingDiscapacidades, saving, onClose, onSubmit }) {
+  const toggleDiscapacidad = (id) => {
+    const current = formData.discapacidades ?? [];
+    const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+    setFormData({ ...formData, discapacidades: next });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="bg-[#131926] border border-slate-800 w-full max-w-2xl rounded-xl overflow-hidden shadow-2xl text-slate-200">
@@ -226,6 +245,12 @@ function VacanteModal({ editingVacante, formData, setFormData, saving, onClose, 
             <Input label="Salario minimo" type="number" value={formData.salario_min} onChange={(value) => setFormData({ ...formData, salario_min: value })} />
             <Input label="Salario maximo" type="number" value={formData.salario_max} onChange={(value) => setFormData({ ...formData, salario_max: value })} />
           </div>
+          <DiscapacidadSelector
+            discapacidades={discapacidades}
+            selected={formData.discapacidades ?? []}
+            loading={loadingDiscapacidades}
+            onToggle={toggleDiscapacidad}
+          />
           <Textarea label="Descripcion" value={formData.descripcion_puesto} onChange={(value) => setFormData({ ...formData, descripcion_puesto: value })} />
           <Textarea label="Requisitos" rows={2} value={formData.requisitos} onChange={(value) => setFormData({ ...formData, requisitos: value })} />
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
@@ -236,6 +261,55 @@ function VacanteModal({ editingVacante, formData, setFormData, saving, onClose, 
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+function DiscapacidadSelector({ discapacidades, selected, loading, onToggle }) {
+  return (
+    <fieldset className="border border-slate-800 rounded-lg p-4 bg-[#0b0f19]">
+      <legend className="px-2 text-xs font-bold uppercase text-slate-400 flex items-center gap-1.5">
+        <Accessibility className="h-4 w-4 text-purple-400" /> Discapacidad
+      </legend>
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-slate-400 py-2"><Loader2 className="h-4 w-4 animate-spin" /> Cargando catalogo...</div>
+      ) : discapacidades.length === 0 ? (
+        <p className="text-sm text-slate-500 py-2">No hay discapacidades registradas.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+          {discapacidades.map((item) => {
+            const id = getDiscapacidadId(item);
+            const checked = selected.includes(id);
+            return (
+              <label key={id} className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition ${checked ? 'border-purple-500/70 bg-purple-500/10 text-white' : 'border-slate-800 bg-[#111827] text-slate-300 hover:border-slate-700'}`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggle(id)}
+                  className="mt-1 h-4 w-4 accent-purple-600"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{getDiscapacidadNombre(item)}</span>
+                  {item.descripcion && <span className="block text-xs text-slate-500 mt-0.5 line-clamp-2">{item.descripcion}</span>}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
+function DiscapacidadBadges({ discapacidades = [] }) {
+  if (!discapacidades.length) return <span className="text-slate-500 text-xs">Sin asignar</span>;
+  return (
+    <div className="flex flex-wrap gap-1.5 max-w-xs">
+      {discapacidades.map((item) => (
+        <span key={getDiscapacidadId(item)} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-purple-950/60 text-purple-300 border border-purple-900/50">
+          {getDiscapacidadNombre(item)}
+        </span>
+      ))}
     </div>
   );
 }
@@ -255,6 +329,24 @@ function Textarea({ label, value, onChange, rows = 3 }) {
 function Estado({ estado }) {
   const active = estado === 'activa';
   return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase border ${active ? 'bg-emerald-950/50 text-emerald-400 border-emerald-900/50' : 'bg-amber-950/50 text-amber-400 border-amber-900/50'}`}>{estado}</span>;
+}
+
+function getDiscapacidadId(item) {
+  return Number(item?.id_tipo_discapacidad ?? item?.id_discapacidad ?? item?.id ?? item) || 0;
+}
+
+function getDiscapacidadNombre(item) {
+  return item?.nombre_discapacidad ?? item?.nombre ?? item?.tipo ?? String(item ?? '');
+}
+
+function getVacanteDiscapacidadIds(vacante) {
+  if (Array.isArray(vacante?.discapacidad_ids)) {
+    return vacante.discapacidad_ids.map(Number).filter(Boolean);
+  }
+  if (Array.isArray(vacante?.discapacidades)) {
+    return vacante.discapacidades.map(getDiscapacidadId).filter(Boolean);
+  }
+  return [];
 }
 
 function formatPrecio(num) {

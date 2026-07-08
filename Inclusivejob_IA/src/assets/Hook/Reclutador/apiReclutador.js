@@ -1,4 +1,4 @@
-// src/assets/Hook/Reclutador/apiReclutador.js
+﻿// src/assets/Hook/Reclutador/apiReclutador.js
 // Centraliza la URL base y todos los endpoints del modulo Reclutador.
 
 export const BACKEND_URL = 'http://localhost/inclusijob_back/back-inclusiveJob';
@@ -19,6 +19,10 @@ export const ENDPOINTS = {
   empresa: {
     obtener: `${BASE_URL}/empresa.php?accion=obtener`,
     actualizar: `${BASE_URL}/empresa.php?accion=actualizar`,
+  },
+
+  catalogos: {
+    discapacidades: `${BASE_URL}/catalogos.php?accion=discapacidades`,
   },
 
   vacantes: {
