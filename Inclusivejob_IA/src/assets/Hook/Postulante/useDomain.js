@@ -143,6 +143,54 @@ export function useAnalisisCvIA() {
 }
 
 /**
+ * usePostulacionesEntrevistaIA - Trae las postulaciones del usuario para
+ * mostrarlas como tarjetas en el chat ("elige una vacante para simular
+ * una entrevista"), igual que se hace con recomendar vacantes.
+ */
+export function usePostulacionesEntrevistaIA() {
+  const { execute, loading, error } = useApiAction();
+
+  const listarPostulaciones = useCallback(async () => {
+    const data = await execute(ENDPOINTS.ia.entrevistaPostulaciones, 'GET');
+    return data.postulaciones ?? [];
+  }, [execute]);
+
+  return { listarPostulaciones, loading, error };
+}
+
+/**
+ * useEntrevistaIA - Maneja los 3 pasos de la entrevista simulada:
+ * iniciar (primera pregunta), responder (turno a turno) y finalizar
+ * (evaluacion final, solo cuando el usuario decide terminarla).
+ * Cancelar la entrevista NO debe llamar a finalizarEntrevista: el modal
+ * simplemente se cierra sin guardar ni calificar nada.
+ */
+export function useEntrevistaIA() {
+  const { execute, loading, error } = useApiAction();
+
+  const iniciarEntrevista = useCallback((idVacante) => (
+    execute(ENDPOINTS.ia.entrevistaIniciar, 'POST', { id_vacante: idVacante })
+  ), [execute]);
+
+  const responderEntrevista = useCallback((idVacante, historial, mensaje) => (
+    execute(ENDPOINTS.ia.entrevistaResponder, 'POST', {
+      id_vacante: idVacante,
+      historial,
+      mensaje,
+    })
+  ), [execute]);
+
+  const finalizarEntrevista = useCallback((idVacante, historial) => (
+    execute(ENDPOINTS.ia.entrevistaFinalizar, 'POST', {
+      id_vacante: idVacante,
+      historial,
+    })
+  ), [execute]);
+
+  return { iniciarEntrevista, responderEntrevista, finalizarEntrevista, loading, error };
+}
+
+/**
  * usePostulanteResource - Base temporal para consultar una URL del modulo Postulante.
  * Usar mientras se definen hooks especificos.
  *

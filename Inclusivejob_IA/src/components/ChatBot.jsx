@@ -7,6 +7,8 @@ import {
   useRecomendacionVacantesIA,
 } from "../assets/Hook/Postulante/useDomain";
 
+import EntrevistaModal from "./modal_entrevista";
+
 const COLORS = {
   primary: "#4f46e5",
   primaryDark: "#4338ca",
@@ -201,6 +203,14 @@ export default function ChatBubble() {
   const textareaRef = useRef(null);
   const openRef = useRef(open);
 
+  const [showEntrevista, setShowEntrevista] = useState(false);
+  const vacanteDemo = {
+    id_vacante: 1,
+    titulo_puesto: "Desarrollador Frontend",
+    empresa: "InclusiveJob",
+    modalidad: "Remoto",
+  };
+
   useEffect(() => {
     openRef.current = open;
   }, [open]);
@@ -230,6 +240,10 @@ export default function ChatBubble() {
       if (next) setHasUnread(false);
       return next;
     });
+  }
+
+  function handleEntrevistaIA() {
+    setShowEntrevista(true);
   }
 
   async function handleSend() {
@@ -484,6 +498,16 @@ export default function ChatBubble() {
             >
               Ayuda
             </button>
+            <button
+                onClick={handleEntrevistaIA}
+                disabled={isSending}
+                style={{
+                    ...styles.quickActionBtn,
+                    ...(isSending ? styles.quickActionBtnDisabled : {}),
+                }}
+            >
+                Entrevista IA
+            </button>
           </div>
 
           <div style={styles.inputRow}>
@@ -509,6 +533,24 @@ export default function ChatBubble() {
             </button>
           </div>
         </div>
+      )}
+
+      {showEntrevista && (
+        <EntrevistaModal
+          vacante={vacanteDemo}
+          onClose={() => setShowEntrevista(false)}
+          onEvaluacionLista={(resultado) => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                sender: "bot",
+                text: resultado.text,
+              },
+            ]);
+
+            setShowEntrevista(false);
+          }}
+        />
       )}
 
       <style>{`

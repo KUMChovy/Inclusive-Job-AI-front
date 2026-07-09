@@ -22,6 +22,12 @@ export const ENDPOINTS = {
   ia: {
     recomendarVacantes: `${BASE_URL}/chat/recomendar_vacantes.php`,
     analizarCv: `${BASE_URL}/chat/analizar_cv.php`,
+
+    // Entrevista simulada con IA.
+    entrevistaPostulaciones: `${BASE_URL}/chat/entrevista_postulaciones.php`,
+    entrevistaIniciar: `${BASE_URL}/chat/entrevista_iniciar.php`,
+    entrevistaResponder: `${BASE_URL}/chat/entrevista_responder.php`,
+    entrevistaFinalizar: `${BASE_URL}/chat/entrevista_finalizar.php`,
   },
 
   // Formulario
