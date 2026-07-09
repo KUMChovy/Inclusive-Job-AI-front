@@ -117,7 +117,7 @@ export function useReclutadorChat() {
       const respuesta = await res.text();
 
       if (!res.ok) {
-        throw new Error(respuesta || 'Error ${res.status}: ${res.statusText}');
+        throw new Error(respuesta || `Error ${res.status}: ${res.statusText}`);
       }
 
       return respuesta;
@@ -131,4 +131,36 @@ export function useReclutadorChat() {
   }, []);
 
   return { enviarMensaje, loading, error };
+}
+
+export function useReclutadorChatHistorial() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const cargarHistorial = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(ENDPOINTS.chat.historial, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.message || `Error ${res.status}: ${res.statusText}`);
+      }
+
+      return data.historial ?? [];
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo cargar el historial del chat.';
+      setError(message);
+      throw new Error(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { cargarHistorial, loading, error };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useReclutadorChat } from "../../assets/Hook/Reclutador/useDomain";
+import { useReclutadorChat, useReclutadorChatHistorial } from "../../assets/Hook/Reclutador/useDomain";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 
 // ── Sugerencias rápidas ────────────────────────────────────
@@ -18,6 +18,22 @@ const MENSAJE_BIENVENIDA = {
 
 // Duración de la animación de cierre del panel (debe coincidir con @keyframes chatSlideOut)
 const CLOSE_ANIM_MS = 220;
+
+function mapHistorialAMensajes(rows = []) {
+  if (!rows.length) return [MENSAJE_BIENVENIDA];
+
+  const mapeados = [];
+  rows.forEach((row) => {
+    if (row.mensaje_usuario) {
+      mapeados.push({ tipo: "usuario", texto: row.mensaje_usuario });
+    }
+    if (row.respuesta_ia) {
+      mapeados.push({ tipo: "bot", texto: row.respuesta_ia });
+    }
+  });
+
+  return mapeados.length ? mapeados : [MENSAJE_BIENVENIDA];
+}
 
 // ── Store compartido entre páginas ─────────────────────────
 let chatStore = { open: false, mensajes: [MENSAJE_BIENVENIDA] };
@@ -147,6 +163,7 @@ export default function ChatBot() {
   const { open, mensajes } = useSyncExternalStore(subscribe, getSnapshot);
   const [mensaje, setMensaje] = useState("");
   const { enviarMensaje, loading } = useReclutadorChat();
+  const { cargarHistorial } = useReclutadorChatHistorial();
   const scrollRef = useRef(null);
   const inputRef  = useRef(null);
 
@@ -164,6 +181,27 @@ export default function ChatBot() {
 
   const setMensajes = (v) =>
     setChatStore((prev) => ({ ...prev, mensajes: typeof v === "function" ? v(prev.mensajes) : v }));
+
+  // Carga el historial guardado en BD una sola vez, solo si todavía no hay
+  // conversación (mensajes.length === 1 -> solo está el mensaje de bienvenida).
+  // Así, si el usuario navega entre páginas del portal y este componente se
+  // vuelve a montar, no pisa una conversación que ya está en curso.
+  useEffect(() => {
+    if (mensajes.length > 1) return;
+
+    let active = true;
+    cargarHistorial()
+      .then((rows) => {
+        if (!active || !rows?.length) return;
+        setMensajes(mapHistorialAMensajes(rows));
+      })
+      .catch(() => {
+        // Si falla, simplemente se queda el mensaje de bienvenida.
+      });
+
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sincroniza el montaje del panel con el estado global `open`
   useEffect(() => {
@@ -301,8 +339,7 @@ export default function ChatBot() {
             position: "relative", overflow: "hidden",
           }}>
             {/* Círculo decorativo — pointerEvents:none para que NO bloquee los clics
-                del botón de cerrar (al ser position:absolute, el navegador lo pinta
-                encima de los elementos "static" del header sin importar el orden en el DOM) */}
+                del botón de cerrar */}
             <div style={{
               position: "absolute", top: "-30px", right: "-20px",
               width: "100px", height: "100px", borderRadius: "50%",
