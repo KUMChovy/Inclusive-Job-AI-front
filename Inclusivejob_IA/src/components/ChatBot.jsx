@@ -311,6 +311,47 @@ export default function ChatBubble() {
     }
   }
 
+
+  async function handleAppHelp() {
+      if (typing || sendingMessage || recommendingVacantes || reviewingCv) return;
+
+      const pregunta = "Tengo dudas sobre cómo funciona la aplicación InclusiveJob.";
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "user",
+          text: "Dudas sobre la aplicación",
+        },
+      ]);
+
+      setTyping(true);
+
+      try {
+        const reply = await enviarMensaje(pregunta);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: reply,
+          },
+        ]);
+
+        if (!openRef.current) setHasUnread(true);
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: "No pude responder en este momento.",
+          },
+        ]);
+      } finally {
+        setTyping(false);
+      }
+    }
+
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -432,6 +473,16 @@ export default function ChatBubble() {
               }}
             >
               Revisar CV
+            </button>
+            <button
+              onClick={handleAppHelp}
+              disabled={isSending}
+              style={{
+                ...styles.quickActionBtn,
+                ...(isSending ? styles.quickActionBtnDisabled : {}),
+              }}
+            >
+              Ayuda
             </button>
           </div>
 
