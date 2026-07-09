@@ -1,6 +1,21 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useReclutadorChat, useReclutadorChatHistorial } from "../../assets/Hook/Reclutador/useDomain";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  useReclutadorChat,
+  useReclutadorChatHistorial,
+  useMejorCandidatoReclutador,
+} from "../../assets/Hook/Reclutador/useDomain";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
+
+// AJUSTA esta ruta si en tu router la pagina de "Seguimiento de Candidatos"
+// vive en otra direccion. Se usa para navegar ahi cuando el usuario da clic
+// en "Ver candidato" dentro de una recomendacion de la IA.
+const RUTA_CANDIDATOS = "/reclutador/candidatos";
+
+// Frases que, escritas libremente en el chat, disparan la busqueda de
+// "mejor candidato" en vez de mandarse como pregunta normal a la IA.
+const PATRON_MEJOR_CANDIDATO =
+  /mejor\s+candidat|mejor\s+postulante|candidat[oa]\s+ideal|recomi[eé]ndame.*candidat|qui[eé]n.*(mejor|ideal).*postul/i;
 
 // ── Sugerencias rápidas ────────────────────────────────────
 const SUGERENCIAS = [
@@ -92,6 +107,16 @@ function ChatIcon({ size = 22 }) {
   );
 }
 
+// ── Ícono estrella/sparkle SVG (para la recomendación de IA) ───────────
+function SparkleIcon({ size = 14, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none">
+      <path d="M12 2l1.8 5.6L19 9.5l-5.2 1.9L12 17l-1.8-5.6L5 9.5l5.2-1.9L12 2z" />
+      <path d="M19 14l.9 2.6L22.5 17.5l-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9L19 14z" opacity="0.7" />
+    </svg>
+  );
+}
+
 // ── Dots de carga ──────────────────────────────────────────
 function TypingDots() {
   return (
@@ -112,8 +137,56 @@ function TypingDots() {
   );
 }
 
+// ── Tarjeta de recomendación dentro de una burbuja de bot ──
+function TarjetaRecomendacion({ recomendacion, onVerCandidato }) {
+  return (
+    <div style={{
+      marginTop: "10px",
+      padding: "10px 12px",
+      borderRadius: "12px",
+      background: t.accentSoft,
+      border: `1px solid ${t.accentBorder}`,
+      display: "flex",
+      flexDirection: "column",
+      gap: "6px",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+        <strong style={{ fontSize: "12.5px", color: t.textPrimary }}>
+          {recomendacion.nombre_completo}
+        </strong>
+        <span style={{
+          fontSize: "11px", fontWeight: 700, color: t.accent,
+          background: "#fff", padding: "2px 8px", borderRadius: "20px",
+          whiteSpace: "nowrap", flexShrink: 0,
+        }}>
+          {recomendacion.porcentaje_compatibilidad}% compatible
+        </span>
+      </div>
+      <span style={{ fontSize: "11.5px", color: t.textMuted }}>
+        Para: {recomendacion.titulo_puesto}
+      </span>
+      {recomendacion.justificacion && (
+        <span style={{ fontSize: "11.5px", color: t.textSecondary, lineHeight: 1.4 }}>
+          {recomendacion.justificacion}
+        </span>
+      )}
+      <button
+        onClick={() => onVerCandidato(recomendacion)}
+        style={{
+          marginTop: "4px", alignSelf: "flex-start", fontSize: "12px", fontWeight: 600,
+          color: "#fff", background: t.gradient, border: "none",
+          padding: "6px 12px", borderRadius: "8px", cursor: "pointer",
+          display: "flex", alignItems: "center", gap: "6px",
+        }}
+      >
+        Ver candidato →
+      </button>
+    </div>
+  );
+}
+
 // ── Burbuja de mensaje ─────────────────────────────────────
-function Burbuja({ msg }) {
+function Burbuja({ msg, onVerCandidato }) {
   const esUsuario = msg.tipo === "usuario";
   return (
     <div style={{
@@ -153,6 +226,9 @@ function Burbuja({ msg }) {
           : "0 1px 4px rgba(0,0,0,0.06)",
       }}>
         {msg.texto}
+        {msg.recomendacion && (
+          <TarjetaRecomendacion recomendacion={msg.recomendacion} onVerCandidato={onVerCandidato} />
+        )}
       </div>
     </div>
   );
@@ -162,10 +238,14 @@ function Burbuja({ msg }) {
 export default function ChatBot() {
   const { open, mensajes } = useSyncExternalStore(subscribe, getSnapshot);
   const [mensaje, setMensaje] = useState("");
+  const navigate = useNavigate();
   const { enviarMensaje, loading } = useReclutadorChat();
   const { cargarHistorial } = useReclutadorChatHistorial();
+  const { buscarMejorCandidato, loading: loadingRecomendacion } = useMejorCandidatoReclutador();
   const scrollRef = useRef(null);
   const inputRef  = useRef(null);
+
+  const cargandoRespuesta = loading || loadingRecomendacion;
 
   // Controla el montaje/desmontaje del panel para poder animar el cierre
   // (antes el panel desaparecía de golpe porque se dejaba de renderizar
@@ -224,10 +304,19 @@ export default function ChatBot() {
     };
   }, [open]);
 
-  // Auto-scroll
-  useEffect(() => {
+  // Auto-scroll al último mensaje.
+  // FIX: antes solo dependía de [mensajes, loading, open]. El problema era
+  // que al reabrir el chat, `open` cambia a true un render ANTES de que
+  // `panelVisible` se vuelva true (el panel se monta en un segundo render,
+  // ver el efecto de arriba). En ese segundo render, mensajes/loading/open
+  // ya no cambian, así que este efecto no se volvía a ejecutar y el
+  // contenedor de mensajes se quedaba con scrollTop = 0 (inicio de la
+  // conversación) en vez de saltar al último mensaje.
+  // Agregar `panelVisible` como dependencia (y usar useLayoutEffect para
+  // que ocurra antes de pintar) soluciona el salto visual.
+  useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [mensajes, loading, open]);
+  }, [mensajes, loading, loadingRecomendacion, open, panelVisible]);
 
   // Focus input al abrir
   useEffect(() => {
@@ -236,7 +325,16 @@ export default function ChatBot() {
 
   const enviar = async (texto) => {
     const contenido = texto.trim();
-    if (!contenido || loading) return;
+    if (!contenido || cargandoRespuesta) return;
+
+    // Si el mensaje libre pregunta por el "mejor candidato", se resuelve
+    // con el endpoint de recomendación en vez del chat de texto libre.
+    if (PATRON_MEJOR_CANDIDATO.test(contenido)) {
+      setMensaje("");
+      await buscarYMostrarMejorCandidato(contenido);
+      return;
+    }
+
     setMensajes((prev) => [...prev, { tipo: "usuario", texto: contenido }]);
     setMensaje("");
     try {
@@ -251,6 +349,48 @@ export default function ChatBot() {
         { tipo: "bot", texto: err?.message || "Ocurrió un error al contactar al asistente.", error: true },
       ]);
     }
+  };
+
+  // Dispara el análisis de "mejor candidato" (botón de acción rápida o
+  // frase detectada en texto libre) y muestra el resultado en el chat.
+  const buscarYMostrarMejorCandidato = async (textoUsuario) => {
+    if (cargandoRespuesta) return;
+    setMensajes((prev) => [...prev, { tipo: "usuario", texto: textoUsuario }]);
+    try {
+      const data = await buscarMejorCandidato();
+      if (data?.recomendacion) {
+        setMensajes((prev) => [
+          ...prev,
+          { tipo: "bot", texto: data.mensaje, recomendacion: data.recomendacion },
+        ]);
+      } else {
+        setMensajes((prev) => [
+          ...prev,
+          { tipo: "bot", texto: data?.mensaje || "No encontré candidatos para analizar todavía." },
+        ]);
+      }
+    } catch (err) {
+      setMensajes((prev) => [
+        ...prev,
+        { tipo: "bot", texto: err?.message || "Ocurrió un error al buscar el mejor candidato.", error: true },
+      ]);
+    }
+  };
+
+  // Al dar clic en "Ver candidato →" dentro de una recomendación: cierra
+  // el chat y navega a Candidatos, pasando la vacante/candidato/porcentaje
+  // por state para que esa vista los seleccione y marque automáticamente.
+  const irACandidatoRecomendado = (recomendacion) => {
+    setOpen(false);
+    navigate(RUTA_CANDIDATOS, {
+      state: {
+        recomendacionIA: {
+          id_vacante: recomendacion.id_vacante,
+          id_postulacion: recomendacion.id_postulacion,
+          porcentaje_compatibilidad: recomendacion.porcentaje_compatibilidad,
+        },
+      },
+    });
   };
 
   return (
@@ -285,6 +425,8 @@ export default function ChatBot() {
         .chat-close-btn:hover { background: rgba(255,255,255,0.26) !important; transform: rotate(90deg); }
         .chat-close-btn:active { transform: rotate(90deg) scale(0.86); }
         .chat-send-btn:active { transform: scale(0.92) !important; }
+        .chat-mejor-candidato-btn:hover:not(:disabled) { filter: brightness(1.05); }
+        .chat-mejor-candidato-btn:disabled { cursor: not-allowed; opacity: 0.65; }
       `}</style>
 
       {/* ── Botón flotante ── */}
@@ -363,11 +505,11 @@ export default function ChatBot() {
               <p style={{ margin: "3px 0 0", fontSize: "11.5px", color: "rgba(255,255,255,0.78)", display: "flex", alignItems: "center", gap: "5px" }}>
                 <span style={{
                   width: "6px", height: "6px", borderRadius: "50%",
-                  background: loading ? "#fbbf24" : "#34d399",
+                  background: cargandoRespuesta ? "#fbbf24" : "#34d399",
                   display: "inline-block",
-                  boxShadow: loading ? "0 0 6px #fbbf24" : "0 0 6px #34d399",
+                  boxShadow: cargandoRespuesta ? "0 0 6px #fbbf24" : "0 0 6px #34d399",
                 }} />
-                {loading ? "Escribiendo..." : "En línea"}
+                {cargandoRespuesta ? "Escribiendo..." : "En línea"}
               </p>
             </div>
 
@@ -400,11 +542,11 @@ export default function ChatBot() {
             }}
           >
             {mensajes.map((msg, i) => (
-              <Burbuja key={i} msg={msg} />
+              <Burbuja key={i} msg={msg} onVerCandidato={irACandidatoRecomendado} />
             ))}
 
             {/* Sugerencias solo al inicio */}
-            {esInicio && !loading && (
+            {esInicio && !cargandoRespuesta && (
               <div style={{ display: "flex", flexDirection: "column", gap: "6px", paddingLeft: "36px", marginTop: "4px" }}>
                 {SUGERENCIAS.map((s, idx) => (
                   <button
@@ -430,7 +572,7 @@ export default function ChatBot() {
             )}
 
             {/* Typing indicator */}
-            {loading && (
+            {cargandoRespuesta && (
               <div style={{ display: "flex", alignItems: "flex-end", gap: "8px" }}>
                 <div style={{
                   width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
@@ -450,6 +592,26 @@ export default function ChatBot() {
             )}
           </div>
 
+          {/* Acción rápida: buscar mejor candidato */}
+          <div style={{ padding: "0 14px 10px", flexShrink: 0 }}>
+            <button
+              className="chat-mejor-candidato-btn"
+              onClick={() => buscarYMostrarMejorCandidato("Buscar a mi mejor candidato")}
+              disabled={cargandoRespuesta}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                fontSize: "12.5px", fontWeight: 600, color: t.accent,
+                background: t.accentSoft, border: `1px solid ${t.accentBorder}`,
+                borderRadius: "10px", padding: "8px 12px",
+                cursor: cargandoRespuesta ? "not-allowed" : "pointer",
+                transition: "filter 0.15s ease",
+              }}
+            >
+              <SparkleIcon size={13} color={t.accent} />
+              {loadingRecomendacion ? "Analizando candidatos..." : "Buscar a mi mejor candidato"}
+            </button>
+          </div>
+
           {/* Input */}
           <div style={{
             padding: "12px 14px",
@@ -464,7 +626,7 @@ export default function ChatBot() {
               type="text"
               placeholder="Escribe un mensaje..."
               value={mensaje}
-              disabled={loading}
+              disabled={cargandoRespuesta}
               onChange={(e) => setMensaje(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && enviar(mensaje)}
               style={{
@@ -479,18 +641,18 @@ export default function ChatBot() {
             <button
               className="chat-send-btn"
               onClick={() => enviar(mensaje)}
-              disabled={loading || !mensaje.trim()}
+              disabled={cargandoRespuesta || !mensaje.trim()}
               style={{
                 width: "38px", height: "38px", borderRadius: "10px",
-                border: "none", cursor: loading || !mensaje.trim() ? "not-allowed" : "pointer",
-                background: loading || !mensaje.trim() ? t.border : t.gradient,
+                border: "none", cursor: cargandoRespuesta || !mensaje.trim() ? "not-allowed" : "pointer",
+                background: cargandoRespuesta || !mensaje.trim() ? t.border : t.gradient,
                 color: "#fff",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
                 transition: "all 0.15s ease",
-                boxShadow: !loading && mensaje.trim() ? `0 4px 12px ${t.accentGlow}` : "none",
+                boxShadow: !cargandoRespuesta && mensaje.trim() ? `0 4px 12px ${t.accentGlow}` : "none",
               }}
-              onMouseEnter={(e) => { if (!loading && mensaje.trim()) e.currentTarget.style.transform = "scale(1.06)"; }}
+              onMouseEnter={(e) => { if (!cargandoRespuesta && mensaje.trim()) e.currentTarget.style.transform = "scale(1.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
             >
               <SendIcon size={15} />

@@ -164,3 +164,41 @@ export function useReclutadorChatHistorial() {
 
   return { cargarHistorial, loading, error };
 }
+
+export function useMejorCandidatoReclutador() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const buscarMejorCandidato = useCallback(async (idVacante = null) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(ENDPOINTS.chat.recomendarCandidato, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(idVacante ? { id_vacante: idVacante } : {}),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.message || `Error ${res.status}: ${res.statusText}`);
+      }
+
+      // { ok: true, recomendacion: {...} | null, mensaje: "..." }
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo obtener la recomendacion.';
+      setError(message);
+      throw new Error(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { buscarMejorCandidato, loading, error };
+}

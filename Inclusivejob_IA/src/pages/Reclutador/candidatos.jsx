@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Briefcase, Code, Eye, FileText, GraduationCap, Mail, Phone, Users } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Briefcase, Code, Eye, FileText, GraduationCap, Mail, Phone, Sparkles, Users } from "lucide-react";
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
@@ -7,17 +8,37 @@ import BubleChat from "../Reclutador/ChatBot.jsx";
 import { useCandidatosVacanteReclutador, useVacantesConCandidatosReclutador } from "../../assets/Hook/Reclutador/useDomain";
 
 export default function Candidatos() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { data, refetch } = useVacantesConCandidatosReclutador();
   const { obtenerCandidatosVacante, loading } = useCandidatosVacanteReclutador();
   const [vacantes, setVacantes] = useState([]);
   const [vacanteSeleccionada, setVacanteSeleccionada] = useState(null);
   const [candidatos, setCandidatos] = useState([]);
   const [candidatoSeleccionado, setCandidatoSeleccionado] = useState(null);
+  const [candidatoDestacado, setCandidatoDestacado] = useState(null);
 
   useEffect(() => {
     const listado = data?.data ?? data;
     if (Array.isArray(listado)) setVacantes(listado);
   }, [data]);
+
+
+  useEffect(() => {
+    const rec = location.state?.recomendacionIA;
+    if (!rec || vacantes.length === 0) return;
+
+    const vacante = vacantes.find((v) => Number(v.id_vacante) === Number(rec.id_vacante));
+    if (vacante) {
+      verDetalleCandidatos(vacante);
+      setCandidatoDestacado({
+        id_postulacion: Number(rec.id_postulacion),
+        porcentaje_compatibilidad: rec.porcentaje_compatibilidad,
+      });
+    }
+
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [vacantes]);
 
   const verDetalleCandidatos = async (vacante) => {
     setVacanteSeleccionada(vacante);
@@ -36,6 +57,7 @@ export default function Candidatos() {
     setVacanteSeleccionada(null);
     setCandidatos([]);
     setCandidatoSeleccionado(null);
+    setCandidatoDestacado(null);
     refetch().catch(() => {});
   };
 
@@ -87,21 +109,29 @@ export default function Candidatos() {
             <div style={{ color: t.textMuted, textAlign: "center", padding: 20 }}>Cargando candidatos...</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {candidatos.map((cand) => (
-                <div key={cand.id_postulacion} style={cardStyle}>
-                  <div>
-                    <h4 style={{ color: t.textPrimary, margin: 0, fontSize: 16, fontWeight: 600 }}>{cand.nombre_completo}</h4>
-                    <p style={{ fontSize: 12, color: t.textMuted, margin: "4px 0" }}>Postulado el: {safeDate(cand.fecha_postulacion)}</p>
-                    <div style={{ display: "flex", gap: 16, marginTop: 6, flexWrap: "wrap" }}>
-                      <span style={infoBadgeStyle}><Mail size={12} /> {cand.correo}</span>
-                      <span style={infoBadgeStyle}><Phone size={12} /> {cand.telefono}</span>
+              {candidatos.map((cand) => {
+                const esDestacado = candidatoDestacado?.id_postulacion === Number(cand.id_postulacion);
+                return (
+                  <div key={cand.id_postulacion} style={esDestacado ? cardStyleDestacado : cardStyle}>
+                    <div>
+                      {esDestacado && (
+                        <span style={badgeIAStyle}>
+                          <Sparkles size={12} /> Recomendado por IA · {candidatoDestacado.porcentaje_compatibilidad}% compatible
+                        </span>
+                      )}
+                      <h4 style={{ color: t.textPrimary, margin: 0, fontSize: 16, fontWeight: 600 }}>{cand.nombre_completo}</h4>
+                      <p style={{ fontSize: 12, color: t.textMuted, margin: "4px 0" }}>Postulado el: {safeDate(cand.fecha_postulacion)}</p>
+                      <div style={{ display: "flex", gap: 16, marginTop: 6, flexWrap: "wrap" }}>
+                        <span style={infoBadgeStyle}><Mail size={12} /> {cand.correo}</span>
+                        <span style={infoBadgeStyle}><Phone size={12} /> {cand.telefono}</span>
+                      </div>
                     </div>
+                    <button onClick={() => setCandidatoSeleccionado(cand)} style={{ background: t.accentSoft, color: t.accent, border: "none", padding: "8px 16px", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
+                      Ver Perfil Completo
+                    </button>
                   </div>
-                  <button onClick={() => setCandidatoSeleccionado(cand)} style={{ background: t.accentSoft, color: t.accent, border: "none", padding: "8px 16px", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
-                    Ver Perfil Completo
-                  </button>
-                </div>
-              ))}
+                );
+              })}
               {candidatos.length === 0 && <div style={{ color: t.textMuted, padding: 20 }}>Esta vacante aun no tiene candidatos.</div>}
             </div>
           )}
@@ -163,6 +193,8 @@ function Estado({ estado }) {
 const buttonStyle = (disabled) => ({ background: disabled ? t.bgElevated : t.gradient, color: disabled ? t.textMuted : "#fff", border: "none", padding: "6px 12px", borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12 });
 const backButtonStyle = { background: t.bgSurface, border: `1px solid ${t.border}`, color: t.textPrimary, borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 };
 const cardStyle = { background: t.bgSurface, border: `1px solid ${t.border}`, borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 };
+const cardStyleDestacado = { ...cardStyle, border: `2px solid ${t.accent}`, background: t.accentSoft, boxShadow: `0 0 0 3px ${t.accentGlow}` };
+const badgeIAStyle = { display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: t.accent, background: "#fff", padding: "3px 8px", borderRadius: 20, marginBottom: 6 };
 const infoBadgeStyle = { display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: t.textSecondary };
 const sectionStyle = { background: t.bgSurface, border: `1px solid ${t.border}`, borderRadius: 12, padding: 18 };
 const iconRowStyle = { display: "flex", alignItems: "center", gap: 10, color: t.textSecondary, fontSize: 14 };
