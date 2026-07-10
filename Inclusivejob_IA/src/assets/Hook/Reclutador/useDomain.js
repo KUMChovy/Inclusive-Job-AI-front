@@ -202,3 +202,37 @@ export function useMejorCandidatoReclutador() {
 
   return { buscarMejorCandidato, loading, error };
 }
+
+export function useMejorarRedaccionReclutador() {
+  const [error, setError] = useState(null);
+
+  const mejorarTexto = useCallback(async ({ campo, texto, contexto }) => {
+    setError(null);
+
+    try {
+      const res = await fetch(ENDPOINTS.chat.mejorarRedaccion, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ campo, texto, contexto }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.message || `Error ${res.status}: ${res.statusText}`);
+      }
+
+      // { ok: true, campo, texto_mejorado, sugerencias: [...], nota }
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo mejorar el texto.';
+      setError(message);
+      throw new Error(message, { cause: err });
+    }
+  }, []);
+
+  return { mejorarTexto, error };
+}

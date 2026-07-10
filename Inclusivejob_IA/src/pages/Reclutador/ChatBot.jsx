@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   useReclutadorChat,
   useReclutadorChatHistorial,
   useMejorCandidatoReclutador,
+  useVacantesReclutador,
 } from "../../assets/Hook/Reclutador/useDomain";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 
@@ -48,6 +49,14 @@ function mapHistorialAMensajes(rows = []) {
   });
 
   return mapeados.length ? mapeados : [MENSAJE_BIENVENIDA];
+}
+
+function formatSalarioChat(min, max) {
+  const fmt = (n) => `$${Number(n).toLocaleString('es-MX')}`;
+  if (!min && !max) return null;
+  if (!max) return `Desde ${fmt(min)}`;
+  if (!min) return `Hasta ${fmt(max)}`;
+  return `${fmt(min)} - ${fmt(max)}`;
 }
 
 // ── Store compartido entre páginas ─────────────────────────
@@ -113,6 +122,16 @@ function SparkleIcon({ size = 14, color = "currentColor" }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none">
       <path d="M12 2l1.8 5.6L19 9.5l-5.2 1.9L12 17l-1.8-5.6L5 9.5l5.2-1.9L12 2z" />
       <path d="M19 14l.9 2.6L22.5 17.5l-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9L19 14z" opacity="0.7" />
+    </svg>
+  );
+}
+
+// ── Ícono maletín SVG (para elegir vacante) ────────────────
+function BriefcaseIcon({ size = 14, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
     </svg>
   );
 }
@@ -185,8 +204,56 @@ function TarjetaRecomendacion({ recomendacion, onVerCandidato }) {
   );
 }
 
+// ── Tarjeta para elegir entre varias vacantes activas ──────
+function TarjetaSeleccionVacante({ vacantes, onElegir, disabled }) {
+  return (
+    <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+      {vacantes.map((v) => {
+        const salario = formatSalarioChat(v.salario_min, v.salario_max);
+        return (
+          <button
+            key={v.id_vacante}
+            className="vacante-eleccion-btn"
+            onClick={() => onElegir(v.id_vacante)}
+            disabled={disabled}
+            style={{
+              textAlign: "left",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "10px",
+              padding: "10px 12px",
+              borderRadius: "12px",
+              border: `1px solid ${t.border}`,
+              background: t.bgSurface,
+              cursor: disabled ? "not-allowed" : "pointer",
+              opacity: disabled ? 0.6 : 1,
+              transition: "all 0.15s ease",
+            }}
+          >
+            <div style={{
+              width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
+              background: t.accentSoft, border: `1px solid ${t.accentBorder}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <BriefcaseIcon size={13} color={t.accent} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+              <span style={{ fontSize: "12.5px", fontWeight: 700, color: t.textPrimary, lineHeight: 1.3 }}>
+                {v.titulo_puesto}
+              </span>
+              <span style={{ fontSize: "11px", color: t.textMuted }}>
+                {v.modalidad}{salario ? ` · ${salario}` : ""}
+              </span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Burbuja de mensaje ─────────────────────────────────────
-function Burbuja({ msg, onVerCandidato }) {
+function Burbuja({ msg, onVerCandidato, onElegirVacante, seleccionDeshabilitada }) {
   const esUsuario = msg.tipo === "usuario";
   return (
     <div style={{
@@ -229,6 +296,13 @@ function Burbuja({ msg, onVerCandidato }) {
         {msg.recomendacion && (
           <TarjetaRecomendacion recomendacion={msg.recomendacion} onVerCandidato={onVerCandidato} />
         )}
+        {msg.vacantesParaElegir && (
+          <TarjetaSeleccionVacante
+            vacantes={msg.vacantesParaElegir}
+            onElegir={onElegirVacante}
+            disabled={seleccionDeshabilitada}
+          />
+        )}
       </div>
     </div>
   );
@@ -242,8 +316,14 @@ export default function ChatBot() {
   const { enviarMensaje, loading } = useReclutadorChat();
   const { cargarHistorial } = useReclutadorChatHistorial();
   const { buscarMejorCandidato, loading: loadingRecomendacion } = useMejorCandidatoReclutador();
+  const { data: vacantesData, loading: loadingVacantes } = useVacantesReclutador();
   const scrollRef = useRef(null);
   const inputRef  = useRef(null);
+
+  const vacantesActivas = useMemo(() => {
+    const lista = vacantesData?.data ?? [];
+    return lista.filter((v) => v.estado === "activa");
+  }, [vacantesData]);
 
   const cargandoRespuesta = loading || loadingRecomendacion;
 
@@ -305,15 +385,6 @@ export default function ChatBot() {
   }, [open]);
 
   // Auto-scroll al último mensaje.
-  // FIX: antes solo dependía de [mensajes, loading, open]. El problema era
-  // que al reabrir el chat, `open` cambia a true un render ANTES de que
-  // `panelVisible` se vuelva true (el panel se monta en un segundo render,
-  // ver el efecto de arriba). En ese segundo render, mensajes/loading/open
-  // ya no cambian, así que este efecto no se volvía a ejecutar y el
-  // contenedor de mensajes se quedaba con scrollTop = 0 (inicio de la
-  // conversación) en vez de saltar al último mensaje.
-  // Agregar `panelVisible` como dependencia (y usar useLayoutEffect para
-  // que ocurra antes de pintar) soluciona el salto visual.
   useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [mensajes, loading, loadingRecomendacion, open, panelVisible]);
@@ -328,10 +399,11 @@ export default function ChatBot() {
     if (!contenido || cargandoRespuesta) return;
 
     // Si el mensaje libre pregunta por el "mejor candidato", se resuelve
-    // con el endpoint de recomendación en vez del chat de texto libre.
+    // con el flujo de recomendación (que primero puede pedir elegir vacante)
+    // en vez del chat de texto libre.
     if (PATRON_MEJOR_CANDIDATO.test(contenido)) {
       setMensaje("");
-      await buscarYMostrarMejorCandidato(contenido);
+      await iniciarBusquedaMejorCandidato(contenido);
       return;
     }
 
@@ -351,13 +423,59 @@ export default function ChatBot() {
     }
   };
 
-  // Dispara el análisis de "mejor candidato" (botón de acción rápida o
-  // frase detectada en texto libre) y muestra el resultado en el chat.
-  const buscarYMostrarMejorCandidato = async (textoUsuario) => {
+  // Punto de entrada del flujo "mejor candidato": decide si hace falta
+  // preguntar por la vacante o si puede ir directo al análisis.
+  //   - 0 vacantes activas → mensaje directo, sin llamar a la IA.
+  //   - 1 vacante activa   → analiza esa, sin preguntar nada obvio.
+  //   - 2+ vacantes activas → muestra tarjeta para elegir, y espera clic.
+  const iniciarBusquedaMejorCandidato = async (textoUsuario) => {
     if (cargandoRespuesta) return;
-    setMensajes((prev) => [...prev, { tipo: "usuario", texto: textoUsuario }]);
+
+    if (loadingVacantes) {
+      setMensajes((prev) => [
+        ...prev,
+        { tipo: "usuario", texto: textoUsuario },
+        { tipo: "bot", texto: "Dame un segundo, todavía estoy cargando tus vacantes. Intenta de nuevo en un momento." },
+      ]);
+      return;
+    }
+
+    if (vacantesActivas.length === 0) {
+      setMensajes((prev) => [
+        ...prev,
+        { tipo: "usuario", texto: textoUsuario },
+        { tipo: "bot", texto: "No tienes vacantes activas en este momento, así que no hay candidatos que analizar todavía." },
+      ]);
+      return;
+    }
+
+    if (vacantesActivas.length === 1) {
+      await ejecutarBusquedaMejorCandidato(textoUsuario, vacantesActivas[0].id_vacante);
+      return;
+    }
+
+    // Varias vacantes activas: pedir que elija.
+    setMensajes((prev) => [
+      ...prev,
+      { tipo: "usuario", texto: textoUsuario },
+      {
+        tipo: "bot",
+        texto: "Tienes varias vacantes activas. ¿Para cuál quieres ver a tu mejor postulante?",
+        vacantesParaElegir: vacantesActivas,
+      },
+    ]);
+  };
+
+  // Ejecuta la llamada real a recomendar_candidatos.php para una vacante
+  // ya determinada (sea porque solo había una, o porque el reclutador
+  // la eligió en la tarjeta de selección).
+  const ejecutarBusquedaMejorCandidato = async (textoUsuario, idVacante, { mostrarBurbujaUsuario = true } = {}) => {
+    if (mostrarBurbujaUsuario) {
+      setMensajes((prev) => [...prev, { tipo: "usuario", texto: textoUsuario }]);
+    }
+
     try {
-      const data = await buscarMejorCandidato();
+      const data = await buscarMejorCandidato(idVacante);
       if (data?.recomendacion) {
         setMensajes((prev) => [
           ...prev,
@@ -375,6 +493,19 @@ export default function ChatBot() {
         { tipo: "bot", texto: err?.message || "Ocurrió un error al buscar el mejor candidato.", error: true },
       ]);
     }
+  };
+
+  // Cuando el reclutador hace clic en una vacante dentro de la tarjeta de
+  // selección: agrega su "elección" como burbuja de usuario y dispara el
+  // análisis para esa vacante puntual.
+  const elegirVacanteParaAnalizar = async (idVacante) => {
+    if (cargandoRespuesta) return;
+    const vacante = vacantesActivas.find((v) => v.id_vacante === idVacante);
+    const etiqueta = vacante
+      ? `Ver mejor postulante para "${vacante.titulo_puesto}"`
+      : "Ver mejor postulante para esta vacante";
+
+    await ejecutarBusquedaMejorCandidato(etiqueta, idVacante);
   };
 
   // Al dar clic en "Ver candidato →" dentro de una recomendación: cierra
@@ -419,6 +550,7 @@ export default function ChatBot() {
         .chat-input::placeholder { color: ${t.textMuted}; }
         .chat-input:focus { outline: none; border-color: ${t.accent} !important; box-shadow: 0 0 0 3px ${t.accentGlow}; }
         .sugerencia-btn:hover { background: ${t.accentSoft} !important; border-color: ${t.accentBorder} !important; color: ${t.accent} !important; }
+        .vacante-eleccion-btn:hover:not(:disabled) { background: ${t.accentSoft} !important; border-color: ${t.accentBorder} !important; transform: translateX(2px); }
         .chat-fab { transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .chat-fab:hover { transform: scale(1.08); }
         .chat-fab:active { transform: scale(0.92); }
@@ -480,8 +612,6 @@ export default function ChatBot() {
             flexShrink: 0,
             position: "relative", overflow: "hidden",
           }}>
-            {/* Círculo decorativo — pointerEvents:none para que NO bloquee los clics
-                del botón de cerrar */}
             <div style={{
               position: "absolute", top: "-30px", right: "-20px",
               width: "100px", height: "100px", borderRadius: "50%",
@@ -489,7 +619,6 @@ export default function ChatBot() {
               pointerEvents: "none",
             }} />
 
-            {/* Avatar bot */}
             <div style={{
               width: "38px", height: "38px", borderRadius: "12px",
               background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)",
@@ -542,7 +671,13 @@ export default function ChatBot() {
             }}
           >
             {mensajes.map((msg, i) => (
-              <Burbuja key={i} msg={msg} onVerCandidato={irACandidatoRecomendado} />
+              <Burbuja
+                key={i}
+                msg={msg}
+                onVerCandidato={irACandidatoRecomendado}
+                onElegirVacante={elegirVacanteParaAnalizar}
+                seleccionDeshabilitada={cargandoRespuesta}
+              />
             ))}
 
             {/* Sugerencias solo al inicio */}
@@ -596,7 +731,7 @@ export default function ChatBot() {
           <div style={{ padding: "0 14px 10px", flexShrink: 0 }}>
             <button
               className="chat-mejor-candidato-btn"
-              onClick={() => buscarYMostrarMejorCandidato("Buscar a mi mejor candidato")}
+              onClick={() => iniciarBusquedaMejorCandidato("Buscar a mi mejor candidato")}
               disabled={cargandoRespuesta}
               style={{
                 width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",

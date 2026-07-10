@@ -1,10 +1,10 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { Accessibility, Edit, FileText, Loader2, MapPin, Plus, RefreshCw, Search, ToggleLeft, ToggleRight, Trash2, X } from 'lucide-react';
+import { Accessibility, ArrowRight, Edit, FileText, Loader2, MapPin, Plus, RefreshCw, Search, Sparkles, ToggleLeft, ToggleRight, Trash2, X } from 'lucide-react';
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { confirmDelete, errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
-import { useDiscapacidadesReclutador, useGuardarVacanteReclutador, useVacantesReclutador } from '../../assets/Hook/Reclutador/useDomain';
+import { useDiscapacidadesReclutador, useGuardarVacanteReclutador, useMejorarRedaccionReclutador, useVacantesReclutador } from '../../assets/Hook/Reclutador/useDomain';
 import BubleChat from "../Reclutador/ChatBot.jsx";
 
 const INITIAL_FORM = {
@@ -22,6 +22,8 @@ export default function VacantesReclutador() {
   const { data, loading, error, refetch } = useVacantesReclutador();
   const { data: discapacidadesData, loading: loadingDiscapacidades, error: errorDiscapacidades } = useDiscapacidadesReclutador();
   const { guardarVacante, editarVacante, actualizarEstadoVacante, eliminarVacante, loading: saving } = useGuardarVacanteReclutador();
+  const { mejorarTexto } = useMejorarRedaccionReclutador();
+
   const [vacantes, setVacantes] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todas');
@@ -29,6 +31,10 @@ export default function VacantesReclutador() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVacante, setEditingVacante] = useState(null);
   const [formData, setFormData] = useState(INITIAL_FORM);
+
+  // Estado de IA: independiente por campo (titulo_puesto / descripcion_puesto / requisitos)
+  const [iaLoading, setIaLoading] = useState({});
+  const [iaSugerencias, setIaSugerencias] = useState({});
 
   useEffect(() => {
     if (data?.data) setVacantes(data.data);
@@ -52,6 +58,7 @@ export default function VacantesReclutador() {
       estado: vacante.estado || 'activa',
       discapacidades: getVacanteDiscapacidadIds(vacante),
     } : INITIAL_FORM);
+    setIaSugerencias({});
     setIsModalOpen(true);
   };
 
@@ -67,6 +74,7 @@ export default function VacantesReclutador() {
       setIsModalOpen(false);
       setEditingVacante(null);
       setFormData(INITIAL_FORM);
+      setIaSugerencias({});
       await refetch();
       await successAlert(
         editingVacante ? 'Vacante actualizada' : 'Vacante publicada',
@@ -105,6 +113,35 @@ export default function VacantesReclutador() {
     }
   };
 
+  // ── IA: mejorar redacción de un campo ──────────────────────
+  const handleMejorarIA = async (campo) => {
+    setIaLoading((prev) => ({ ...prev, [campo]: true }));
+    setIaSugerencias((prev) => ({ ...prev, [campo]: null }));
+
+    try {
+      const data = await mejorarTexto({
+        campo,
+        texto: formData[campo] || '',
+        contexto: {
+          titulo_puesto: formData.titulo_puesto,
+          descripcion_puesto: formData.descripcion_puesto,
+          requisitos: formData.requisitos,
+          modalidad: formData.modalidad,
+        },
+      });
+      setIaSugerencias((prev) => ({ ...prev, [campo]: data }));
+    } catch (err) {
+      await errorAlert('No se pudo mejorar el texto', err.message || 'Intenta de nuevo en unos segundos.', t);
+    } finally {
+      setIaLoading((prev) => ({ ...prev, [campo]: false }));
+    }
+  };
+
+  const handleAplicarIA = (campo, texto) => {
+    setFormData((prev) => ({ ...prev, [campo]: texto }));
+    setIaSugerencias((prev) => ({ ...prev, [campo]: null }));
+  };
+
   const vacantesFiltradas = useMemo(() => {
     return vacantes.filter((vacante) => {
       const titulo = String(vacante.titulo_puesto || '').toLowerCase();
@@ -130,6 +167,30 @@ export default function VacantesReclutador() {
 
   return (
     <PortalLayout theme={t} navItems={reclutadorNav} pageTitle="Vacantes">
+      {/* Animaciones para el asistente de IA */}
+      <style>{`
+        @keyframes iaFadeSlide {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .ia-suggestion-panel { animation: iaFadeSlide 0.22s ease-out; }
+
+        @keyframes iaShimmer {
+          from { transform: translateX(-120%); }
+          to { transform: translateX(220%); }
+        }
+        .ia-btn-shimmer::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+          transform: translateX(-120%);
+        }
+        .ia-btn:hover .ia-btn-shimmer::after {
+          animation: iaShimmer 0.9s ease;
+        }
+      `}</style>
+
       <div className="p-1 font-sans text-slate-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
@@ -215,6 +276,10 @@ export default function VacantesReclutador() {
             saving={saving}
             onClose={() => setIsModalOpen(false)}
             onSubmit={handleGuardarVacante}
+            iaLoading={iaLoading}
+            iaSugerencias={iaSugerencias}
+            onMejorarIA={handleMejorarIA}
+            onAplicarIA={handleAplicarIA}
           />
         )}
       </div>
@@ -223,7 +288,7 @@ export default function VacantesReclutador() {
   );
 }
 
-function VacanteModal({ editingVacante, formData, setFormData, discapacidades, loadingDiscapacidades, saving, onClose, onSubmit }) {
+function VacanteModal({ editingVacante, formData, setFormData, discapacidades, loadingDiscapacidades, saving, onClose, onSubmit, iaLoading, iaSugerencias, onMejorarIA, onAplicarIA }) {
   const toggleDiscapacidad = (id) => {
     const current = formData.discapacidades ?? [];
     const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
@@ -238,7 +303,20 @@ function VacanteModal({ editingVacante, formData, setFormData, discapacidades, l
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
         </div>
         <form onSubmit={onSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-          <Input label="Titulo del puesto *" value={formData.titulo_puesto} onChange={(value) => setFormData({ ...formData, titulo_puesto: value })} required />
+
+          <CampoConIA
+            campo="titulo_puesto"
+            label="Titulo del puesto *"
+            tipo="input"
+            value={formData.titulo_puesto}
+            onChange={(value) => setFormData({ ...formData, titulo_puesto: value })}
+            required
+            loading={iaLoading?.titulo_puesto}
+            sugerencia={iaSugerencias?.titulo_puesto}
+            onMejorar={() => onMejorarIA('titulo_puesto')}
+            onAplicar={(texto) => onAplicarIA('titulo_puesto', texto)}
+          />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select label="Modalidad" value={formData.modalidad} onChange={(value) => setFormData({ ...formData, modalidad: value })} options={['Presencial', 'Remoto', 'Hibrido']} />
             <Select label="Estado" value={formData.estado} onChange={(value) => setFormData({ ...formData, estado: value })} options={['activa', 'pausada']} />
@@ -253,8 +331,32 @@ function VacanteModal({ editingVacante, formData, setFormData, discapacidades, l
             loading={loadingDiscapacidades}
             onToggle={toggleDiscapacidad}
           />
-          <Textarea label="Descripcion" value={formData.descripcion_puesto} onChange={(value) => setFormData({ ...formData, descripcion_puesto: value })} />
-          <Textarea label="Requisitos" rows={2} value={formData.requisitos} onChange={(value) => setFormData({ ...formData, requisitos: value })} />
+
+          <CampoConIA
+            campo="descripcion_puesto"
+            label="Descripcion"
+            tipo="textarea"
+            value={formData.descripcion_puesto}
+            onChange={(value) => setFormData({ ...formData, descripcion_puesto: value })}
+            loading={iaLoading?.descripcion_puesto}
+            sugerencia={iaSugerencias?.descripcion_puesto}
+            onMejorar={() => onMejorarIA('descripcion_puesto')}
+            onAplicar={(texto) => onAplicarIA('descripcion_puesto', texto)}
+          />
+
+          <CampoConIA
+            campo="requisitos"
+            label="Requisitos"
+            tipo="textarea"
+            rows={2}
+            value={formData.requisitos}
+            onChange={(value) => setFormData({ ...formData, requisitos: value })}
+            loading={iaLoading?.requisitos}
+            sugerencia={iaSugerencias?.requisitos}
+            onMejorar={() => onMejorarIA('requisitos')}
+            onAplicar={(texto) => onAplicarIA('requisitos', texto)}
+          />
+
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
             <button type="button" onClick={onClose} className="px-5 py-2 text-sm font-medium text-slate-400 hover:text-white">Cancelar</button>
             <button type="submit" disabled={saving} className="bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-medium px-6 py-2 rounded-lg">
@@ -263,6 +365,81 @@ function VacanteModal({ editingVacante, formData, setFormData, discapacidades, l
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+// ── Campo de texto con asistente de IA integrado ──────────────
+function CampoConIA({ campo, label, tipo, value, onChange, required = false, rows = 3, loading, sugerencia, onMejorar, onAplicar }) {
+  const Campo = tipo === 'textarea' ? Textarea : Input;
+
+  return (
+    <div>
+      <div className="flex items-center justify-end mb-1.5">
+        <button
+          type="button"
+          onClick={onMejorar}
+          disabled={loading}
+          className="ia-btn group relative inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/15 via-fuchsia-600/10 to-purple-600/15 px-3 py-1.5 text-xs font-semibold text-purple-300 transition-all duration-300 hover:border-purple-400/60 hover:text-purple-100 hover:shadow-[0_0_18px_-3px_rgba(192,132,252,0.55)] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
+        >
+          <span className="ia-btn-shimmer pointer-events-none absolute inset-0 overflow-hidden" />
+          {loading ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="relative">Pensando…</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+              <span className="relative">Mejorar con IA</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      <Campo label={label} value={value} onChange={onChange} required={required} rows={rows} />
+
+      {sugerencia && (
+        <div className="ia-suggestion-panel relative mt-2.5 rounded-xl border border-purple-800/40 bg-gradient-to-b from-purple-950/25 via-[#0f1320] to-[#0b0f19] p-3.5 space-y-2.5 shadow-[0_4px_24px_-8px_rgba(147,51,234,0.35)]">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-purple-400">
+            <Sparkles className="h-3 w-3" />
+            Sugerencias de la IA
+          </div>
+
+          {sugerencia.nota && (
+            <p className="text-xs text-purple-300/80 italic leading-relaxed">{sugerencia.nota}</p>
+          )}
+
+          {/* Sugerencia principal, destacada */}
+          <div className="relative rounded-lg border border-purple-500/50 bg-[#0b0f19] p-3 pt-4">
+            <span className="absolute -top-2.5 left-3 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+              Recomendado
+            </span>
+            <p className="text-sm text-slate-100 whitespace-pre-wrap leading-relaxed">{sugerencia.texto_mejorado}</p>
+            <button
+              type="button"
+              onClick={() => onAplicar(sugerencia.texto_mejorado)}
+              className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-purple-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-purple-500 hover:shadow-[0_0_12px_-2px_rgba(168,85,247,0.6)]"
+            >
+              Usar esta versión <ArrowRight className="h-3 w-3" />
+            </button>
+          </div>
+
+          {/* Alternativas, más discretas */}
+          {sugerencia.sugerencias?.map((alt, i) => (
+            <div key={i} className="rounded-lg border border-slate-800 bg-[#0b0f19]/60 p-3 transition hover:border-slate-700">
+              <p className="text-sm text-slate-400 whitespace-pre-wrap leading-relaxed">{alt}</p>
+              <button
+                type="button"
+                onClick={() => onAplicar(alt)}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+              >
+                Usar esta versión <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

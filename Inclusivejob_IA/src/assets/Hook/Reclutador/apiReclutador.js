@@ -47,5 +47,6 @@ export const ENDPOINTS = {
     responder: `${BASE_URL}/chat/chatbot.php`,
     historial: `${BASE_URL}/chat/historial.php`,
     recomendarCandidato: `${BASE_URL}/chat/recomendar_candidatos.php`,
+    mejorarRedaccion: `${BASE_URL}/chat/mejorar_redaccion.php`,
   },
 };
