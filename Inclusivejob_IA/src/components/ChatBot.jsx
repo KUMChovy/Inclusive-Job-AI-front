@@ -5,8 +5,8 @@ import {
   usePostulanteChat,
   usePostulanteChatHistorial,
   useRecomendacionVacantesIA,
+  usePostulacionesEntrevistaIA,
 } from "../assets/Hook/Postulante/useDomain";
-
 import EntrevistaModal from "./modal_entrevista";
 
 const COLORS = {
@@ -60,6 +60,14 @@ function formatVacantesRecomendadas(recomendaciones = []) {
   }
 
   return "Estas son mis recomendaciones para ti. Puedes abrir cualquiera para ver el detalle completo.";
+}
+
+function formatPostulacionesEntrevista(postulaciones = []) {
+  if (!postulaciones.length) {
+    return "Aun no tienes postulaciones activas. Postulate a una vacante para poder simular una entrevista sobre ella.";
+  }
+
+  return "Elige la vacante a la que te postulaste para simular una entrevista sobre ella.";
 }
 
 function formatCvAnalysis(analisis) {
@@ -117,6 +125,16 @@ function mapHistoryToMessages(rows = []) {
         type: "cv-analysis",
         text: payload.text ? cleanAiText(payload.text) : formatCvAnalysis(payload.analisis),
         analisis: payload.analisis,
+      });
+      return;
+    }
+
+    if (row.resultado === "simular_entrevista" && payload?.evaluacion) {
+      mapped.push({
+        sender: "bot",
+        type: "entrevista-resultado",
+        text: payload.text || "Evaluacion de tu entrevista simulada lista.",
+        evaluacion: payload.evaluacion,
       });
       return;
     }
@@ -181,6 +199,51 @@ function RecommendationCards({ recomendaciones = [], onOpenVacante }) {
   );
 }
 
+function PostulacionesEntrevistaCards({ postulaciones = [], onSimular }) {
+  if (!postulaciones.length) return null;
+
+  return (
+    <div style={styles.recommendationsList}>
+      {postulaciones.map((item) => {
+        const vacante = item.vacante ?? {};
+        const idVacante = getVacanteId(item);
+
+        return (
+          <div key={item.id_postulacion ?? idVacante} style={styles.recommendationCard}>
+            <div style={styles.recommendationTop}>
+              <span style={styles.recommendationBadge}>
+                {item.estado_postulacion ?? "Postulacion"}
+              </span>
+              <span style={styles.recommendationMode}>
+                {vacante.modalidad ?? "Modalidad"}
+              </span>
+            </div>
+
+            <strong style={styles.recommendationTitle}>
+              {vacante.titulo_puesto ?? "Vacante"}
+            </strong>
+            <span style={styles.recommendationCompany}>
+              {vacante.empresa ?? "Empresa"}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => onSimular(vacante)}
+              disabled={!idVacante}
+              style={{
+                ...styles.recommendationButton,
+                ...(!idVacante ? styles.recommendationButtonDisabled : {}),
+              }}
+            >
+              Simular entrevista
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ChatBubble() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -188,6 +251,7 @@ export default function ChatBubble() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+  const [entrevista, setEntrevista] = useState({ open: false, vacante: null });
 
   const { enviarMensaje, loading: sendingMessage } = usePostulanteChat();
   const { cargarHistorial } = usePostulanteChatHistorial();
@@ -199,17 +263,13 @@ export default function ChatBubble() {
     analizarCV,
     loading: reviewingCv,
   } = useAnalisisCvIA();
+  const {
+    listarPostulaciones,
+    loading: loadingPostulaciones,
+  } = usePostulacionesEntrevistaIA();
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const openRef = useRef(open);
-
-  const [showEntrevista, setShowEntrevista] = useState(false);
-  const vacanteDemo = {
-    id_vacante: 1,
-    titulo_puesto: "Desarrollador Frontend",
-    empresa: "InclusiveJob",
-    modalidad: "Remoto",
-  };
 
   useEffect(() => {
     openRef.current = open;
@@ -240,10 +300,6 @@ export default function ChatBubble() {
       if (next) setHasUnread(false);
       return next;
     });
-  }
-
-  function handleEntrevistaIA() {
-    setShowEntrevista(true);
   }
 
   async function handleSend() {
@@ -325,6 +381,34 @@ export default function ChatBubble() {
     }
   }
 
+  async function handleSimularEntrevista() {
+    if (typing || sendingMessage || recommendingVacantes || reviewingCv || loadingPostulaciones) return;
+
+    setMessages((prev) => [...prev, { sender: "user", text: "Simular entrevista" }]);
+    setTyping(true);
+
+    try {
+      const postulaciones = await listarPostulaciones();
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          type: "postulaciones-entrevista",
+          text: formatPostulacionesEntrevista(postulaciones),
+          postulaciones,
+        },
+      ]);
+      if (!openRef.current) setHasUnread(true);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: "No pude cargar tus postulaciones ahora. Intenta de nuevo en un momento." },
+      ]);
+    } finally {
+      setTyping(false);
+    }
+  }
+
 
   async function handleAppHelp() {
       if (typing || sendingMessage || recommendingVacantes || reviewingCv) return;
@@ -399,7 +483,29 @@ export default function ChatBubble() {
     setHasUnread(false);
   }
 
-  const isSending = typing || sendingMessage || recommendingVacantes || reviewingCv;
+  function handleAbrirEntrevista(vacante) {
+    if (!vacante?.id_vacante) return;
+    setEntrevista({ open: true, vacante });
+  }
+
+  function handleCerrarEntrevista() {
+    setEntrevista({ open: false, vacante: null });
+  }
+
+  function handleEvaluacionEntrevista(payload) {
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: "bot",
+        type: "entrevista-resultado",
+        text: cleanAiText(payload.text),
+        evaluacion: payload.evaluacion,
+      },
+    ]);
+    if (!openRef.current) setHasUnread(true);
+  }
+
+  const isSending = typing || sendingMessage || recommendingVacantes || reviewingCv || loadingPostulaciones;
 
   return (
     <>
@@ -435,7 +541,7 @@ export default function ChatBubble() {
                 style={{
                   ...styles.msg,
                   ...(m.sender === "user" ? styles.msgUser : styles.msgBot),
-                  ...(m.type === "recommendations" ? styles.msgRecommendations : {}),
+                  ...(m.type === "recommendations" || m.type === "postulaciones-entrevista" ? styles.msgRecommendations : {}),
                 }}
               >
                 {m.text}
@@ -443,6 +549,12 @@ export default function ChatBubble() {
                   <RecommendationCards
                     recomendaciones={m.recomendaciones}
                     onOpenVacante={handleOpenVacante}
+                  />
+                )}
+                {m.type === "postulaciones-entrevista" && (
+                  <PostulacionesEntrevistaCards
+                    postulaciones={m.postulaciones}
+                    onSimular={handleAbrirEntrevista}
                   />
                 )}
                 {m.type === "cv-analysis" && (
@@ -489,6 +601,16 @@ export default function ChatBubble() {
               Revisar CV
             </button>
             <button
+              onClick={handleSimularEntrevista}
+              disabled={isSending}
+              style={{
+                ...styles.quickActionBtn,
+                ...(isSending ? styles.quickActionBtnDisabled : {}),
+              }}
+            >
+              Simular entrevista
+            </button>
+            <button
               onClick={handleAppHelp}
               disabled={isSending}
               style={{
@@ -497,16 +619,6 @@ export default function ChatBubble() {
               }}
             >
               Ayuda
-            </button>
-            <button
-                onClick={handleEntrevistaIA}
-                disabled={isSending}
-                style={{
-                    ...styles.quickActionBtn,
-                    ...(isSending ? styles.quickActionBtnDisabled : {}),
-                }}
-            >
-                Entrevista IA
             </button>
           </div>
 
@@ -535,21 +647,11 @@ export default function ChatBubble() {
         </div>
       )}
 
-      {showEntrevista && (
+      {entrevista.open && entrevista.vacante && (
         <EntrevistaModal
-          vacante={vacanteDemo}
-          onClose={() => setShowEntrevista(false)}
-          onEvaluacionLista={(resultado) => {
-            setMessages((prev) => [
-              ...prev,
-              {
-                sender: "bot",
-                text: resultado.text,
-              },
-            ]);
-
-            setShowEntrevista(false);
-          }}
+          vacante={entrevista.vacante}
+          onClose={handleCerrarEntrevista}
+          onEvaluacionLista={handleEvaluacionEntrevista}
         />
       )}
 
@@ -802,6 +904,7 @@ const styles = {
     padding: "8px 10px 0",
     background: "#fff",
     borderTop: `1px solid ${COLORS.border}`,
+    flexWrap: "wrap",
   },
   quickActionBtn: {
     border: `1px solid ${COLORS.primary}`,
