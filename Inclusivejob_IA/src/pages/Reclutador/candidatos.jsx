@@ -1,22 +1,24 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, Code, Eye, FileText, GraduationCap, Mail, Phone, Sparkles, Users } from "lucide-react";
+import { ArrowLeft, Briefcase, CheckCircle, Code, Eye, FileText, GraduationCap, Mail, Phone, Sparkles, Users, XCircle } from "lucide-react";
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
 import BubleChat from "../Reclutador/ChatBot.jsx";
+import { errorAlert, successAlert } from "../../assets/Componentes/Admin/alerts";
 import { useCandidatosVacanteReclutador, useVacantesConCandidatosReclutador } from "../../assets/Hook/Reclutador/useDomain";
 
 export default function Candidatos() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data, refetch } = useVacantesConCandidatosReclutador();
-  const { obtenerCandidatosVacante, loading } = useCandidatosVacanteReclutador();
+  const { obtenerCandidatosVacante, actualizarEstadoPostulacion, loading } = useCandidatosVacanteReclutador();
   const [vacantes, setVacantes] = useState([]);
   const [vacanteSeleccionada, setVacanteSeleccionada] = useState(null);
   const [candidatos, setCandidatos] = useState([]);
   const [candidatoSeleccionado, setCandidatoSeleccionado] = useState(null);
   const [candidatoDestacado, setCandidatoDestacado] = useState(null);
+  const [postulacionActualizando, setPostulacionActualizando] = useState(null);
 
   useEffect(() => {
     const listado = data?.data ?? data;
@@ -59,6 +61,42 @@ export default function Candidatos() {
     setCandidatoSeleccionado(null);
     setCandidatoDestacado(null);
     refetch().catch(() => {});
+  };
+
+  const cambiarEstadoPostulacion = async (cand, estado) => {
+    setPostulacionActualizando(cand.id_postulacion);
+
+    try {
+      const result = await actualizarEstadoPostulacion({
+        id_postulacion: cand.id_postulacion,
+        estado,
+      });
+
+      if (!result?.success) {
+        throw new Error(result?.message || "No se pudo actualizar la postulacion.");
+      }
+
+      setCandidatos((prev) => prev.map((item) => (
+        Number(item.id_postulacion) === Number(cand.id_postulacion)
+          ? { ...item, estado_postulacion: estado }
+          : item
+      )));
+      setCandidatoSeleccionado((prev) => (
+        prev && Number(prev.id_postulacion) === Number(cand.id_postulacion)
+          ? { ...prev, estado_postulacion: estado }
+          : prev
+      ));
+      await refetch().catch(() => {});
+      await successAlert(
+        estado === "aceptado" ? "Candidato aceptado" : "Candidato rechazado",
+        "El estado de la postulacion se actualizo correctamente.",
+        t
+      );
+    } catch (err) {
+      await errorAlert("Error al actualizar", err.message || "No se pudo guardar el cambio.", t);
+    } finally {
+      setPostulacionActualizando(null);
+    }
   };
 
   return (
@@ -120,15 +158,34 @@ export default function Candidatos() {
                         </span>
                       )}
                       <h4 style={{ color: t.textPrimary, margin: 0, fontSize: 16, fontWeight: 600 }}>{cand.nombre_completo}</h4>
-                      <p style={{ fontSize: 12, color: t.textMuted, margin: "4px 0" }}>Postulado el: {safeDate(cand.fecha_postulacion)}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                        <p style={{ fontSize: 12, color: t.textMuted, margin: 0 }}>Postulado el: {safeDate(cand.fecha_postulacion)}</p>
+                        <EstadoPostulacion estado={cand.estado_postulacion} />
+                      </div>
                       <div style={{ display: "flex", gap: 16, marginTop: 6, flexWrap: "wrap" }}>
                         <span style={infoBadgeStyle}><Mail size={12} /> {cand.correo}</span>
                         <span style={infoBadgeStyle}><Phone size={12} /> {cand.telefono}</span>
                       </div>
                     </div>
-                    <button onClick={() => setCandidatoSeleccionado(cand)} style={{ background: t.accentSoft, color: t.accent, border: "none", padding: "8px 16px", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
-                      Ver Perfil Completo
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+                      <button onClick={() => setCandidatoSeleccionado(cand)} style={actionButtonStyle("perfil")}>
+                        <Eye size={14} /> Ver perfil
+                      </button>
+                      <button
+                        onClick={() => cambiarEstadoPostulacion(cand, "aceptado")}
+                        disabled={postulacionActualizando === cand.id_postulacion || cand.estado_postulacion === "aceptado"}
+                        style={actionButtonStyle("aceptar", postulacionActualizando === cand.id_postulacion || cand.estado_postulacion === "aceptado")}
+                      >
+                        <CheckCircle size={14} /> Aceptar
+                      </button>
+                      <button
+                        onClick={() => cambiarEstadoPostulacion(cand, "rechazado")}
+                        disabled={postulacionActualizando === cand.id_postulacion || cand.estado_postulacion === "rechazado"}
+                        style={actionButtonStyle("rechazar", postulacionActualizando === cand.id_postulacion || cand.estado_postulacion === "rechazado")}
+                      >
+                        <XCircle size={14} /> Rechazar
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -143,6 +200,7 @@ export default function Candidatos() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={() => setCandidatoSeleccionado(null)} style={backButtonStyle}><ArrowLeft size={16} /> Volver a Candidatos</button>
             <h2 style={{ color: t.textPrimary, margin: 0, fontSize: 18 }}>Perfil Profesional de {candidatoSeleccionado.nombre_completo}</h2>
+            <EstadoPostulacion estado={candidatoSeleccionado.estado_postulacion} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1fr) 2fr", gap: 20, alignItems: "start" }}>
             <div style={{ ...sectionStyle, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -150,6 +208,22 @@ export default function Candidatos() {
               <div style={iconRowStyle}><Mail size={16} style={{ color: t.accent }} /> <span>{candidatoSeleccionado.correo}</span></div>
               <div style={iconRowStyle}><Phone size={16} style={{ color: t.accent }} /> <span>{candidatoSeleccionado.telefono}</span></div>
               {candidatoSeleccionado.cv_url && <a href={candidatoSeleccionado.cv_url} target="_blank" rel="noreferrer" style={cvLinkStyle}><FileText size={16} /> Ver CV</a>}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => cambiarEstadoPostulacion(candidatoSeleccionado, "aceptado")}
+                  disabled={postulacionActualizando === candidatoSeleccionado.id_postulacion || candidatoSeleccionado.estado_postulacion === "aceptado"}
+                  style={actionButtonStyle("aceptar", postulacionActualizando === candidatoSeleccionado.id_postulacion || candidatoSeleccionado.estado_postulacion === "aceptado")}
+                >
+                  <CheckCircle size={14} /> Aceptar
+                </button>
+                <button
+                  onClick={() => cambiarEstadoPostulacion(candidatoSeleccionado, "rechazado")}
+                  disabled={postulacionActualizando === candidatoSeleccionado.id_postulacion || candidatoSeleccionado.estado_postulacion === "rechazado"}
+                  style={actionButtonStyle("rechazar", postulacionActualizando === candidatoSeleccionado.id_postulacion || candidatoSeleccionado.estado_postulacion === "rechazado")}
+                >
+                  <XCircle size={14} /> Rechazar
+                </button>
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <Section icon={Users} title="Resumen Profesional">{candidatoSeleccionado.resumen_profesional}</Section>
@@ -190,7 +264,47 @@ function Estado({ estado }) {
   return <span style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: active ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: active ? "#10b981" : "#ef4444" }}>{estado}</span>;
 }
 
+function EstadoPostulacion({ estado }) {
+  const normalized = String(estado || "pendiente").toLowerCase();
+  const styles = {
+    aceptado: { bg: "rgba(16,185,129,0.16)", color: "#34d399", border: "rgba(16,185,129,0.35)", text: "Aceptado" },
+    rechazado: { bg: "rgba(239,68,68,0.16)", color: "#f87171", border: "rgba(239,68,68,0.35)", text: "Rechazado" },
+    pendiente: { bg: "rgba(245,158,11,0.14)", color: "#fbbf24", border: "rgba(245,158,11,0.32)", text: "Pendiente" },
+    revision: { bg: "rgba(99,102,241,0.16)", color: "#a5b4fc", border: "rgba(99,102,241,0.35)", text: "Revision" },
+  };
+  const current = styles[normalized] || styles.pendiente;
+
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", border: `1px solid ${current.border}`, background: current.bg, color: current.color, padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700 }}>
+      {current.text}
+    </span>
+  );
+}
+
 const buttonStyle = (disabled) => ({ background: disabled ? t.bgElevated : t.gradient, color: disabled ? t.textMuted : "#fff", border: "none", padding: "6px 12px", borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12 });
+const actionButtonStyle = (type, disabled = false) => {
+  const variants = {
+    perfil: { background: t.accentSoft, color: t.accent, border: "transparent" },
+    aceptar: { background: "rgba(16,185,129,0.14)", color: "#34d399", border: "rgba(16,185,129,0.35)" },
+    rechazar: { background: "rgba(239,68,68,0.14)", color: "#f87171", border: "rgba(239,68,68,0.35)" },
+  };
+  const v = variants[type] || variants.perfil;
+
+  return {
+    background: disabled ? t.bgElevated : v.background,
+    color: disabled ? t.textMuted : v.color,
+    border: `1px solid ${disabled ? t.border : v.border}`,
+    padding: "8px 12px",
+    borderRadius: 8,
+    fontWeight: 700,
+    cursor: disabled ? "not-allowed" : "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    opacity: disabled ? 0.7 : 1,
+  };
+};
 const backButtonStyle = { background: t.bgSurface, border: `1px solid ${t.border}`, color: t.textPrimary, borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 };
 const cardStyle = { background: t.bgSurface, border: `1px solid ${t.border}`, borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 };
 const cardStyleDestacado = { ...cardStyle, border: `2px solid ${t.accent}`, background: t.accentSoft, boxShadow: `0 0 0 3px ${t.accentGlow}` };

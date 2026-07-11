@@ -70,6 +70,7 @@ export function useCandidatosVacanteReclutador() {
 
   return {
     obtenerCandidatosVacante: (idVacante) => execute(ENDPOINTS.candidatos.detallePorVacante(idVacante), 'GET'),
+    actualizarEstadoPostulacion: (data) => execute(ENDPOINTS.candidatos.actualizarEstadoPostulacion, 'POST', data),
     loading,
     error,
   };

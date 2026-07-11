@@ -37,6 +37,7 @@ export const ENDPOINTS = {
   candidatos: {
     porVacante: `${BASE_URL}/candidatos.php?accion=listar_por_vacante`,
     detallePorVacante: (idVacante) => `${BASE_URL}/candidatos.php?${qs({ accion: 'detalles_candidatos', id_vacante: idVacante })}`,
+    actualizarEstadoPostulacion: `${BASE_URL}/candidatos.php?accion=actualizar_estado_postulacion`,
   },
 
   reportes: {
