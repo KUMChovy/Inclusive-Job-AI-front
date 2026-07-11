@@ -237,3 +237,41 @@ export function useMejorarRedaccionReclutador() {
 
   return { mejorarTexto, error };
 }
+
+export function useSolicitarEntrevistaReclutador() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const solicitarEntrevista = useCallback(async (idPostulacion) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(ENDPOINTS.chat.solicitarEntrevista, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id_postulacion: idPostulacion }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.message || `Error ${res.status}: ${res.statusText}`);
+      }
+
+      // { ok: true, mensaje: "..." }
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo enviar la solicitud de entrevista.';
+      setError(message);
+      throw new Error(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { solicitarEntrevista, loading, error };
+}

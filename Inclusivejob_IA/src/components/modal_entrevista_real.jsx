@@ -1,23 +1,58 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ENDPOINTS } from "../assets/Hook/Postulante/apiPostulante";
 
 /*
 |--------------------------------------------------------------------------
 | Modal: Entrevista REAL (solicitada por un reclutador)
 |--------------------------------------------------------------------------
-| Componente independiente de EntrevistaModal (el de la entrevista
-| simulada). No comparte estado ni estilos con el.
+| Misma estructura, estilos e interaccion que EntrevistaModal (la
+| entrevista simulada/practica): mismo layout de header/mensajes/footer,
+| misma tarjeta de evaluacion mostrada dentro del modal, mismos botones
+| "Cancelar entrevista" / "Finalizar y evaluar".
 |
-| Llama al endpoint unico Postulante/chat/entrevista_real.php mandando
-| "accion": "iniciar" | "responder" | "finalizar" en el body.
+| La UNICA diferencia real es de donde vienen los datos: en vez de los
+| 3 endpoints de la entrevista simulada (entrevista_iniciar.php,
+| entrevista_responder.php, entrevista_finalizar.php), esta usa un solo
+| endpoint (entrevista_real.php) que recibe { accion: "iniciar" |
+| "responder" | "finalizar", ... } en el body.
 |
-| AJUSTA API_BASE a la ruta real donde publicaste el backend.
+| Cancelar SIEMPRE cierra sin evaluar ni guardar nada; solo
+| "Finalizar y evaluar" llama al backend para calificar.
+|
+| NUEVO (entrevista real: solo una vez): si la llamada a "iniciar" falla
+| (por ejemplo porque el backend responde 409 "ya realizaste esta
+| entrevista"), el modal entra en estado `initError`: no se muestra el
+| textarea de respuesta ni los botones de "Cancelar entrevista" /
+| "Finalizar y evaluar" — solo un boton "Cerrar". Asi el postulante no
+| puede escribir respuestas ni intentar finalizar una entrevista que el
+| backend ya rechazo desde el inicio.
 */
 
-const API_BASE = "/Modelo/Postulante/chat"; // <-- ajusta a tu ruta real
-const ENDPOINT = `${API_BASE}/entrevista_real.php`;
+const COLORS = {
+  primary: "#4f46e5",
+  primaryDark: "#4338ca",
+  bg: "#f7f7fb",
+  border: "#e5e5ea",
+};
+
+function CloseIcon({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m22 2-7 20-4-9-9-4Z" />
+    </svg>
+  );
+}
 
 async function postJSON(body) {
-  const res = await fetch(ENDPOINT, {
+  const res = await fetch(ENDPOINTS.ia.entrevistaReal, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -30,146 +65,159 @@ async function postJSON(body) {
   return data;
 }
 
+/**
+ * EntrevistaRealModal
+ * Modal centrado con un chat grande dedicado a la entrevista REAL de una
+ * vacante especifica (proceso de seleccion, solicitada por un reclutador).
+ * Cancelar SIEMPRE cierra sin evaluar ni guardar nada; solo
+ * "Finalizar y evaluar" llama al backend para calificar.
+ *
+ * Props:
+ * - vacante: { id_vacante, titulo_puesto, empresa, modalidad }
+ * - onClose: () => void  (cancelar o cerrar despues de evaluar)
+ * - onEvaluacionLista: (payload) => void  (para que el chat principal muestre el resumen)
+ */
 export default function EntrevistaRealModal({ vacante, onClose, onEvaluacionLista }) {
-  const [historial, setHistorial] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [finalizada, setFinalizada] = useState(false);
-  const [error, setError] = useState("");
-  const endRef = useRef(null);
-  const textareaRef = useRef(null);
+  const [starting, setStarting] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [evaluacion, setEvaluacion] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
+  // NUEVO: true cuando "iniciar" fallo (p.ej. la entrevista ya fue
+  // realizada anteriormente). Bloquea el input y los botones de accion.
+  const [initError, setInitError] = useState(false);
+
+  const messagesEndRef = useRef(null);
+  const startedRef = useRef(false);
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError("");
+    if (startedRef.current) return;
+    startedRef.current = true;
 
-    postJSON({ accion: "iniciar", id_vacante: vacante.id_vacante })
-      .then((data) => {
-        if (!active) return;
-        setHistorial([{ role: "assistant", content: data.mensaje }]);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
+    (async () => {
+      try {
+        const data = await postJSON({ accion: "iniciar", id_vacante: vacante.id_vacante });
+        setMessages([{ sender: "bot", text: data.mensaje }]);
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : "No se pudo iniciar la entrevista.");
+        setInitError(true);
+      } finally {
+        setStarting(false);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vacante.id_vacante]);
+  }, []);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [historial, loading]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
-  async function handleEnviar() {
+  function buildHistorial() {
+    return messages.map((m) => ({
+      role: m.sender === "user" ? "user" : "assistant",
+      content: m.text,
+    }));
+  }
+
+  async function handleSend() {
     const texto = input.trim();
-    if (!texto || sending || finalizada || loading) return;
+    if (!texto || loading || evaluacion || initError) return;
 
-    const nuevoHistorial = [...historial, { role: "user", content: texto }];
-    setHistorial(nuevoHistorial);
+    const historial = buildHistorial();
+    setMessages((prev) => [...prev, { sender: "user", text: texto }]);
     setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
-    setSending(true);
-    setError("");
+    setErrorMsg("");
+    setLoading(true);
 
     try {
       const data = await postJSON({
         accion: "responder",
         id_vacante: vacante.id_vacante,
         mensaje: texto,
-        historial: nuevoHistorial,
+        historial,
       });
-      setHistorial((prev) => [...prev, { role: "assistant", content: data.mensaje }]);
-    } catch (e) {
-      setError(e.message);
+      setMessages((prev) => [...prev, { sender: "bot", text: data.mensaje }]);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "No se pudo continuar la entrevista.");
     } finally {
-      setSending(false);
+      setLoading(false);
     }
   }
 
   async function handleFinalizar() {
-    if (sending || finalizada || loading) return;
-    setSending(true);
-    setError("");
+    if (loading || evaluacion || initError) return;
+    setErrorMsg("");
+    setLoading(true);
 
     try {
+      const historial = buildHistorial();
       const data = await postJSON({
         accion: "finalizar",
         id_vacante: vacante.id_vacante,
         historial,
       });
-      setFinalizada(true);
-      onEvaluacionLista?.({ text: data.text, evaluacion: data.evaluacion });
-      onClose();
-    } catch (e) {
-      setError(e.message);
+      setEvaluacion(data.evaluacion);
+      onEvaluacionLista?.({
+        text: data.text,
+        evaluacion: data.evaluacion,
+        vacante,
+      });
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "No se pudo evaluar la entrevista. Intenta de nuevo.");
+      // Si el backend rechazo el finalizar porque ya existia una
+      // entrevista realizada (carrera entre dos pestañas), tambien
+      // bloqueamos el modal igual que si hubiera fallado al iniciar.
+      setInitError(true);
     } finally {
-      setSending(false);
+      setLoading(false);
     }
   }
 
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleEnviar();
+      handleSend();
     }
   }
 
-  function handleInputChange(e) {
-    setInput(e.target.value);
-    const el = textareaRef.current;
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 90) + "px";
-    }
-  }
-
-  const respuestasUsuario = historial.filter((m) => m.role === "user").length;
-  const disabledGeneral = loading || sending || finalizada;
+  const respuestasUsuario = messages.filter((m) => m.sender === "user").length;
+  const puedeFinalizar = respuestasUsuario >= 2 && !evaluacion && !initError;
 
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
         <div style={styles.header}>
-          <div style={styles.headerText}>
-            <strong style={styles.headerTitle}>
-              Entrevista — {vacante?.titulo_puesto ?? "Vacante"}
-            </strong>
-            <span style={styles.headerSubtitle}>
-              Esta es una entrevista real del proceso de seleccion.
-            </span>
+          <div>
+            <div style={styles.headerTitle}>Entrevista</div>
+            <div style={styles.headerSubtitle}>
+              {vacante.titulo_puesto}
+              {vacante.empresa ? ` · ${vacante.empresa}` : ""}
+            </div>
           </div>
           <button onClick={onClose} aria-label="Cerrar" style={styles.closeBtn}>
-            ×
+            <CloseIcon />
           </button>
         </div>
 
-        <div style={styles.body}>
-          {historial.map((m, i) => (
+        <div style={styles.messagesBox}>
+          {starting && (
+            <div style={styles.systemNote}>Preparando tu entrevista...</div>
+          )}
+
+          {messages.map((m, i) => (
             <div
               key={i}
               style={{
                 ...styles.msg,
-                ...(m.role === "user" ? styles.msgUser : styles.msgBot),
+                ...(m.sender === "user" ? styles.msgUser : styles.msgBot),
               }}
             >
-              {m.content}
+              {m.text}
             </div>
           ))}
 
-          {loading && (
-            <div style={{ ...styles.msg, ...styles.msgBot }}>
-              Preparando la entrevista...
-            </div>
-          )}
-
-          {sending && !loading && (
+          {loading && !starting && (
             <div style={styles.typingRow}>
               <span style={{ ...styles.dot, animationDelay: "0s" }} />
               <span style={{ ...styles.dot, animationDelay: "0.15s" }} />
@@ -177,45 +225,89 @@ export default function EntrevistaRealModal({ vacante, onClose, onEvaluacionList
             </div>
           )}
 
-          <div ref={endRef} />
+          {evaluacion && (
+            <div style={styles.evalCard}>
+              <strong style={styles.evalScore}>{evaluacion.puntuacion}/10</strong>
+              <p style={styles.evalText}>{evaluacion.resumen}</p>
+
+              {evaluacion.fortalezas?.length > 0 && (
+                <>
+                  <div style={styles.evalHeading}>Fortalezas</div>
+                  <ul style={styles.evalList}>
+                    {evaluacion.fortalezas.map((f, i) => <li key={i}>{f}</li>)}
+                  </ul>
+                </>
+              )}
+
+              {evaluacion.areas_mejora?.length > 0 && (
+                <>
+                  <div style={styles.evalHeading}>Areas de mejora</div>
+                  <ul style={styles.evalList}>
+                    {evaluacion.areas_mejora.map((a, i) => <li key={i}>{a}</li>)}
+                  </ul>
+                </>
+              )}
+
+              <p style={styles.evalConsejo}>{evaluacion.consejo_final}</p>
+              <p style={styles.evalDisclaimer}>Evaluacion generada con IA; puede equivocarse.</p>
+            </div>
+          )}
+
+          {errorMsg && <div style={styles.errorNote}>{errorMsg}</div>}
+          <div ref={messagesEndRef} />
         </div>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {!evaluacion && !initError && (
+          <div style={styles.inputRow}>
+            <textarea
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Escribe tu respuesta..."
+              style={styles.input}
+              disabled={starting || loading}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || starting || loading}
+              aria-label="Enviar respuesta"
+              style={{
+                ...styles.sendBtn,
+                ...((!input.trim() || starting || loading) ? styles.sendBtnDisabled : {}),
+              }}
+            >
+              <SendIcon />
+            </button>
+          </div>
+        )}
 
         <div style={styles.footer}>
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={input}
-            disabled={disabledGeneral}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Escribe tu respuesta..."
-            style={styles.input}
-          />
-          <button
-            onClick={handleEnviar}
-            disabled={disabledGeneral || !input.trim()}
-            style={{
-              ...styles.sendBtn,
-              ...((disabledGeneral || !input.trim()) ? styles.btnDisabled : {}),
-            }}
-          >
-            Enviar
-          </button>
-        </div>
-
-        <div style={styles.footerActions}>
-          <button
-            onClick={handleFinalizar}
-            disabled={disabledGeneral || respuestasUsuario < 2}
-            style={{
-              ...styles.finalizarBtn,
-              ...((disabledGeneral || respuestasUsuario < 2) ? styles.btnDisabled : {}),
-            }}
-          >
-            Finalizar entrevista
-          </button>
+          {evaluacion ? (
+            <button onClick={onClose} style={styles.finishBtn}>
+              Cerrar
+            </button>
+          ) : initError ? (
+            <button onClick={onClose} style={styles.finishBtn}>
+              Cerrar
+            </button>
+          ) : (
+            <>
+              <button onClick={onClose} style={styles.cancelBtn}>
+                Cancelar entrevista
+              </button>
+              <button
+                onClick={handleFinalizar}
+                disabled={!puedeFinalizar || loading}
+                style={{
+                  ...styles.finishBtn,
+                  ...((!puedeFinalizar || loading) ? styles.finishBtnDisabled : {}),
+                }}
+              >
+                Finalizar y evaluar
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -233,7 +325,7 @@ const styles = {
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.45)",
+    background: "rgba(17, 17, 27, 0.55)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -241,67 +333,81 @@ const styles = {
     padding: 16,
   },
   modal: {
-    width: 420,
-    maxWidth: "94vw",
-    height: 560,
-    maxHeight: "90vh",
+    width: 640,
+    maxWidth: "100%",
+    height: "80vh",
+    maxHeight: 720,
     background: "#fff",
-    borderRadius: 16,
+    borderRadius: 18,
+    boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
-    boxShadow: "0 12px 40px rgba(0,0,0,0.25)",
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   header: {
+    background: COLORS.primary,
+    color: "#fff",
+    padding: "16px 20px",
     display: "flex",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    padding: "14px 16px",
-    borderBottom: "1px solid #e5e5ea",
-    background: "#ecfdf5",
+    flexShrink: 0,
   },
-  headerText: { display: "flex", flexDirection: "column", gap: 2 },
-  headerTitle: { fontSize: 14, color: "#065f46" },
-  headerSubtitle: { fontSize: 12, color: "#047857" },
+  headerTitle: {
+    fontWeight: 700,
+    fontSize: 16,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    opacity: 0.85,
+    marginTop: 2,
+  },
   closeBtn: {
+    background: "rgba(255,255,255,0.15)",
     border: "none",
-    background: "none",
-    fontSize: 20,
-    lineHeight: 1,
+    color: "#fff",
     cursor: "pointer",
-    color: "#065f46",
-    padding: 2,
+    padding: 6,
+    borderRadius: 8,
+    display: "flex",
+    alignItems: "center",
   },
-  body: {
+  messagesBox: {
     flex: 1,
     overflowY: "auto",
-    padding: 16,
+    padding: 20,
     display: "flex",
     flexDirection: "column",
-    gap: 10,
-    background: "#f7f7fb",
+    gap: 12,
+    background: COLORS.bg,
+  },
+  systemNote: {
+    alignSelf: "center",
+    color: "#6b7280",
+    fontSize: 13,
+    fontStyle: "italic",
   },
   msg: {
-    maxWidth: "82%",
-    padding: "9px 13px",
-    borderRadius: 14,
-    fontSize: 14,
-    lineHeight: 1.4,
-    whiteSpace: "pre-line",
+    maxWidth: "80%",
+    padding: "11px 15px",
+    borderRadius: 16,
+    fontSize: 14.5,
+    lineHeight: 1.45,
     wordWrap: "break-word",
+    whiteSpace: "pre-line",
   },
   msgBot: {
     alignSelf: "flex-start",
     background: "#fff",
-    border: "1px solid #e5e5ea",
+    border: `1px solid ${COLORS.border}`,
     borderBottomLeftRadius: 4,
     color: "#1f1f1f",
   },
   msgUser: {
     alignSelf: "flex-end",
-    background: "#10b981",
+    background: COLORS.primary,
     color: "#fff",
     borderBottomRightRadius: 4,
   },
@@ -311,7 +417,7 @@ const styles = {
     gap: 4,
     padding: "10px 14px",
     background: "#fff",
-    border: "1px solid #e5e5ea",
+    border: `1px solid ${COLORS.border}`,
     borderRadius: 14,
     borderBottomLeftRadius: 4,
   },
@@ -322,56 +428,133 @@ const styles = {
     background: "#aaa",
     animation: "entrevista-real-typing-bounce 1.1s infinite",
   },
-  error: {
+  errorNote: {
+    alignSelf: "center",
     color: "#b91c1c",
-    fontSize: 12,
-    padding: "8px 16px 0",
+    background: "#fee2e2",
+    border: "1px solid #fecaca",
+    borderRadius: 10,
+    padding: "8px 12px",
+    fontSize: 13,
   },
-  footer: {
-    display: "flex",
-    gap: 8,
-    padding: 10,
-    borderTop: "1px solid #e5e5ea",
+  evalCard: {
+    alignSelf: "stretch",
     background: "#fff",
+    border: "1px solid #ddd6fe",
+    borderRadius: 14,
+    padding: 16,
+    boxShadow: "0 8px 20px rgba(79, 70, 229, 0.1)",
+  },
+  evalScore: {
+    display: "inline-block",
+    background: "#eef2ff",
+    color: COLORS.primaryDark,
+    border: "1px solid #c4b5fd",
+    borderRadius: 999,
+    padding: "4px 12px",
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  evalText: {
+    fontSize: 13.5,
+    color: "#374151",
+    margin: "6px 0 10px",
+  },
+  evalHeading: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#5b21b6",
+    textTransform: "uppercase",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  evalList: {
+    margin: "0 0 6px",
+    paddingLeft: 18,
+    fontSize: 13,
+    color: "#374151",
+    lineHeight: 1.5,
+  },
+  evalConsejo: {
+    fontSize: 13.5,
+    color: "#1f1f1f",
+    fontWeight: 600,
+    marginTop: 10,
+  },
+  evalDisclaimer: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 8,
+  },
+  inputRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderTop: `1px solid ${COLORS.border}`,
+    background: "#fff",
+    flexShrink: 0,
   },
   input: {
     flex: 1,
     border: "1px solid #e0e0e6",
-    borderRadius: 12,
-    padding: "9px 12px",
+    borderRadius: 20,
+    padding: "10px 15px",
     fontSize: 14,
+    outline: "none",
     resize: "none",
     fontFamily: "inherit",
     maxHeight: 90,
-    outline: "none",
   },
   sendBtn: {
-    background: "#10b981",
-    color: "#fff",
+    background: COLORS.primary,
     border: "none",
-    borderRadius: 10,
-    padding: "0 16px",
+    color: "#fff",
+    width: 38,
+    height: 38,
+    borderRadius: "50%",
     cursor: "pointer",
-    fontWeight: 700,
-    fontSize: 13,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
-  footerActions: {
-    padding: "0 10px 10px",
+  sendBtnDisabled: {
+    background: "#c7c7d1",
+    cursor: "not-allowed",
+  },
+  footer: {
+    display: "flex",
+    gap: 10,
+    padding: "12px 16px 16px",
+    borderTop: `1px solid ${COLORS.border}`,
     background: "#fff",
+    flexShrink: 0,
   },
-  finalizarBtn: {
-    width: "100%",
-    border: "1px solid #10b981",
-    background: "#ecfdf5",
-    color: "#065f46",
+  cancelBtn: {
+    flex: 1,
+    border: "1px solid #e5e5ea",
+    background: "#fff",
+    color: "#4b5563",
     borderRadius: 10,
-    padding: "9px 10px",
+    padding: "10px 14px",
+    fontSize: 13.5,
     fontWeight: 700,
-    fontSize: 13,
     cursor: "pointer",
   },
-  btnDisabled: {
-    opacity: 0.55,
+  finishBtn: {
+    flex: 1,
+    border: "none",
+    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)",
+    color: "#fff",
+    borderRadius: 10,
+    padding: "10px 14px",
+    fontSize: 13.5,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  finishBtnDisabled: {
+    opacity: 0.5,
     cursor: "not-allowed",
   },
 };

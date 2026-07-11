@@ -49,5 +49,6 @@ export const ENDPOINTS = {
     historial: `${BASE_URL}/chat/historial.php`,
     recomendarCandidato: `${BASE_URL}/chat/recomendar_candidatos.php`,
     mejorarRedaccion: `${BASE_URL}/chat/mejorar_redaccion.php`,
+     solicitarEntrevista: `${BASE_URL}/chat/solicitar_entrevista.php`, 
   },
 };

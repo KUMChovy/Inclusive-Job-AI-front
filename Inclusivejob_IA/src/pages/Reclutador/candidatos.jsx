@@ -1,24 +1,37 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, CheckCircle, Code, Eye, FileText, GraduationCap, Mail, Phone, Sparkles, Users, XCircle } from "lucide-react";
+import { ArrowLeft, Briefcase, CheckCircle, Code, Eye, FileText, GraduationCap, Mail, Mic, Phone, Sparkles, Users, XCircle } from "lucide-react";
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
 import BubleChat from "../Reclutador/ChatBot.jsx";
 import { errorAlert, successAlert } from "../../assets/Componentes/Admin/alerts";
-import { useCandidatosVacanteReclutador, useVacantesConCandidatosReclutador } from "../../assets/Hook/Reclutador/useDomain";
+import {
+  useCandidatosVacanteReclutador,
+  useVacantesConCandidatosReclutador,
+  useSolicitarEntrevistaReclutador,
+} from "../../assets/Hook/Reclutador/useDomain";
 
 export default function Candidatos() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data, refetch } = useVacantesConCandidatosReclutador();
   const { obtenerCandidatosVacante, actualizarEstadoPostulacion, loading } = useCandidatosVacanteReclutador();
+  const { solicitarEntrevista } = useSolicitarEntrevistaReclutador();
   const [vacantes, setVacantes] = useState([]);
   const [vacanteSeleccionada, setVacanteSeleccionada] = useState(null);
   const [candidatos, setCandidatos] = useState([]);
   const [candidatoSeleccionado, setCandidatoSeleccionado] = useState(null);
   const [candidatoDestacado, setCandidatoDestacado] = useState(null);
   const [postulacionActualizando, setPostulacionActualizando] = useState(null);
+
+  // NUEVO: control del boton "Mandar entrevista" dentro del perfil del
+  // candidato. `entrevistaEnviando` guarda el id_postulacion mientras la
+  // solicitud esta en curso; `entrevistasEnviadas` guarda los
+  // id_postulacion que ya se enviaron en esta sesion, para evitar
+  // duplicar el envio y mostrar "Entrevista enviada" en su lugar.
+  const [entrevistaEnviando, setEntrevistaEnviando] = useState(null);
+  const [entrevistasEnviadas, setEntrevistasEnviadas] = useState(() => new Set());
 
   useEffect(() => {
     const listado = data?.data ?? data;
@@ -96,6 +109,41 @@ export default function Candidatos() {
       await errorAlert("Error al actualizar", err.message || "No se pudo guardar el cambio.", t);
     } finally {
       setPostulacionActualizando(null);
+    }
+  };
+
+  // NUEVO: envia la solicitud de entrevista real al postulante desde el
+  // perfil del candidato. Reutiliza el mismo hook/endpoint
+  // (solicitar_entrevista.php) que ya usa el boton "Realizar entrevista"
+  // del ChatBot. No abre ningun modal aqui: la entrevista la responde el
+  // postulante desde su propio chat.
+  const mandarEntrevista = async (cand) => {
+    if (!cand?.id_postulacion) return;
+    if (entrevistaEnviando) return;
+    if (entrevistasEnviadas.has(cand.id_postulacion)) return;
+
+    setEntrevistaEnviando(cand.id_postulacion);
+
+    try {
+      const data = await solicitarEntrevista(cand.id_postulacion);
+      setEntrevistasEnviadas((prev) => {
+        const next = new Set(prev);
+        next.add(cand.id_postulacion);
+        return next;
+      });
+      await successAlert(
+        "Entrevista enviada",
+        data?.mensaje || `Se envio la solicitud de entrevista a ${cand.nombre_completo}.`,
+        t
+      );
+    } catch (err) {
+      await errorAlert(
+        "No se pudo enviar",
+        err.message || "Ocurrio un error al enviar la solicitud de entrevista.",
+        t
+      );
+    } finally {
+      setEntrevistaEnviando(null);
     }
   };
 
@@ -239,6 +287,47 @@ export default function Candidatos() {
               </div>
             </div>
           </div>
+
+          {/* ── NUEVO: bloque especial "Mandar entrevista" ──
+              Va debajo de todo el perfil. Envia la solicitud de
+              entrevista real al postulante (mismo endpoint que usa el
+              ChatBot: solicitar_entrevista.php). Una vez enviada, el
+              boton cambia a "Entrevista enviada" para esta sesion y no
+              deja volver a mandarla desde aqui. */}
+          <div style={entrevistaSectionStyle}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={entrevistaIconWrapStyle}>
+                <Mic size={18} color="#fff" />
+              </div>
+              <div>
+                <strong style={{ color: t.textPrimary, fontSize: 14, display: "block" }}>
+                  Entrevista con IA
+                </strong>
+                <span style={{ color: t.textMuted, fontSize: 12 }}>
+                  Invita a {candidatoSeleccionado.nombre_completo} a realizar la entrevista real de este proceso.
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => mandarEntrevista(candidatoSeleccionado)}
+              disabled={
+                entrevistaEnviando === candidatoSeleccionado.id_postulacion ||
+                entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
+              }
+              style={entrevistaBtnStyle(
+                entrevistaEnviando === candidatoSeleccionado.id_postulacion ||
+                entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
+              )}
+            >
+              <Mic size={15} />
+              {entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
+                ? "Entrevista enviada"
+                : entrevistaEnviando === candidatoSeleccionado.id_postulacion
+                ? "Enviando..."
+                : "Mandar entrevista"}
+            </button>
+          </div>
         </div>
       )}
       <BubleChat/>
@@ -314,6 +403,48 @@ const sectionStyle = { background: t.bgSurface, border: `1px solid ${t.border}`,
 const iconRowStyle = { display: "flex", alignItems: "center", gap: 10, color: t.textSecondary, fontSize: 14 };
 const cvLinkStyle = { textDecoration: "none", background: t.gradient, color: "#fff", padding: "10px", borderRadius: 8, textAlign: "center", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10 };
 const sectionTitleStyle = { display: "flex", alignItems: "center", gap: 8, color: t.accent, margin: "0 0 10px 0", fontSize: 15, fontWeight: 600, borderBottom: `1px solid ${t.border}`, paddingBottom: 6 };
+
+// ── NUEVO: estilos del bloque especial "Mandar entrevista" ──
+const entrevistaSectionStyle = {
+  background: t.bgSurface,
+  border: `1px solid ${t.accentBorder}`,
+  borderRadius: 14,
+  padding: "18px 20px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 16,
+  flexWrap: "wrap",
+  boxShadow: `0 0 0 3px ${t.accentGlow}`,
+};
+const entrevistaIconWrapStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  flexShrink: 0,
+  background: t.gradient,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: `0 4px 14px ${t.accentGlow}`,
+};
+const entrevistaBtnStyle = (disabled) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "11px 20px",
+  borderRadius: 10,
+  border: "none",
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#fff",
+  cursor: disabled ? "not-allowed" : "pointer",
+  background: disabled ? t.bgElevated : t.gradient,
+  boxShadow: disabled ? "none" : `0 6px 16px ${t.accentGlow}`,
+  opacity: disabled ? 0.7 : 1,
+  whiteSpace: "nowrap",
+  transition: "transform 0.15s ease, filter 0.15s ease",
+});
 
 function safeDate(value) {
   if (!value) return "-";

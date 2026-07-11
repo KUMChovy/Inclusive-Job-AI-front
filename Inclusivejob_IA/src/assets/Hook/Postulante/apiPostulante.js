@@ -23,11 +23,15 @@ export const ENDPOINTS = {
     recomendarVacantes: `${BASE_URL}/chat/recomendar_vacantes.php`,
     analizarCv: `${BASE_URL}/chat/analizar_cv.php`,
 
-    // Entrevista simulada con IA.
+    // Entrevista simulada (practica) con IA.
     entrevistaPostulaciones: `${BASE_URL}/chat/entrevista_postulaciones.php`,
     entrevistaIniciar: `${BASE_URL}/chat/entrevista_iniciar.php`,
     entrevistaResponder: `${BASE_URL}/chat/entrevista_responder.php`,
     entrevistaFinalizar: `${BASE_URL}/chat/entrevista_finalizar.php`,
+
+    // Entrevista REAL (proceso de seleccion, solicitada por un reclutador).
+    // Endpoint unico: recibe { accion: "iniciar" | "responder" | "finalizar", ... }.
+    entrevistaReal: `${BASE_URL}/chat/entrevista_real.php`,
   },
 
   // Formulario

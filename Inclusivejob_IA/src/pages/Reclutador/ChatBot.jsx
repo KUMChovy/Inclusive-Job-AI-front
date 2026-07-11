@@ -73,6 +73,8 @@ function mapHistorialAMensajes(rows = []) {
           entrevistaCompletada: {
             nombreCompleto: payload.candidato.nombre_completo,
             tituloPuesto: payload.vacante?.titulo_puesto,
+            idVacante: payload.vacante?.id_vacante ?? null,
+            idPostulacion: payload.candidato?.id_postulacion ?? null,
             evaluacion: payload.evaluacion,
           },
         });
@@ -241,6 +243,7 @@ function TarjetaRecomendacion({ recomendacion, onVerCandidato, onSolicitarEntrev
 
       <div style={{ display: "flex", gap: "6px", marginTop: "4px", flexWrap: "wrap" }}>
         <button
+          className="ver-candidato-btn"
           onClick={() => onVerCandidato(recomendacion)}
           style={{
             flex: "1 1 auto", fontSize: "12px", fontWeight: 600,
@@ -326,8 +329,10 @@ function TarjetaSeleccionVacante({ vacantes, onElegir, disabled }) {
 // ── Tarjeta de notificación: un postulante completo una entrevista real ──
 // y llega su calificacion generada por la IA. Se muestra dentro de una
 // burbuja de bot, igual que TarjetaRecomendacion.
-function TarjetaEntrevistaCompletada({ info }) {
+function TarjetaEntrevistaCompletada({ info, onVerCandidato }) {
   const puntuacion = info.evaluacion?.puntuacion;
+  const puedeVerCandidato = Boolean(info.idVacante);
+
   return (
     <div style={{
       marginTop: "10px",
@@ -337,7 +342,8 @@ function TarjetaEntrevistaCompletada({ info }) {
       border: `1px solid ${t.accentBorder}`,
       display: "flex",
       flexDirection: "column",
-      gap: "4px",
+      gap: "6px",
+      animation: "resultCardIn 0.45s cubic-bezier(0.34,1.4,0.64,1) both",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
         <strong style={{ fontSize: "12.5px", color: t.textPrimary }}>
@@ -362,6 +368,25 @@ function TarjetaEntrevistaCompletada({ info }) {
         <span style={{ fontSize: "11.5px", color: t.textSecondary, lineHeight: 1.4 }}>
           {info.evaluacion.resumen}
         </span>
+      )}
+
+      {puedeVerCandidato && (
+        <button
+          className="ver-candidato-btn"
+          onClick={() => onVerCandidato({
+            id_vacante: info.idVacante,
+            id_postulacion: info.idPostulacion,
+          })}
+          style={{
+            marginTop: "4px", fontSize: "12px", fontWeight: 600,
+            color: "#fff", background: t.gradient, border: "none",
+            padding: "7px 12px", borderRadius: "8px", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Ver candidato →
+        </button>
       )}
     </div>
   );
@@ -424,7 +449,7 @@ function Burbuja({ msg, onVerCandidato, onElegirVacante, seleccionDeshabilitada,
           />
         )}
         {msg.entrevistaCompletada && (
-          <TarjetaEntrevistaCompletada info={msg.entrevistaCompletada} />
+          <TarjetaEntrevistaCompletada info={msg.entrevistaCompletada} onVerCandidato={onVerCandidato} />
         )}
       </div>
     </div>
@@ -468,10 +493,13 @@ export default function ChatBot() {
   const setMensajes = (v) =>
     setChatStore((prev) => ({ ...prev, mensajes: typeof v === "function" ? v(prev.mensajes) : v }));
 
-  // Carga el historial guardado en BD una sola vez, solo si todavía no hay
-  // conversación (mensajes.length === 1 -> solo está el mensaje de bienvenida).
+  // Carga el historial guardado en BD cada vez que se abre el panel del
+  // chat (no solo la primera vez). Esto es importante para notificaciones
+  // que llegan de forma asíncrona -como "entrevista completada"-: si solo
+  // se cargara una vez al montar, un reclutador que ya tuviera conversación
+  // nunca vería esas notificaciones nuevas aparecer en el chat.
   useEffect(() => {
-    if (mensajes.length > 1) return;
+    if (!open) return;
 
     let active = true;
     cargarHistorial()
@@ -480,12 +508,12 @@ export default function ChatBot() {
         setMensajes(mapHistorialAMensajes(rows));
       })
       .catch(() => {
-        // Si falla, simplemente se queda el mensaje de bienvenida.
+        // Si falla, se queda la conversación que ya estaba en pantalla.
       });
 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [open]);
 
   // Sincroniza el montaje del panel con el estado global `open`
   useEffect(() => {
@@ -680,9 +708,10 @@ export default function ChatBot() {
         }
         .chat-input::placeholder { color: ${t.textMuted}; }
         .chat-input:focus { outline: none; border-color: ${t.accent} !important; box-shadow: 0 0 0 3px ${t.accentGlow}; }
+        .chat-input { font-size: 13px; }
         .sugerencia-btn:hover { background: ${t.accentSoft} !important; border-color: ${t.accentBorder} !important; color: ${t.accent} !important; }
         .vacante-eleccion-btn:hover:not(:disabled) { background: ${t.accentSoft} !important; border-color: ${t.accentBorder} !important; transform: translateX(2px); }
-        .chat-fab { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .chat-fab { transition: transform 0.2s ease, box-shadow 0.2s ease; position: fixed; bottom: 24px; right: 24px; }
         .chat-fab:hover { transform: scale(1.08); }
         .chat-fab:active { transform: scale(0.92); }
         .chat-close-btn:hover { background: rgba(255,255,255,0.26) !important; transform: rotate(90deg); }
@@ -690,6 +719,68 @@ export default function ChatBot() {
         .chat-send-btn:active { transform: scale(0.92) !important; }
         .chat-mejor-candidato-btn:hover:not(:disabled) { filter: brightness(1.05); }
         .chat-mejor-candidato-btn:disabled { cursor: not-allowed; opacity: 0.65; }
+
+        /* Animación consistente para TODOS los botones "Ver candidato →",
+           vengan de una recomendación de mejor candidato o de una
+           notificación de entrevista completada.
+           IMPORTANTE: la "estela" (el anillo que se expande) NO depende de
+           :hover, porque en móvil/touch el hover no se dispara de forma
+           confiable (y aquí el clic navega de inmediato a Candidatos, así
+           que nunca daría tiempo de verla con hover). Por eso se dispara
+           sola, sin necesidad de pasar el mouse, apenas el botón aparece. */
+        @keyframes verCandidatoEstela {
+          0%   { box-shadow: 0 0 0 0 ${t.accentGlow}; }
+          70%  { box-shadow: 0 0 0 10px transparent; }
+          100% { box-shadow: 0 0 0 0 transparent; }
+        }
+        .ver-candidato-btn {
+          transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+          animation: verCandidatoEstela 1.3s ease-out 2;
+        }
+        .ver-candidato-btn:hover:not(:disabled) {
+          transform: translateY(-1px) scale(1.03);
+          box-shadow: 0 6px 16px ${t.accentGlow};
+          filter: brightness(1.05);
+        }
+        .ver-candidato-btn:active:not(:disabled) { transform: scale(0.95); }
+
+        /* Entrada llamativa para la tarjeta que avisa que ya llegó el
+           resultado de una entrevista real completada, para que se note
+           que es contenido nuevo apenas aparece en el chat. */
+        @keyframes resultCardIn {
+          0%   { opacity: 0; transform: scale(0.9) translateY(8px); }
+          60%  { transform: scale(1.02) translateY(0); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* ── Responsivo ── */
+        .chatbot-panel {
+          box-sizing: border-box;
+          position: fixed;
+          bottom: 88px;
+          right: 24px;
+          width: 380px;
+          max-width: calc(100vw - 32px);
+          height: 580px;
+          max-height: calc(100vh - 120px);
+        }
+        .chatbot-panel * { box-sizing: border-box; }
+
+        @media (max-width: 480px) {
+          .chat-fab { bottom: 16px; right: 16px; }
+          .chatbot-panel {
+            left: 12px;
+            right: 12px;
+            bottom: 80px;
+            width: auto;
+            max-width: none;
+            height: calc(100vh - 104px);
+            max-height: none;
+            border-radius: 16px;
+          }
+          /* evita el auto-zoom de iOS Safari al enfocar el input (necesita >=16px) */
+          .chat-input { font-size: 16px !important; }
+        }
       `}</style>
 
       {/* ── Botón flotante ── */}
@@ -698,7 +789,6 @@ export default function ChatBot() {
         onClick={() => setOpen((prev) => !prev)}
         title={open ? "Cerrar chat" : "Abrir asistente"}
         style={{
-          position: "fixed", bottom: "24px", right: "24px",
           width: "52px", height: "52px", borderRadius: "50%",
           background: t.gradient,
           border: "none", cursor: "pointer", zIndex: 50,
@@ -719,9 +809,7 @@ export default function ChatBot() {
 
       {/* ── Ventana del chat ── */}
       {panelVisible && (
-        <div style={{
-          position: "fixed", bottom: "88px", right: "24px",
-          width: "380px", height: "580px",
+        <div className="chatbot-panel" style={{
           background: t.bgSurface,
           border: `1px solid ${t.border}`,
           borderRadius: "20px",
@@ -898,7 +986,7 @@ export default function ChatBot() {
               onChange={(e) => setMensaje(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && enviar(mensaje)}
               style={{
-                flex: 1, padding: "10px 14px", fontSize: "13px",
+                flex: 1, padding: "10px 14px",
                 borderRadius: "12px",
                 border: `1px solid ${t.border}`,
                 background: t.bgElevated,
