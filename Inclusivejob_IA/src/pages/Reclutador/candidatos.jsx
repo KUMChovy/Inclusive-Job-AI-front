@@ -209,6 +209,8 @@ export default function Candidatos() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
                         <p style={{ fontSize: 12, color: t.textMuted, margin: 0 }}>Postulado el: {safeDate(cand.fecha_postulacion)}</p>
                         <EstadoPostulacion estado={cand.estado_postulacion} />
+                        {/* NUEVO: badge que indica que el postulante ya hizo la entrevista real */}
+                        {cand.entrevista_realizada && <EntrevistaBadge puntuacion={cand.puntuacion_entrevista} />}
                       </div>
                       <div style={{ display: "flex", gap: 16, marginTop: 6, flexWrap: "wrap" }}>
                         <span style={infoBadgeStyle}><Mail size={12} /> {cand.correo}</span>
@@ -288,12 +290,16 @@ export default function Candidatos() {
             </div>
           </div>
 
-          {/* ── NUEVO: bloque especial "Mandar entrevista" ──
-              Va debajo de todo el perfil. Envia la solicitud de
-              entrevista real al postulante (mismo endpoint que usa el
-              ChatBot: solicitar_entrevista.php). Una vez enviada, el
-              boton cambia a "Entrevista enviada" para esta sesion y no
-              deja volver a mandarla desde aqui. */}
+          {/* ── Bloque especial "Entrevista con IA" ──
+              Va debajo de todo el perfil. Si el candidato YA hizo la
+              entrevista real (candidatoSeleccionado.entrevista_realizada,
+              calculado en el backend a partir de `chabots`), se muestra
+              un estado fijo "Entrevista completada" con la calificacion
+              y ya NO se ofrece el boton de mandarla de nuevo.
+              Si todavia no la ha hecho, se mantiene exactamente el mismo
+              flujo de "Mandar entrevista" que ya existia (mismo hook,
+              mismo endpoint solicitar_entrevista.php, mismos estados
+              entrevistaEnviando / entrevistasEnviadas). */}
           <div style={entrevistaSectionStyle}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={entrevistaIconWrapStyle}>
@@ -304,29 +310,41 @@ export default function Candidatos() {
                   Entrevista con IA
                 </strong>
                 <span style={{ color: t.textMuted, fontSize: 12 }}>
-                  Invita a {candidatoSeleccionado.nombre_completo} a realizar la entrevista real de este proceso.
+                  {candidatoSeleccionado.entrevista_realizada
+                    ? `${candidatoSeleccionado.nombre_completo} ya completo la entrevista de este proceso.`
+                    : `Invita a ${candidatoSeleccionado.nombre_completo} a realizar la entrevista real de este proceso.`}
                 </span>
               </div>
             </div>
 
-            <button
-              onClick={() => mandarEntrevista(candidatoSeleccionado)}
-              disabled={
-                entrevistaEnviando === candidatoSeleccionado.id_postulacion ||
-                entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
-              }
-              style={entrevistaBtnStyle(
-                entrevistaEnviando === candidatoSeleccionado.id_postulacion ||
-                entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
-              )}
-            >
-              <Mic size={15} />
-              {entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
-                ? "Entrevista enviada"
-                : entrevistaEnviando === candidatoSeleccionado.id_postulacion
-                ? "Enviando..."
-                : "Mandar entrevista"}
-            </button>
+            {candidatoSeleccionado.entrevista_realizada ? (
+              <span style={entrevistaCompletadaBadgeStyle}>
+                <CheckCircle size={15} />
+                Entrevista completada
+                {candidatoSeleccionado.puntuacion_entrevista != null
+                  ? ` · ${candidatoSeleccionado.puntuacion_entrevista}/10`
+                  : ""}
+              </span>
+            ) : (
+              <button
+                onClick={() => mandarEntrevista(candidatoSeleccionado)}
+                disabled={
+                  entrevistaEnviando === candidatoSeleccionado.id_postulacion ||
+                  entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
+                }
+                style={entrevistaBtnStyle(
+                  entrevistaEnviando === candidatoSeleccionado.id_postulacion ||
+                  entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
+                )}
+              >
+                <Mic size={15} />
+                {entrevistasEnviadas.has(candidatoSeleccionado.id_postulacion)
+                  ? "Entrevista enviada"
+                  : entrevistaEnviando === candidatoSeleccionado.id_postulacion
+                  ? "Enviando..."
+                  : "Mandar entrevista"}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -370,6 +388,28 @@ function EstadoPostulacion({ estado }) {
   );
 }
 
+// NUEVO: badge que se muestra en la lista de candidatos cuando el
+// postulante ya realizo la entrevista real (candidato.entrevista_realizada
+// viene del backend, calculado a partir de la tabla `chabots`).
+function EntrevistaBadge({ puntuacion }) {
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      border: "1px solid rgba(16,185,129,0.35)",
+      background: "rgba(16,185,129,0.16)",
+      color: "#34d399",
+      padding: "3px 8px",
+      borderRadius: 999,
+      fontSize: 11,
+      fontWeight: 700,
+    }}>
+      <Mic size={11} /> Entrevista realizada{puntuacion != null ? ` · ${puntuacion}/10` : ""}
+    </span>
+  );
+}
+
 const buttonStyle = (disabled) => ({ background: disabled ? t.bgElevated : t.gradient, color: disabled ? t.textMuted : "#fff", border: "none", padding: "6px 12px", borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12 });
 const actionButtonStyle = (type, disabled = false) => {
   const variants = {
@@ -404,7 +444,7 @@ const iconRowStyle = { display: "flex", alignItems: "center", gap: 10, color: t.
 const cvLinkStyle = { textDecoration: "none", background: t.gradient, color: "#fff", padding: "10px", borderRadius: 8, textAlign: "center", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10 };
 const sectionTitleStyle = { display: "flex", alignItems: "center", gap: 8, color: t.accent, margin: "0 0 10px 0", fontSize: 15, fontWeight: 600, borderBottom: `1px solid ${t.border}`, paddingBottom: 6 };
 
-// ── NUEVO: estilos del bloque especial "Mandar entrevista" ──
+// ── Estilos del bloque especial "Entrevista con IA" (ya existian) ──
 const entrevistaSectionStyle = {
   background: t.bgSurface,
   border: `1px solid ${t.accentBorder}`,
@@ -445,6 +485,22 @@ const entrevistaBtnStyle = (disabled) => ({
   whiteSpace: "nowrap",
   transition: "transform 0.15s ease, filter 0.15s ease",
 });
+
+// NUEVO: estilo del estado fijo "Entrevista completada" que reemplaza
+// al boton "Mandar entrevista" cuando el postulante ya la hizo.
+const entrevistaCompletadaBadgeStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "11px 20px",
+  borderRadius: 10,
+  border: "1px solid rgba(16,185,129,0.35)",
+  background: "rgba(16,185,129,0.16)",
+  color: "#34d399",
+  fontSize: 13,
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+};
 
 function safeDate(value) {
   if (!value) return "-";
