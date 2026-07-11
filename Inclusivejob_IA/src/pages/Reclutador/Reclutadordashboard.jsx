@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import BubleChat from "../Reclutador/ChatBot.jsx";
+import BubleChat from '../Reclutador/ChatBot.jsx';
 import {
   AlertTriangle,
   ArrowRight,
@@ -24,21 +24,12 @@ import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
 import {
+  useDiscapacidadesReclutador,
   useGuardarVacanteReclutador,
+  useMejorarRedaccionReclutador,
   useReclutadorDashboard,
 } from '../../assets/Hook/Reclutador/useDomain';
-
-const INITIAL_FORM = {
-  titulo_puesto: '',
-  descripcion_puesto: '',
-  requisitos: '',
-  modalidad: '',
-  salario_min: '',
-  salario_max: '',
-  estado: 'activa',
-  fecha_publicacion: '',
-  fecha_cierre: '',
-};
+import { INITIAL_VACANTE_FORM, VacanteFormModal } from './components/VacanteFormModal';
 
 const ESTADO_COLOR = {
   activa: { bg: 'rgba(16,185,129,0.12)', text: '#6ee7b7', border: 'rgba(16,185,129,0.3)' },
@@ -47,23 +38,6 @@ const ESTADO_COLOR = {
   entrevista: { bg: 'rgba(99,102,241,0.12)', text: '#a5b4fc', border: 'rgba(99,102,241,0.3)' },
   aceptado: { bg: 'rgba(16,185,129,0.12)', text: '#6ee7b7', border: 'rgba(16,185,129,0.3)' },
   rechazado: { bg: 'rgba(239,68,68,0.12)', text: '#fca5a5', border: 'rgba(239,68,68,0.3)' },
-};
-
-const inputStyle = {
-  width: '100%',
-  padding: '12px',
-  marginTop: '6px',
-  borderRadius: '10px',
-  border: `1px solid ${t.border}`,
-  background: t.bgElevated,
-  color: t.textPrimary,
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
-const textareaStyle = {
-  ...inputStyle,
-  resize: 'vertical',
 };
 
 function useCountUp(end, duration = 1200) {
@@ -211,9 +185,13 @@ function CustomTooltip({ active, payload, label }) {
 export default function ReclutadorDashboard() {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = useReclutadorDashboard();
+  const { data: discapacidadesData, loading: loadingDiscapacidades } = useDiscapacidadesReclutador();
   const { guardarVacante, loading: guardandoVacante } = useGuardarVacanteReclutador();
+  const { mejorarTexto } = useMejorarRedaccionReclutador();
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [formData, setFormData] = useState(INITIAL_VACANTE_FORM);
+  const [iaLoading, setIaLoading] = useState({});
+  const [iaSugerencias, setIaSugerencias] = useState({});
 
   const dashboard = data?.data ?? data ?? {};
   const currentUser = dashboard?.user ?? {};
@@ -221,6 +199,12 @@ export default function ReclutadorDashboard() {
   const empresaAprobada = Boolean(
     currentEmpresa && (currentEmpresa.aprobada ?? currentEmpresa.estado === 'aprobada')
   );
+
+  const catalogoDiscapacidades = useMemo(() => {
+    const payload = discapacidadesData?.data;
+    if (Array.isArray(payload)) return payload;
+    return payload?.discapacidades ?? [];
+  }, [discapacidadesData]);
 
   const stats = [
     { label: 'Vacantes activas', value: Number(dashboard?.stats?.vacantes_activas ?? 0), icon: Briefcase, color: '#7c3aed' },
@@ -232,9 +216,21 @@ export default function ReclutadorDashboard() {
   const vacantesRecientes = dashboard?.vacantes_recientes ?? [];
   const candidatosRecientes = dashboard?.candidatos_recientes ?? [];
 
-  const resetForm = () => setFormData(INITIAL_FORM);
+  const closeModal = () => {
+    setShowModal(false);
+    setFormData(INITIAL_VACANTE_FORM);
+    setIaSugerencias({});
+  };
 
-  const guardarNuevaVacante = async () => {
+  const openModal = () => {
+    setFormData(INITIAL_VACANTE_FORM);
+    setIaSugerencias({});
+    setShowModal(true);
+  };
+
+  const guardarNuevaVacante = async (e) => {
+    e.preventDefault();
+
     if (!empresaAprobada) {
       await errorAlert(
         'Empresa pendiente',
@@ -252,14 +248,41 @@ export default function ReclutadorDashboard() {
         return;
       }
 
-      resetForm();
-      setShowModal(false);
+      closeModal();
       await refetch();
       await successAlert('Vacante publicada', 'La vacante se guardo correctamente.', t);
     } catch (err) {
       console.error('Error al guardar vacante:', err);
       await errorAlert('Error de conexion', err.message || 'No se pudo conectar con el servidor.', t);
     }
+  };
+
+  const handleMejorarIA = async (campo) => {
+    setIaLoading((prev) => ({ ...prev, [campo]: true }));
+    setIaSugerencias((prev) => ({ ...prev, [campo]: null }));
+
+    try {
+      const data = await mejorarTexto({
+        campo,
+        texto: formData[campo] || '',
+        contexto: {
+          titulo_puesto: formData.titulo_puesto,
+          descripcion_puesto: formData.descripcion_puesto,
+          requisitos: formData.requisitos,
+          modalidad: formData.modalidad,
+        },
+      });
+      setIaSugerencias((prev) => ({ ...prev, [campo]: data }));
+    } catch (err) {
+      await errorAlert('No se pudo mejorar el texto', err.message || 'Intenta de nuevo en unos segundos.', t);
+    } finally {
+      setIaLoading((prev) => ({ ...prev, [campo]: false }));
+    }
+  };
+
+  const handleAplicarIA = (campo, texto) => {
+    setFormData((prev) => ({ ...prev, [campo]: texto }));
+    setIaSugerencias((prev) => ({ ...prev, [campo]: null }));
   };
 
   return (
@@ -272,7 +295,7 @@ export default function ReclutadorDashboard() {
       headerActions={
         empresaAprobada && (
           <button
-            onClick={() => setShowModal(true)}
+            onClick={openModal}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -447,77 +470,22 @@ export default function ReclutadorDashboard() {
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '20px' }}>
-          <div style={{ width: '900px', maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto', background: t.bgSurface, border: `1px solid ${t.border}`, borderRadius: '18px', padding: '24px' }}>
-            <h2 style={{ marginTop: 0, color: t.textPrimary, fontWeight: 700, marginBottom: '20px' }}>Nueva Vacante</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={{ gridColumn: '1 / span 2' }}>
-                <label style={{ color: t.textSecondary }}>Titulo del puesto</label>
-                <input type="text" value={formData.titulo_puesto} onChange={(e) => setFormData({ ...formData, titulo_puesto: e.target.value })} style={inputStyle} />
-              </div>
-              <div style={{ gridColumn: '1 / span 2' }}>
-                <label style={{ color: t.textSecondary }}>Descripcion del puesto</label>
-                <textarea rows="4" value={formData.descripcion_puesto} onChange={(e) => setFormData({ ...formData, descripcion_puesto: e.target.value })} style={textareaStyle} />
-              </div>
-              <div style={{ gridColumn: '1 / span 2' }}>
-                <label style={{ color: t.textSecondary }}>Requisitos</label>
-                <textarea rows="4" value={formData.requisitos} onChange={(e) => setFormData({ ...formData, requisitos: e.target.value })} style={textareaStyle} />
-              </div>
-              <div>
-                <label style={{ color: t.textSecondary }}>Modalidad</label>
-                <select value={formData.modalidad} onChange={(e) => setFormData({ ...formData, modalidad: e.target.value })} style={inputStyle}>
-                  <option value="">Seleccione</option>
-                  <option value="Presencial">Presencial</option>
-                  <option value="Remoto">Remoto</option>
-                  <option value="Hibrido">Hibrido</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ color: t.textSecondary }}>Estado</label>
-                <select value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value })} style={inputStyle}>
-                  <option value="activa">Activa</option>
-                  <option value="cerrada">Cerrada</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ color: t.textSecondary }}>Salario minimo</label>
-                <input type="number" value={formData.salario_min} onChange={(e) => setFormData({ ...formData, salario_min: e.target.value })} style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ color: t.textSecondary }}>Salario maximo</label>
-                <input type="number" value={formData.salario_max} onChange={(e) => setFormData({ ...formData, salario_max: e.target.value })} style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ color: t.textSecondary }}>Fecha publicacion</label>
-                <input type="date" value={formData.fecha_publicacion} onChange={(e) => setFormData({ ...formData, fecha_publicacion: e.target.value })} style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ color: t.textSecondary }}>Fecha cierre</label>
-                <input type="date" value={formData.fecha_cierre} onChange={(e) => setFormData({ ...formData, fecha_cierre: e.target.value })} style={inputStyle} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
-              <button
-                onClick={() => {
-                  resetForm();
-                  setShowModal(false);
-                }}
-                style={{ background: t.bgElevated, border: `1px solid ${t.border}`, color: t.textSecondary, borderRadius: '10px', padding: '10px 16px', cursor: 'pointer' }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={guardarNuevaVacante}
-                disabled={guardandoVacante}
-                style={{ background: t.gradient, border: 'none', color: '#fff', borderRadius: '10px', padding: '10px 16px', cursor: guardandoVacante ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: guardandoVacante ? 0.7 : 1 }}
-              >
-                {guardandoVacante ? 'Guardando...' : 'Guardar Vacante'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <VacanteFormModal
+          editingVacante={null}
+          formData={formData}
+          setFormData={setFormData}
+          discapacidades={catalogoDiscapacidades}
+          loadingDiscapacidades={loadingDiscapacidades}
+          saving={guardandoVacante}
+          onClose={closeModal}
+          onSubmit={guardarNuevaVacante}
+          iaLoading={iaLoading}
+          iaSugerencias={iaSugerencias}
+          onMejorarIA={handleMejorarIA}
+          onAplicarIA={handleAplicarIA}
+        />
       )}
-      <BubleChat/>
+      <BubleChat />
     </PortalLayout>
   );
 }
