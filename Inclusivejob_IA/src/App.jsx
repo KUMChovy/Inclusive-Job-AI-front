@@ -203,7 +203,6 @@ function App() {
       <Route path="/reclutador/perfil" element={<Perfil />} />
       <Route path="/reclutador/empresa" element={<Empresa />} />
       <Route path="/reclutador/Candidatos" element={<Candidatos />} />
-      <Route path="/reclutador/Perfil" element={<Perfil />} />
       <Route path="/reclutador/Empresa" element={<Empresa />} />
       <Route path="/reclutador/vacantes/:id" element={<VacanteDetalleReclutador />} />
       </Route>

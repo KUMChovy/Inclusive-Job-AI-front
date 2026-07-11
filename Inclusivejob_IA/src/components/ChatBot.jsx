@@ -8,6 +8,7 @@ import {
   usePostulacionesEntrevistaIA,
 } from "../assets/Hook/Postulante/useDomain";
 import EntrevistaModal from "./modal_entrevista";
+import EntrevistaRealModal from "./modal_entrevista_real";
 
 const COLORS = {
   primary: "#4f46e5",
@@ -50,6 +51,17 @@ function SendIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="m22 2-7 20-4-9-9-4Z" />
+    </svg>
+  );
+}
+
+// ── Ícono micrófono (notificación de entrevista solicitada) ──
+function MicBadgeIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+      <path d="M12 18v4M8 22h8" />
     </svg>
   );
 }
@@ -129,12 +141,50 @@ function mapHistoryToMessages(rows = []) {
       return;
     }
 
+    // Resultado de entrevista SIMULADA (practica) — sin cambios.
     if (row.resultado === "simular_entrevista" && payload?.evaluacion) {
       mapped.push({
         sender: "bot",
         type: "entrevista-resultado",
         text: payload.text || "Evaluacion de tu entrevista simulada lista.",
         evaluacion: payload.evaluacion,
+      });
+      return;
+    }
+
+    // Resultado de entrevista REAL (proceso de seleccion) — nuevo.
+    if (row.resultado === "entrevista_real_realizada" && payload?.evaluacion) {
+      mapped.push({
+        sender: "bot",
+        type: "entrevista-resultado",
+        text: payload.text || "Evaluacion de tu entrevista lista.",
+        evaluacion: payload.evaluacion,
+      });
+      return;
+    }
+
+    // Notificacion de "un reclutador te invito a una entrevista SIMULADA de
+    // practica" — se deja intacta por compatibilidad con notificaciones
+    // antiguas ya guardadas en `chabots` antes de este cambio.
+    if (row.resultado === "entrevista_solicitada" && payload?.vacante) {
+      mapped.push({
+        sender: "bot",
+        type: "entrevista-solicitada",
+        text: payload.text || `Un reclutador te invito a una entrevista simulada para "${payload.vacante.titulo_puesto}".`,
+        vacante: payload.vacante,
+      });
+      return;
+    }
+
+    // Notificacion de "un reclutador te invito a una entrevista REAL",
+    // guardada por solicitar_entrevista.php (lado Reclutador) directamente
+    // en esta misma tabla `chabots`, usando el id_usuario de este postulante.
+    if (row.resultado === "entrevista_real_solicitada" && payload?.vacante) {
+      mapped.push({
+        sender: "bot",
+        type: "entrevista-real-solicitada",
+        text: payload.text || `Un reclutador te invito a una entrevista para "${payload.vacante.titulo_puesto}".`,
+        vacante: payload.vacante,
       });
       return;
     }
@@ -244,6 +294,71 @@ function PostulacionesEntrevistaCards({ postulaciones = [], onSimular }) {
   );
 }
 
+// ── Tarjeta de notificación: "un reclutador te invitó a entrevista SIMULADA" ──
+// (se conserva intacta por compatibilidad con notificaciones antiguas)
+function EntrevistaSolicitadaCard({ vacante, onIniciar }) {
+  const idVacante = getVacanteId({ vacante });
+
+  return (
+    <div style={styles.entrevistaSolicitadaCard}>
+      <div style={styles.entrevistaSolicitadaTop}>
+        <span style={styles.entrevistaSolicitadaBadge}>
+          <MicBadgeIcon /> Entrevista simulada
+        </span>
+      </div>
+      <strong style={styles.recommendationTitle}>
+        {vacante?.titulo_puesto ?? "Vacante"}
+      </strong>
+      {vacante?.empresa && (
+        <span style={styles.recommendationCompany}>{vacante.empresa}</span>
+      )}
+      <button
+        type="button"
+        onClick={() => onIniciar(vacante)}
+        disabled={!idVacante}
+        style={{
+          ...styles.recommendationButton,
+          ...(!idVacante ? styles.recommendationButtonDisabled : {}),
+        }}
+      >
+        Iniciar entrevista
+      </button>
+    </div>
+  );
+}
+
+// ── Tarjeta de notificación: "un reclutador te invitó a entrevista REAL" ──
+function EntrevistaRealSolicitadaCard({ vacante, onIniciar }) {
+  const idVacante = getVacanteId({ vacante });
+
+  return (
+    <div style={styles.entrevistaRealCard}>
+      <div style={styles.entrevistaSolicitadaTop}>
+        <span style={styles.entrevistaRealBadge}>
+          <MicBadgeIcon /> Entrevista real
+        </span>
+      </div>
+      <strong style={styles.recommendationTitle}>
+        {vacante?.titulo_puesto ?? "Vacante"}
+      </strong>
+      {vacante?.empresa && (
+        <span style={styles.recommendationCompany}>{vacante.empresa}</span>
+      )}
+      <button
+        type="button"
+        onClick={() => onIniciar(vacante)}
+        disabled={!idVacante}
+        style={{
+          ...styles.recommendationButton,
+          ...(!idVacante ? styles.recommendationButtonDisabled : {}),
+        }}
+      >
+        Iniciar entrevista
+      </button>
+    </div>
+  );
+}
+
 export default function ChatBubble() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -252,6 +367,7 @@ export default function ChatBubble() {
   const [typing, setTyping] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [entrevista, setEntrevista] = useState({ open: false, vacante: null });
+  const [entrevistaReal, setEntrevistaReal] = useState({ open: false, vacante: null });
 
   const { enviarMensaje, loading: sendingMessage } = usePostulanteChat();
   const { cargarHistorial } = usePostulanteChatHistorial();
@@ -281,7 +397,21 @@ export default function ChatBubble() {
     cargarHistorial()
       .then((rows) => {
         if (!active || !rows?.length) return;
-        setMessages(mapHistoryToMessages(rows));
+        const mensajesMapeados = mapHistoryToMessages(rows);
+        setMessages(mensajesMapeados);
+
+        // Si la última fila del historial es una notificación de entrevista
+        // (simulada o real) recién generada, marca como no leído para que
+        // el postulante vea el badge en la burbuja, igual que con cualquier
+        // otra respuesta nueva del bot.
+        const ultimaFila = rows[rows.length - 1];
+        if (
+          (ultimaFila?.resultado === "entrevista_solicitada" ||
+            ultimaFila?.resultado === "entrevista_real_solicitada") &&
+          !openRef.current
+        ) {
+          setHasUnread(true);
+        }
       })
       .catch(() => {});
 
@@ -483,6 +613,7 @@ export default function ChatBubble() {
     setHasUnread(false);
   }
 
+  // ── Entrevista SIMULADA (practica) — handlers sin cambios ──
   function handleAbrirEntrevista(vacante) {
     if (!vacante?.id_vacante) return;
     setEntrevista({ open: true, vacante });
@@ -493,6 +624,29 @@ export default function ChatBubble() {
   }
 
   function handleEvaluacionEntrevista(payload) {
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: "bot",
+        type: "entrevista-resultado",
+        text: cleanAiText(payload.text),
+        evaluacion: payload.evaluacion,
+      },
+    ]);
+    if (!openRef.current) setHasUnread(true);
+  }
+
+  // ── Entrevista REAL (proceso de seleccion) — handlers nuevos ──
+  function handleAbrirEntrevistaReal(vacante) {
+    if (!vacante?.id_vacante) return;
+    setEntrevistaReal({ open: true, vacante });
+  }
+
+  function handleCerrarEntrevistaReal() {
+    setEntrevistaReal({ open: false, vacante: null });
+  }
+
+  function handleEvaluacionEntrevistaReal(payload) {
     setMessages((prev) => [
       ...prev,
       {
@@ -541,7 +695,7 @@ export default function ChatBubble() {
                 style={{
                   ...styles.msg,
                   ...(m.sender === "user" ? styles.msgUser : styles.msgBot),
-                  ...(m.type === "recommendations" || m.type === "postulaciones-entrevista" ? styles.msgRecommendations : {}),
+                  ...(m.type === "recommendations" || m.type === "postulaciones-entrevista" || m.type === "entrevista-solicitada" || m.type === "entrevista-real-solicitada" ? styles.msgRecommendations : {}),
                 }}
               >
                 {m.text}
@@ -555,6 +709,18 @@ export default function ChatBubble() {
                   <PostulacionesEntrevistaCards
                     postulaciones={m.postulaciones}
                     onSimular={handleAbrirEntrevista}
+                  />
+                )}
+                {m.type === "entrevista-solicitada" && (
+                  <EntrevistaSolicitadaCard
+                    vacante={m.vacante}
+                    onIniciar={handleAbrirEntrevista}
+                  />
+                )}
+                {m.type === "entrevista-real-solicitada" && (
+                  <EntrevistaRealSolicitadaCard
+                    vacante={m.vacante}
+                    onIniciar={handleAbrirEntrevistaReal}
                   />
                 )}
                 {m.type === "cv-analysis" && (
@@ -652,6 +818,14 @@ export default function ChatBubble() {
           vacante={entrevista.vacante}
           onClose={handleCerrarEntrevista}
           onEvaluacionLista={handleEvaluacionEntrevista}
+        />
+      )}
+
+      {entrevistaReal.open && entrevistaReal.vacante && (
+        <EntrevistaRealModal
+          vacante={entrevistaReal.vacante}
+          onClose={handleCerrarEntrevistaReal}
+          onEvaluacionLista={handleEvaluacionEntrevistaReal}
         />
       )}
 
@@ -865,6 +1039,52 @@ const styles = {
     cursor: "pointer",
     marginTop: 10,
     boxShadow: "0 8px 18px rgba(79, 70, 229, 0.22)",
+  },
+  entrevistaSolicitadaCard: {
+    marginTop: 10,
+    border: "1px solid #fde68a",
+    borderRadius: 12,
+    background: "linear-gradient(180deg, #fffbeb 0%, #fff8e8 100%)",
+    padding: 10,
+    boxShadow: "0 8px 20px rgba(217, 119, 6, 0.1)",
+  },
+  entrevistaSolicitadaTop: {
+    display: "flex",
+    marginBottom: 7,
+  },
+  entrevistaSolicitadaBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    background: "#fef3c7",
+    border: "1px solid #fcd34d",
+    color: "#92400e",
+    fontSize: 11,
+    fontWeight: 800,
+    padding: "3px 9px",
+    whiteSpace: "nowrap",
+  },
+  entrevistaRealCard: {
+    marginTop: 10,
+    border: "1px solid #bbf7d0",
+    borderRadius: 12,
+    background: "linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%)",
+    padding: 10,
+    boxShadow: "0 8px 20px rgba(16, 185, 129, 0.1)",
+  },
+  entrevistaRealBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    background: "#d1fae5",
+    border: "1px solid #6ee7b7",
+    color: "#065f46",
+    fontSize: 11,
+    fontWeight: 800,
+    padding: "3px 9px",
+    whiteSpace: "nowrap",
   },
   msgUser: {
     alignSelf: "flex-end",

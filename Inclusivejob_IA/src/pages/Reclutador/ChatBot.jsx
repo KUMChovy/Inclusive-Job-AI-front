@@ -5,6 +5,7 @@ import {
   useReclutadorChatHistorial,
   useMejorCandidatoReclutador,
   useVacantesReclutador,
+  useSolicitarEntrevistaReclutador,
 } from "../../assets/Hook/Reclutador/useDomain";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 
@@ -35,6 +36,19 @@ const MENSAJE_BIENVENIDA = {
 // Duración de la animación de cierre del panel (debe coincidir con @keyframes chatSlideOut)
 const CLOSE_ANIM_MS = 220;
 
+// Intenta parsear `respuesta_ia` como JSON (payload estructurado). Si no es
+// JSON valido (mensaje de texto plano normal), regresa null y el mensaje se
+// muestra tal cual, como ya se hacia antes.
+function parseRespuestaIA(value) {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function mapHistorialAMensajes(rows = []) {
   if (!rows.length) return [MENSAJE_BIENVENIDA];
 
@@ -43,8 +57,30 @@ function mapHistorialAMensajes(rows = []) {
     if (row.mensaje_usuario) {
       mapeados.push({ tipo: "usuario", texto: row.mensaje_usuario });
     }
+
     if (row.respuesta_ia) {
-      mapeados.push({ tipo: "bot", texto: row.respuesta_ia });
+      const payload = parseRespuestaIA(row.respuesta_ia);
+
+      // Notificacion: un postulante completo una entrevista REAL (no
+      // simulada) y su calificacion llega aqui. La guarda
+      // entrevista_finalizar.php del lado Postulante, usando el
+      // id_usuario de ESTE reclutador (mismo patron inverso que ya usa
+      // solicitar_entrevista.php para notificar al postulante).
+      if (payload?.evaluacion && payload?.candidato) {
+        mapeados.push({
+          tipo: "bot",
+          texto: payload.text || `${payload.candidato.nombre_completo} completo una entrevista simulada.`,
+          entrevistaCompletada: {
+            nombreCompleto: payload.candidato.nombre_completo,
+            tituloPuesto: payload.vacante?.titulo_puesto,
+            evaluacion: payload.evaluacion,
+          },
+        });
+        return;
+      }
+
+      mapeados.push({ tipo: "bot", texto: payload?.text || row.respuesta_ia });
+      return;
     }
   });
 
@@ -136,6 +172,17 @@ function BriefcaseIcon({ size = 14, color = "currentColor" }) {
   );
 }
 
+// ── Ícono micrófono SVG (para "Realizar entrevista") ───────
+function MicIcon({ size = 13, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+      <path d="M12 18v4M8 22h8" />
+    </svg>
+  );
+}
+
 // ── Dots de carga ──────────────────────────────────────────
 function TypingDots() {
   return (
@@ -157,7 +204,9 @@ function TypingDots() {
 }
 
 // ── Tarjeta de recomendación dentro de una burbuja de bot ──
-function TarjetaRecomendacion({ recomendacion, onVerCandidato }) {
+function TarjetaRecomendacion({ recomendacion, onVerCandidato, onSolicitarEntrevista, solicitandoId }) {
+  const enviandoEntrevista = solicitandoId === recomendacion.id_postulacion;
+
   return (
     <div style={{
       marginTop: "10px",
@@ -189,17 +238,39 @@ function TarjetaRecomendacion({ recomendacion, onVerCandidato }) {
           {recomendacion.justificacion}
         </span>
       )}
-      <button
-        onClick={() => onVerCandidato(recomendacion)}
-        style={{
-          marginTop: "4px", alignSelf: "flex-start", fontSize: "12px", fontWeight: 600,
-          color: "#fff", background: t.gradient, border: "none",
-          padding: "6px 12px", borderRadius: "8px", cursor: "pointer",
-          display: "flex", alignItems: "center", gap: "6px",
-        }}
-      >
-        Ver candidato →
-      </button>
+
+      <div style={{ display: "flex", gap: "6px", marginTop: "4px", flexWrap: "wrap" }}>
+        <button
+          onClick={() => onVerCandidato(recomendacion)}
+          style={{
+            flex: "1 1 auto", fontSize: "12px", fontWeight: 600,
+            color: "#fff", background: t.gradient, border: "none",
+            padding: "7px 12px", borderRadius: "8px", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Ver candidato →
+        </button>
+
+        <button
+          onClick={() => onSolicitarEntrevista(recomendacion)}
+          disabled={enviandoEntrevista}
+          style={{
+            flex: "1 1 auto", fontSize: "12px", fontWeight: 600,
+            color: t.accent, background: "#fff", border: `1px solid ${t.accentBorder}`,
+            padding: "7px 12px", borderRadius: "8px",
+            cursor: enviandoEntrevista ? "not-allowed" : "pointer",
+            opacity: enviandoEntrevista ? 0.65 : 1,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            whiteSpace: "nowrap",
+            transition: "filter 0.15s ease",
+          }}
+        >
+          <MicIcon size={12} color={t.accent} />
+          {enviandoEntrevista ? "Enviando..." : "Realizar entrevista"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -252,8 +323,52 @@ function TarjetaSeleccionVacante({ vacantes, onElegir, disabled }) {
   );
 }
 
+// ── Tarjeta de notificación: un postulante completo una entrevista real ──
+// y llega su calificacion generada por la IA. Se muestra dentro de una
+// burbuja de bot, igual que TarjetaRecomendacion.
+function TarjetaEntrevistaCompletada({ info }) {
+  const puntuacion = info.evaluacion?.puntuacion;
+  return (
+    <div style={{
+      marginTop: "10px",
+      padding: "10px 12px",
+      borderRadius: "12px",
+      background: t.accentSoft,
+      border: `1px solid ${t.accentBorder}`,
+      display: "flex",
+      flexDirection: "column",
+      gap: "4px",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+        <strong style={{ fontSize: "12.5px", color: t.textPrimary }}>
+          {info.nombreCompleto}
+        </strong>
+        {typeof puntuacion === "number" && (
+          <span style={{
+            fontSize: "11px", fontWeight: 700, color: t.accent,
+            background: "#fff", padding: "2px 8px", borderRadius: "20px",
+            whiteSpace: "nowrap", flexShrink: 0,
+          }}>
+            {puntuacion}/10
+          </span>
+        )}
+      </div>
+      {info.tituloPuesto && (
+        <span style={{ fontSize: "11.5px", color: t.textMuted }}>
+          Para: {info.tituloPuesto}
+        </span>
+      )}
+      {info.evaluacion?.resumen && (
+        <span style={{ fontSize: "11.5px", color: t.textSecondary, lineHeight: 1.4 }}>
+          {info.evaluacion.resumen}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Burbuja de mensaje ─────────────────────────────────────
-function Burbuja({ msg, onVerCandidato, onElegirVacante, seleccionDeshabilitada }) {
+function Burbuja({ msg, onVerCandidato, onElegirVacante, seleccionDeshabilitada, onSolicitarEntrevista, solicitandoEntrevistaId }) {
   const esUsuario = msg.tipo === "usuario";
   return (
     <div style={{
@@ -294,7 +409,12 @@ function Burbuja({ msg, onVerCandidato, onElegirVacante, seleccionDeshabilitada 
       }}>
         {msg.texto}
         {msg.recomendacion && (
-          <TarjetaRecomendacion recomendacion={msg.recomendacion} onVerCandidato={onVerCandidato} />
+          <TarjetaRecomendacion
+            recomendacion={msg.recomendacion}
+            onVerCandidato={onVerCandidato}
+            onSolicitarEntrevista={onSolicitarEntrevista}
+            solicitandoId={solicitandoEntrevistaId}
+          />
         )}
         {msg.vacantesParaElegir && (
           <TarjetaSeleccionVacante
@@ -302,6 +422,9 @@ function Burbuja({ msg, onVerCandidato, onElegirVacante, seleccionDeshabilitada 
             onElegir={onElegirVacante}
             disabled={seleccionDeshabilitada}
           />
+        )}
+        {msg.entrevistaCompletada && (
+          <TarjetaEntrevistaCompletada info={msg.entrevistaCompletada} />
         )}
       </div>
     </div>
@@ -317,8 +440,11 @@ export default function ChatBot() {
   const { cargarHistorial } = useReclutadorChatHistorial();
   const { buscarMejorCandidato, loading: loadingRecomendacion } = useMejorCandidatoReclutador();
   const { data: vacantesData, loading: loadingVacantes } = useVacantesReclutador();
+  const { solicitarEntrevista } = useSolicitarEntrevistaReclutador();
   const scrollRef = useRef(null);
   const inputRef  = useRef(null);
+
+  const [solicitandoEntrevistaId, setSolicitandoEntrevistaId] = useState(null);
 
   const vacantesActivas = useMemo(() => {
     const lista = vacantesData?.data ?? [];
@@ -344,8 +470,6 @@ export default function ChatBot() {
 
   // Carga el historial guardado en BD una sola vez, solo si todavía no hay
   // conversación (mensajes.length === 1 -> solo está el mensaje de bienvenida).
-  // Así, si el usuario navega entre páginas del portal y este componente se
-  // vuelve a montar, no pisa una conversación que ya está en curso.
   useEffect(() => {
     if (mensajes.length > 1) return;
 
@@ -398,9 +522,6 @@ export default function ChatBot() {
     const contenido = texto.trim();
     if (!contenido || cargandoRespuesta) return;
 
-    // Si el mensaje libre pregunta por el "mejor candidato", se resuelve
-    // con el flujo de recomendación (que primero puede pedir elegir vacante)
-    // en vez del chat de texto libre.
     if (PATRON_MEJOR_CANDIDATO.test(contenido)) {
       setMensaje("");
       await iniciarBusquedaMejorCandidato(contenido);
@@ -423,11 +544,6 @@ export default function ChatBot() {
     }
   };
 
-  // Punto de entrada del flujo "mejor candidato": decide si hace falta
-  // preguntar por la vacante o si puede ir directo al análisis.
-  //   - 0 vacantes activas → mensaje directo, sin llamar a la IA.
-  //   - 1 vacante activa   → analiza esa, sin preguntar nada obvio.
-  //   - 2+ vacantes activas → muestra tarjeta para elegir, y espera clic.
   const iniciarBusquedaMejorCandidato = async (textoUsuario) => {
     if (cargandoRespuesta) return;
 
@@ -454,7 +570,6 @@ export default function ChatBot() {
       return;
     }
 
-    // Varias vacantes activas: pedir que elija.
     setMensajes((prev) => [
       ...prev,
       { tipo: "usuario", texto: textoUsuario },
@@ -466,9 +581,6 @@ export default function ChatBot() {
     ]);
   };
 
-  // Ejecuta la llamada real a recomendar_candidatos.php para una vacante
-  // ya determinada (sea porque solo había una, o porque el reclutador
-  // la eligió en la tarjeta de selección).
   const ejecutarBusquedaMejorCandidato = async (textoUsuario, idVacante, { mostrarBurbujaUsuario = true } = {}) => {
     if (mostrarBurbujaUsuario) {
       setMensajes((prev) => [...prev, { tipo: "usuario", texto: textoUsuario }]);
@@ -495,9 +607,6 @@ export default function ChatBot() {
     }
   };
 
-  // Cuando el reclutador hace clic en una vacante dentro de la tarjeta de
-  // selección: agrega su "elección" como burbuja de usuario y dispara el
-  // análisis para esa vacante puntual.
   const elegirVacanteParaAnalizar = async (idVacante) => {
     if (cargandoRespuesta) return;
     const vacante = vacantesActivas.find((v) => v.id_vacante === idVacante);
@@ -508,9 +617,7 @@ export default function ChatBot() {
     await ejecutarBusquedaMejorCandidato(etiqueta, idVacante);
   };
 
-  // Al dar clic en "Ver candidato →" dentro de una recomendación: cierra
-  // el chat y navega a Candidatos, pasando la vacante/candidato/porcentaje
-  // por state para que esa vista los seleccione y marque automáticamente.
+  // Al dar clic en "Ver candidato →": cierra el chat y navega a Candidatos.
   const irACandidatoRecomendado = (recomendacion) => {
     setOpen(false);
     navigate(RUTA_CANDIDATOS, {
@@ -522,6 +629,30 @@ export default function ChatBot() {
         },
       },
     });
+  };
+
+  // Al dar clic en "Realizar entrevista": envía la solicitud al backend,
+  // que deja una notificación en el chat del postulante (vía chabots
+  // compartida). No abre ningún modal aquí del lado reclutador — la
+  // entrevista la responde el postulante desde su propio chat.
+  const solicitarEntrevistaCandidato = async (recomendacion) => {
+    if (solicitandoEntrevistaId) return;
+    setSolicitandoEntrevistaId(recomendacion.id_postulacion);
+
+    try {
+      const data = await solicitarEntrevista(recomendacion.id_postulacion);
+      setMensajes((prev) => [
+        ...prev,
+        { tipo: "bot", texto: data?.mensaje || `Se envió la solicitud de entrevista a ${recomendacion.nombre_completo}.` },
+      ]);
+    } catch (err) {
+      setMensajes((prev) => [
+        ...prev,
+        { tipo: "bot", texto: err?.message || "No se pudo enviar la solicitud de entrevista.", error: true },
+      ]);
+    } finally {
+      setSolicitandoEntrevistaId(null);
+    }
   };
 
   return (
@@ -677,6 +808,8 @@ export default function ChatBot() {
                 onVerCandidato={irACandidatoRecomendado}
                 onElegirVacante={elegirVacanteParaAnalizar}
                 seleccionDeshabilitada={cargandoRespuesta}
+                onSolicitarEntrevista={solicitarEntrevistaCandidato}
+                solicitandoEntrevistaId={solicitandoEntrevistaId}
               />
             ))}
 
