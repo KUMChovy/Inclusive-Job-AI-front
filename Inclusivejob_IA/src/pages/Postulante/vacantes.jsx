@@ -13,12 +13,17 @@ import {
   X,
   Calendar,
   AlertTriangle,
+  Building2,
+  Mail,
+  Phone,
+  Globe,
 } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
 import { useRecomendacionVacantesIA, useVacantesPostulante } from '../../assets/Hook/Postulante/useDomain';
+import { BACKEND_URL } from '../../assets/Hook/Postulante/apiPostulante';
 
 // ── URL del backend ────────────────────────────────────────
 // ── Helpers ────────────────────────────────────────────────
@@ -35,6 +40,20 @@ function formatSalario(min, max) {
   if (!max) return `Desde ${fmt(min)} MXN`;
   if (!min) return `Hasta ${fmt(max)} MXN`;
   return `${fmt(min)} – ${fmt(max)} MXN`;
+}
+
+function backendAssetUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${BACKEND_URL}/${String(path).replace(/^\/+/, '')}`;
+}
+
+function getInitials(name) {
+  const clean = String(name || '').trim();
+  if (!clean) return 'R';
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 // ── Sub-componentes ────────────────────────────────────────
@@ -305,6 +324,11 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
   }, []);
 
   const [toast, setToast] = useState(null); // 'postulado' | 'reportado' | null
+  const [fotoReclutadorError, setFotoReclutadorError] = useState(false);
+
+  useEffect(() => {
+    setFotoReclutadorError(false);
+  }, [vacante?.id_vacante]);
 
   if (!vacante) return null;
 
@@ -327,6 +351,18 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
     }
   };
 
+  const reclutador = vacante.reclutador ?? {};
+  const empresa = vacante.empresa_info ?? {};
+  const reclutadorFoto = backendAssetUrl(reclutador.foto_perfil);
+  const reclutadorNombre = reclutador.nombre || vacante.reclutador_nombre || 'Reclutador';
+  const reclutadorIniciales = getInitials(reclutadorNombre);
+  const empresaNombre = empresa.nombre || vacante.empresa || 'Empresa';
+  const empresaDescripcion = empresa.descripcion || vacante.empresa_descripcion || '';
+  const empresaDireccion = empresa.direccion || vacante.empresa_direccion || '';
+  const empresaTelefono = empresa.telefono || vacante.telefono_empresa || '';
+  const empresaCorreo = empresa.correo || vacante.correo_empresa || '';
+  const empresaSitio = empresa.sitio_web || vacante.empresa_sitio_web || '';
+
   return (
     <div
       onClick={onClose}
@@ -348,7 +384,7 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
           borderRadius: '20px',
           position: 'relative',
           width: '100%',
-          maxWidth: '640px',
+          maxWidth: '860px',
           border: `1px solid ${t.border}`,
           boxShadow: '0 20px 60px rgba(15,23,41,0.18)',
           overflow: 'hidden',
@@ -361,7 +397,7 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
         <div
           style={{
             background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #0ea5e9 100%)',
-            padding: '24px 24px 20px',
+            padding: '28px 32px 22px',
             flexShrink: 0,
           }}
         >
@@ -435,7 +471,7 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
         </div>
 
         {/* ── Body ── */}
-        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '24px 32px', overflowY: 'auto', flex: 1 }}>
 
           {/* Salario + estado */}
           <div style={{ marginBottom: '20px' }}>
@@ -524,6 +560,82 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
             </div>
           </div>
 
+          {/* Reclutador y empresa */}
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px', paddingBottom: '6px', borderBottom: `1px solid ${t.border}` }}>
+              Reclutador y empresa
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+              <div style={{ background: '#f8fafc', border: `1px solid ${t.border}`, borderRadius: '14px', padding: '14px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '14px', overflow: 'hidden', background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '16px', fontWeight: 900, letterSpacing: '0.4px' }}>
+                  {reclutadorFoto && !fotoReclutadorError
+                    ? <img src={reclutadorFoto} alt={`Foto de ${reclutadorNombre}`} onError={() => setFotoReclutadorError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : reclutadorIniciales
+                  }
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: '0 0 2px', fontSize: '12px', color: '#2563eb', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Publicado por
+                  </p>
+                  <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 800, color: '#111827' }}>
+                    {reclutadorNombre}
+                  </p>
+                  {reclutador.puesto && (
+                    <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#64748b' }}>{reclutador.puesto}</p>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {reclutador.correo && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', wordBreak: 'break-word' }}>
+                        <Mail size={12} /> {reclutador.correo}
+                      </span>
+                    )}
+                    {reclutador.telefono && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569' }}>
+                        <Phone size={12} /> {reclutador.telefono}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '14px', padding: '14px' }}>
+                <p style={{ margin: '0 0 2px', fontSize: '12px', color: '#059669', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Building2 size={13} /> Empresa aprobada
+                </p>
+                <p style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: 800, color: '#064e3b' }}>
+                  {empresaNombre}
+                </p>
+                {empresaDescripcion && (
+                  <p style={{ margin: '0 0 10px', fontSize: '12.5px', color: '#166534', lineHeight: 1.5 }}>
+                    {empresaDescripcion}
+                  </p>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {empresaDireccion && (
+                    <span style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '12px', color: '#166534' }}>
+                      <MapPin size={12} style={{ flexShrink: 0, marginTop: '2px' }} /> {empresaDireccion}
+                    </span>
+                  )}
+                  {empresaTelefono && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#166534' }}>
+                      <Phone size={12} /> {empresaTelefono}
+                    </span>
+                  )}
+                  {empresaCorreo && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#166534', wordBreak: 'break-word' }}>
+                      <Mail size={12} /> {empresaCorreo}
+                    </span>
+                  )}
+                  {empresaSitio && (
+                    <a href={empresaSitio} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#047857', fontWeight: 700, textDecoration: 'none', wordBreak: 'break-word' }}>
+                      <Globe size={12} /> {empresaSitio}
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Descripción */}
           {vacante.descripcion_puesto && (
             <div style={{ marginBottom: '20px' }}>
@@ -583,7 +695,7 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
 
         {/* ── Footer ── */}
         <div style={{
-          padding: '16px 24px', borderTop: `1px solid ${t.border}`,
+          padding: '18px 32px', borderTop: `1px solid ${t.border}`,
           display: 'flex', alignItems: 'center', gap: '10px',
           flexShrink: 0, background: '#fff',
         }}>

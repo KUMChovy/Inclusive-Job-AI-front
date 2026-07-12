@@ -4,7 +4,7 @@ import { useSesion } from "../../assets/Hook/Sesion/useSesion";
 import { useFormularioPostulante } from "../../assets/Hook/Postulante/useDomain";
 
 export default function Formulario() {
-  const { guardarFormulario } = useFormularioPostulante();
+  const { obtenerEstadoFormulario, guardarFormulario } = useFormularioPostulante();
   const { user, loading: cargandoSesion, allowed } = useSesion({
     allowedRoles: ["postulante"],
     required: true,
@@ -16,6 +16,7 @@ export default function Formulario() {
 
   const [cargando,   setCargando]    = React.useState(true);
   const [sinSesion,  setSinSesion]   = React.useState(false);
+  const [opcionesDiscapacidad, setOpcionesDiscapacidad] = React.useState([]);
 
   const [form, setForm] = React.useState({
     tiposDiscapacidad:       [],   // ← ahora es un arreglo (selección múltiple)
@@ -46,6 +47,34 @@ export default function Formulario() {
 
   // ── Verificación de sesión ────────────────────────────────
   React.useEffect(() => {
+    let activo = true;
+
+    const cargarFormulario = async () => {
+      try {
+        const estado = await obtenerEstadoFormulario();
+        if (!activo) return;
+
+        const catalogo = Array.isArray(estado?.discapacidades) ? estado.discapacidades : [];
+        setOpcionesDiscapacidad(catalogo);
+
+        const tiposSeleccionados = Array.isArray(estado?.tipos_discapacidad)
+          ? estado.tipos_discapacidad.map((id) => String(id))
+          : [];
+        if (tiposSeleccionados.length > 0) {
+          setForm((prev) => ({ ...prev, tiposDiscapacidad: tiposSeleccionados }));
+        }
+      } catch (err) {
+        if (activo) {
+          setMensaje({
+            texto: err.message || "No se pudieron cargar los tipos de discapacidad.",
+            tipo: "error",
+          });
+        }
+      } finally {
+        if (activo) setCargando(false);
+      }
+    };
+
     if (cargandoSesion) return;
     if (!allowed || !user?.id) {
       setSinSesion(true);
@@ -53,8 +82,10 @@ export default function Formulario() {
       return;
     }
     setSinSesion(false);
-    setCargando(false);
-  }, [allowed, cargandoSesion, user?.id]);
+    cargarFormulario();
+
+    return () => { activo = false; };
+  }, [allowed, cargandoSesion, obtenerEstadoFormulario, user?.id]);
 
   // ── Handlers ───────────────────────────────────────────────
   const handleRadio = (name, value) =>
@@ -275,14 +306,30 @@ export default function Formulario() {
                       <p style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 750, color: t.textPrimary }}>
                         ¿Cuál es tu tipo de discapacidad? <span style={{ fontWeight: 500, color: t.textMuted }}>(puedes elegir más de una)</span>
                       </p>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                        {['Motriz', 'Visual', 'Auditiva', 'Intelectual', 'Psicosocial'].map((op) => (
-                          <label key={op} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 15px', borderRadius: '14px', border: `1px solid ${form.tiposDiscapacidad.includes(op) ? t.accent : t.border}`, background: form.tiposDiscapacidad.includes(op) ? t.accentSoft : t.bgElevated, cursor: 'pointer', transition: 'all 0.2s ease', color: t.textSecondary, fontSize: '13px', fontWeight: 500 }}>
-                            <input type="checkbox" name="tipoDiscapacidad" value={op} checked={form.tiposDiscapacidad.includes(op)} onChange={() => handleCheckboxTipo(op)} style={{ accentColor: t.accent }} />
-                            <span>{op}</span>
-                          </label>
-                        ))}
-                      </div>
+                      {opcionesDiscapacidad.length === 0 ? (
+                        <div style={{ padding: '14px 15px', borderRadius: '14px', border: `1px solid ${t.border}`, background: t.bgElevated, color: t.textMuted, fontSize: '13px' }}>
+                          No se pudieron cargar los tipos de discapacidad. Intenta actualizar la pagina.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
+                          {opcionesDiscapacidad.map((op) => {
+                            const id = String(op.id_tipo_discapacidad);
+                            const seleccionado = form.tiposDiscapacidad.includes(id);
+
+                            return (
+                              <label key={id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '14px 15px', borderRadius: '14px', border: `1px solid ${seleccionado ? t.accent : t.border}`, background: seleccionado ? t.accentSoft : t.bgElevated, cursor: 'pointer', transition: 'all 0.2s ease', color: t.textSecondary, fontSize: '13px', fontWeight: 500 }}>
+                                <input type="checkbox" name="tipoDiscapacidad" value={id} checked={seleccionado} onChange={() => handleCheckboxTipo(id)} style={{ accentColor: t.accent, marginTop: '2px' }} />
+                                <span>
+                                  <strong style={{ display: 'block', color: t.textPrimary, fontSize: '13px' }}>{op.nombre_discapacidad}</strong>
+                                  {op.descripcion && (
+                                    <small style={{ display: 'block', color: t.textMuted, fontSize: '11.5px', lineHeight: 1.45, marginTop: '3px' }}>{op.descripcion}</small>
+                                  )}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     <div>

@@ -8,9 +8,6 @@ const t = postulantTheme;
 const TABS       = ["info", "skills", "accesibilidad"];
 const TAB_LABELS = { info: "Yo", skills: "Skills", accesibilidad: "Accesibilidad" };
 
-const DISCAPACIDADES = ["Visual", "Auditiva", "Motriz", "Intelectual", "Psicosocial"];
-const DISC_ICONS     = { Visual:"👁", Auditiva:"👂", Motriz:"🦽", Intelectual:"🧠", Psicosocial:"💙" };
-
 // ── Datos de países con LADA (SOLO PARA VISUALIZACIÓN EN FRONTEND) ──
 const PAISES_LADA = [
   { code: "+52", name: "México", flag: "🇲🇽" },
@@ -65,6 +62,26 @@ function parseDescDisc(raw) {
   return { nota: raw, porcentaje: "" };
 }
 
+function normalizeDiscapacidadOption(option) {
+  if (typeof option === "string") {
+    return { id: option, nombre: option, descripcion: "" };
+  }
+
+  const id = String(
+    option?.id_tipo_discapacidad ??
+    option?.id ??
+    option?.value ??
+    option?.nombre_discapacidad ??
+    ""
+  );
+
+  return {
+    id,
+    nombre: option?.nombre_discapacidad ?? option?.nombre ?? option?.label ?? id,
+    descripcion: option?.descripcion ?? "",
+  };
+}
+
 // ── Función para obtener LADA por defecto (SOLO VISUAL) ──
 function getDefaultLada() {
   return "+52"; // México por defecto
@@ -96,6 +113,7 @@ export default function PerfilPostulante() {
   const [saveError, setSaveError]   = useState(null);
   const [fotoFile, setFotoFile]     = useState(null);
   const [fotoPreview, setFotoPreview] = useState(null);
+  const [catalogoDiscapacidades, setCatalogoDiscapacidades] = useState([]);
 
   const editRef    = useRef(null);
   const headRef    = useRef(null);
@@ -115,9 +133,17 @@ export default function PerfilPostulante() {
 
         const skills  = parseSkills(data.habilidades);
         const discObj = parseDescDisc(data.descripcion_discapacidad);
+        const catalogo = (data.catalogo_discapacidades || []).map(normalizeDiscapacidadOption).filter(op => op.id);
+        const discapacidadIds = Array.isArray(data.discapacidad_ids) && data.discapacidad_ids.length > 0
+          ? data.discapacidad_ids.map(String)
+          : (data.discapacidad || []).map(nombre => {
+              const found = catalogo.find(op => op.nombre === nombre);
+              return found ? found.id : nombre;
+            });
 
         // El teléfono viene de la BD sin LADA (solo números)
         const telefono = data.telefono || "";
+        setCatalogoDiscapacidades(catalogo);
 
         setPerfil({
           nombre:      ((data.nombres || "") + " " + (data.apellidos || "")).trim() || "Sin nombre",
@@ -129,7 +155,7 @@ export default function PerfilPostulante() {
           foto_perfil: data.foto_perfil ? `${backendUrl}/${data.foto_perfil}` : null,
           experiencia: data.experiencia || "",
           skills,
-          discapacidad: data.discapacidad || [],
+          discapacidad: discapacidadIds,
           nota:        discObj.nota,
           porcentaje:  discObj.porcentaje,
           portafolio:  data.portafolio_url || "",
@@ -300,6 +326,11 @@ export default function PerfilPostulante() {
     return `${selectedLada} ${perfil.tel}`;
   };
 
+  const getDiscapacidadNombre = (idOrName) => {
+    const key = String(idOrName);
+    return catalogoDiscapacidades.find(op => op.id === key)?.nombre || key;
+  };
+
   return (
     <PortalLayout theme={t} navItems={postulantNav} user={user}
       pageTitle="Mi Perfil" notifications={0}
@@ -340,7 +371,7 @@ export default function PerfilPostulante() {
               <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", marginTop:"16px" }}>
                 {perfil.discapacidad.map(d => (
                   <span key={d} style={{ fontSize:"12px", background:"rgba(255,255,255,0.2)", color:"#fff", border:"1px solid rgba(255,255,255,0.25)", padding:"3px 12px", borderRadius:"999px", display:"flex", alignItems:"center", gap:"4px" }}>
-                    <span aria-hidden="true">{DISC_ICONS[d]}</span> {d}
+                    {getDiscapacidadNombre(d)}
                   </span>
                 ))}
               </div>
@@ -396,7 +427,7 @@ export default function PerfilPostulante() {
                       <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                         {perfil.discapacidad.map(d => (
                           <span key={d} style={{ fontSize:"12px", padding:"2px 10px", borderRadius:"999px", background:"rgba(255,255,255,0.6)", color:t.textPrimary, border:`1px solid ${t.accentBorder}`, display:"flex", alignItems:"center", gap:"4px" }}>
-                            <span aria-hidden="true">{DISC_ICONS[d]}</span> {d}
+                            {getDiscapacidadNombre(d)}
                           </span>
                         ))}
                       </div>
@@ -619,13 +650,37 @@ export default function PerfilPostulante() {
                     <legend style={{ fontSize:"12px", fontWeight:600, color:t.textSecondary, marginBottom:"8px" }}>
                       Tipo de discapacidad <span style={{ fontWeight:400, color:t.textMuted }}>(puedes elegir varias)</span>
                     </legend>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
-                      {DISCAPACIDADES.map(op => {
-                        const sel = draft.discapacidad.includes(op);
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:"8px" }}>
+                      {catalogoDiscapacidades.length === 0 && (
+                        <p style={{ gridColumn:"1 / -1", fontSize:"12px", color:t.textMuted, margin:0 }}>
+                          No se encontraron tipos de discapacidad registrados.
+                        </p>
+                      )}
+                      {catalogoDiscapacidades.map(op => {
+                        const sel = draft.discapacidad.includes(op.id);
                         return (
-                          <button key={op} type="button" role="checkbox" aria-checked={sel} onClick={() => togDisc(op)}
-                            style={{ fontSize:"12px", padding:"4px 12px", borderRadius:"999px", border:`1px solid ${sel?t.accent:t.border}`, background:sel?t.accent:t.bgSurface, color:sel?"#fff":t.textSecondary, cursor:"pointer", display:"flex", alignItems:"center", gap:"4px", transition:"all 0.2s" }}>
-                            <span aria-hidden="true">{DISC_ICONS[op]}</span> {op}
+                          <button key={op.id} type="button" role="checkbox" aria-checked={sel} onClick={() => togDisc(op.id)}
+                            style={{
+                              textAlign:"left",
+                              fontSize:"12px",
+                              padding:"10px 12px",
+                              borderRadius:"14px",
+                              border:`1px solid ${sel?t.accent:t.accentBorder}`,
+                              background:sel?t.accent:t.accentSoft,
+                              color:sel?"#fff":t.textPrimary,
+                              cursor:"pointer",
+                              display:"flex",
+                              flexDirection:"column",
+                              gap:"3px",
+                              boxShadow:sel?`0 8px 20px ${t.accentGlow}`:"0 2px 8px rgba(15,23,42,0.04)",
+                              transition:"all 0.2s"
+                            }}>
+                            <span style={{ fontWeight:700 }}>{op.nombre}</span>
+                            {op.descripcion && (
+                              <span style={{ color:sel?"rgba(255,255,255,0.82)":t.textMuted, lineHeight:1.35 }}>
+                                {op.descripcion}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
