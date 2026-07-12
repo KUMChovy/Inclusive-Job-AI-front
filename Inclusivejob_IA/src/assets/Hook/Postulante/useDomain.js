@@ -4,8 +4,124 @@
 
 
 import { useCallback, useState } from 'react';
-import { useApiAction, useFetch } from './useApi';
-import { ENDPOINTS } from './apiPostulante';
+import { requestPostulante, useApiAction, useFetch } from './useApi';
+import { BACKEND_URL, ENDPOINTS } from './apiPostulante';
+
+async function requestData(url, options) {
+  const { res, data } = await requestPostulante(url, options);
+  return { ...data, httpOk: res.ok };
+}
+
+export function useFormularioPostulante() {
+  const obtenerEstadoFormulario = useCallback(() => (
+    requestData(ENDPOINTS.formulario.estado)
+  ), []);
+  const guardarFormulario = useCallback((formData) => (
+    requestData(ENDPOINTS.formulario.guardar, { method: 'POST', body: formData })
+  ), []);
+
+  return { obtenerEstadoFormulario, guardarFormulario };
+}
+
+export function useVerificacionPostulante() {
+  const reenviarCodigo = useCallback((correo) => (
+    requestData(ENDPOINTS.verificacion.reenviar, { method: 'POST', body: { correo } })
+  ), []);
+  const verificarCodigo = useCallback((correo, codigo) => (
+    requestData(ENDPOINTS.verificacion.verificar, { method: 'POST', body: { correo, codigo } })
+  ), []);
+
+  return { reenviarCodigo, verificarCodigo };
+}
+
+export function usePerfilPostulante() {
+  const obtenerPerfil = useCallback(() => requestData(ENDPOINTS.perfil.obtener), []);
+  const actualizarPerfil = useCallback((formData) => (
+    requestData(ENDPOINTS.perfil.actualizar, { method: 'POST', body: formData })
+  ), []);
+
+  return { obtenerPerfil, actualizarPerfil, backendUrl: BACKEND_URL };
+}
+
+export function useDocumentosPostulante() {
+  const verificarCv = useCallback(async () => {
+    const { res } = await requestPostulante(ENDPOINTS.documentos.cv);
+    return res.ok;
+  }, []);
+  const subirCv = useCallback((formData) => (
+    requestData(ENDPOINTS.documentos.cv, { method: 'POST', body: formData })
+  ), []);
+  const listarCertificaciones = useCallback(() => (
+    requestData(ENDPOINTS.documentos.certificaciones)
+  ), []);
+  const guardarCertificacion = useCallback((formData) => (
+    requestData(ENDPOINTS.documentos.certificaciones, { method: 'POST', body: formData })
+  ), []);
+  const eliminarCertificacion = useCallback((id) => (
+    requestData(ENDPOINTS.documentos.certificaciones, { method: 'DELETE', body: { id } })
+  ), []);
+
+  return {
+    verificarCv,
+    subirCv,
+    listarCertificaciones,
+    guardarCertificacion,
+    eliminarCertificacion,
+    cvUrl: ENDPOINTS.documentos.cv,
+    certificacionesUrl: ENDPOINTS.documentos.certificaciones,
+  };
+}
+
+export function useVacantesPostulante() {
+  const listarVacantes = useCallback(() => requestData(ENDPOINTS.vacantes.listar), []);
+  const postularse = useCallback((idVacante) => (
+    requestData(ENDPOINTS.postulaciones.recurso, { method: 'POST', body: { id_vacante: idVacante } })
+  ), []);
+  const reportarVacante = useCallback((idVacante, motivo) => (
+    requestData(ENDPOINTS.reportes.recurso, { method: 'POST', body: { id_vacante: idVacante, motivo } })
+  ), []);
+
+  return { listarVacantes, postularse, reportarVacante };
+}
+
+export function usePostulacionesPostulante() {
+  const listarPostulaciones = useCallback(() => requestData(ENDPOINTS.postulaciones.recurso), []);
+  const despostular = useCallback((idPostulacion) => (
+    requestData(ENDPOINTS.postulaciones.recurso, {
+      method: 'DELETE',
+      body: { id_postulacion: idPostulacion },
+    })
+  ), []);
+
+  return { listarPostulaciones, despostular };
+}
+
+export function useReportesPostulante() {
+  const listarReportes = useCallback(() => requestData(ENDPOINTS.reportes.recurso), []);
+  const eliminarReporte = useCallback((idReporte) => (
+    requestData(ENDPOINTS.reportes.recurso, { method: 'DELETE', body: { id_reporte: idReporte } })
+  ), []);
+  const editarReporte = useCallback((idReporte, motivo) => (
+    requestData(ENDPOINTS.reportes.recurso, { method: 'PUT', body: { id_reporte: idReporte, motivo } })
+  ), []);
+
+  return { listarReportes, eliminarReporte, editarReporte };
+}
+
+export function useEntrevistaRealPostulante() {
+  const ejecutarEntrevista = useCallback(async (body) => {
+    const { res, data } = await requestPostulante(ENDPOINTS.ia.entrevistaReal, {
+      method: 'POST',
+      body,
+    });
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.message || 'Ocurrio un error en la entrevista.');
+    }
+    return data;
+  }, []);
+
+  return { ejecutarEntrevista };
+}
 
 export function usePostulanteDashboard() {
   return useFetch(ENDPOINTS.dashboard.resumen);

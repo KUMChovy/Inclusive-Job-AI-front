@@ -11,6 +11,13 @@ export const ENDPOINTS = {
     actual: `${BASE_URL}/sesion.php`,
     logout: `${BASE_URL}/sesion.php?accion=logout`,
   },
+  registro: {
+    postulante: `${BACKEND_URL}/Modelo/Postulante/reg_pos.php`,
+    reclutador: `${BACKEND_URL}/Modelo/Reclutador/reg_reclu.php`,
+  },
+  password: {
+    recuperar: `${BACKEND_URL}/API/recuperar_password.php`,
+  },
   assets: {
     url: (src) => resolveAssetUrl(src),
   },
@@ -128,7 +135,7 @@ async function requestJson(url, options = {}) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.message || `Error ${res.status}: ${res.statusText}`);
+    throw new Error(data.message || data.error || `Error ${res.status}: ${res.statusText}`);
   }
 
   return data;
@@ -146,6 +153,21 @@ export async function loginSesion(credenciales) {
   }
 
   return data;
+}
+
+export function registrarUsuario(tipo, datos) {
+  const endpoint = tipo === 'postulante'
+    ? ENDPOINTS.registro.postulante
+    : ENDPOINTS.registro.reclutador;
+
+  return requestJson(endpoint, { method: 'POST', body: datos });
+}
+
+export function recuperarPassword(email) {
+  return requestJson(ENDPOINTS.password.recuperar, {
+    method: 'POST',
+    body: { email },
+  });
 }
 
 // Consulta sesion.php y devuelve useruario.

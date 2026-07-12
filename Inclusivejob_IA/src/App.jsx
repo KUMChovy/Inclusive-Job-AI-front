@@ -46,7 +46,7 @@ import EdicionPerfil from "./pages/Postulante/EdicionPerfil.jsx"
 import ChatBubble from './components/ChatBot.jsx';
 import { useSesion } from './assets/Hook/Sesion/useSesion';
 import { rutaPorRol } from './assets/Hook/Sesion/apiSesion';
-import { ENDPOINTS as POSTULANTE_ENDPOINTS } from './assets/Hook/Postulante/apiPostulante';
+import { useFormularioPostulante } from './assets/Hook/Postulante/useDomain';
 
 function LoadingSesion() {
   return (
@@ -94,6 +94,7 @@ function ProtectedPortalLayout({ allowedRoles }) {
 }
 
 function PostulanteFormularioGate() {
+  const { obtenerEstadoFormulario } = useFormularioPostulante();
   const location = useLocation();
   const [checking, setChecking] = useState(true);
   const [requiereFormulario, setRequiereFormulario] = useState(false);
@@ -105,15 +106,11 @@ function PostulanteFormularioGate() {
       setChecking(true);
 
       try {
-        const res = await fetch(POSTULANTE_ENDPOINTS.formulario.estado, {
-          method: 'GET',
-          credentials: 'include',
-        });
-        const data = await res.json().catch(() => ({}));
+        const data = await obtenerEstadoFormulario();
 
         if (!activo) return;
 
-        if (!res.ok || data.success === false) {
+        if (!data.httpOk || data.success === false) {
           setRequiereFormulario(false);
           return;
         }
@@ -135,7 +132,7 @@ function PostulanteFormularioGate() {
     return () => {
       activo = false;
     };
-  }, [location.pathname]);
+  }, [location.pathname, obtenerEstadoFormulario]);
 
   if (checking) {
     return <LoadingSesion />;

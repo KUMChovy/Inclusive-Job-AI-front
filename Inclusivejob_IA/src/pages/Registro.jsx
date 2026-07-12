@@ -4,6 +4,7 @@ import { errorAlert, successAlert } from "../assets/Componentes/Admin/alerts";
 import {useGoogleDomain}  from "../assets/Hook/Google/useDomain";
 import { GoogleLogin } from "@react-oauth/google";
 import { Eye, EyeOff } from "lucide-react";
+import { useRegistroSesion } from "../assets/Hook/Sesion/useSesion";
 
 /* ================= BARRA DE FUERZA ================= */
 
@@ -213,6 +214,7 @@ const ms = {
 /* ================= REGISTRO ================= */
 
 const Registro = () => {
+  const { registrar } = useRegistroSesion();
   const [mode, setMode] = useState("postulante");
   const [isMobile, setIsMobile] = useState(false);
   const { registrarConGoogle, completarPassword } = useGoogleDomain();
@@ -269,15 +271,7 @@ const Registro = () => {
       return;
     }
     try {
-      const endpoint = isPostulante
-        ? "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reg_pos.php"
-        : "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Reclutador/reg_reclu.php";
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
-      const data = await res.json();
+      const data = await registrar(isPostulante ? 'postulante' : 'reclutador', form);
       console.log("Respuesta API:", data);
       if (data.success) {
         setCorreoRegistrado(form.correo);

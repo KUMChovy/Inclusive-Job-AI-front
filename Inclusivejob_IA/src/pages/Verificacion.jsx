@@ -1,16 +1,16 @@
 import React, { useRef, useState, useEffect } from "react";
 import emailjs from "@emailjs/browser";
+import { useVerificacionPostulante } from "../assets/Hook/Postulante/useDomain";
 
 // EmailJS config - reemplaza con tus datos
 const EMAILJS_SERVICE_ID  = "service_88694gg";
 const EMAILJS_TEMPLATE_ID = "template_2e0bv8e";
 const EMAILJS_PUBLIC_KEY  = "KqSVFeZM9Y4NA0sHN";
 
-const API_BASE = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
-
 // correoUsuario y codigoInicial llegan desde Registro.jsx (reg_pos.php ya generó el código).
 // autoAbrir=true hace que el modal se abra solo, sin necesidad de un botón.
 export default function Verificacion({ correoUsuario, codigoInicial, autoAbrir = false, onClose, onVerificado }) {
+  const { reenviarCodigo: solicitarNuevoCodigo, verificarCodigo: validarCodigo } = useVerificacionPostulante();
   const [openModal, setOpenModal]   = useState(autoAbrir);
   const [digitos,   setDigitos]     = useState(["", "", "", "", "", ""]);
   const [cargando,  setCargando]    = useState(false);
@@ -85,12 +85,7 @@ export default function Verificacion({ correoUsuario, codigoInicial, autoAbrir =
     setMensaje({ texto: "", tipo: "" });
 
     try {
-      const res  = await fetch(`${API_BASE}/reenviar_codigo.php`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ correo }),
-      });
-      const data = await res.json();
+      const data = await solicitarNuevoCodigo(correo);
 
       if (!data.success) {
         setMensaje({ texto: data.mensaje || "No se pudo reenviar el código.", tipo: "error" });
@@ -143,12 +138,7 @@ export default function Verificacion({ correoUsuario, codigoInicial, autoAbrir =
     setMensaje({ texto: "", tipo: "" });
 
     try {
-      const res  = await fetch(`${API_BASE}/verificar_codigo.php`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ correo, codigo }),
-      });
-      const data = await res.json();
+      const data = await validarCodigo(correo, codigo);
 
       if (data.success) {
         setMensaje({ texto: data.mensaje, tipo: "ok" });

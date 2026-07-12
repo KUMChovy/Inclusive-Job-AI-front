@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ENDPOINTS } from "../assets/Hook/Postulante/apiPostulante";
+import { useEntrevistaRealPostulante } from "../assets/Hook/Postulante/useDomain";
 
 /*
 |--------------------------------------------------------------------------
@@ -51,20 +51,6 @@ function SendIcon() {
   );
 }
 
-async function postJSON(body) {
-  const res = await fetch(ENDPOINTS.ia.entrevistaReal, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data?.ok) {
-    throw new Error(data?.message || "Ocurrio un error en la entrevista.");
-  }
-  return data;
-}
-
 /**
  * EntrevistaRealModal
  * Modal centrado con un chat grande dedicado a la entrevista REAL de una
@@ -78,6 +64,7 @@ async function postJSON(body) {
  * - onEvaluacionLista: (payload) => void  (para que el chat principal muestre el resumen)
  */
 export default function EntrevistaRealModal({ vacante, onClose, onEvaluacionLista }) {
+  const { ejecutarEntrevista } = useEntrevistaRealPostulante();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [starting, setStarting] = useState(true);
@@ -97,7 +84,7 @@ export default function EntrevistaRealModal({ vacante, onClose, onEvaluacionList
 
     (async () => {
       try {
-        const data = await postJSON({ accion: "iniciar", id_vacante: vacante.id_vacante });
+        const data = await ejecutarEntrevista({ accion: "iniciar", id_vacante: vacante.id_vacante });
         setMessages([{ sender: "bot", text: data.mensaje }]);
       } catch (err) {
         setErrorMsg(err instanceof Error ? err.message : "No se pudo iniciar la entrevista.");
@@ -131,7 +118,7 @@ export default function EntrevistaRealModal({ vacante, onClose, onEvaluacionList
     setLoading(true);
 
     try {
-      const data = await postJSON({
+      const data = await ejecutarEntrevista({
         accion: "responder",
         id_vacante: vacante.id_vacante,
         mensaje: texto,
@@ -152,7 +139,7 @@ export default function EntrevistaRealModal({ vacante, onClose, onEvaluacionList
 
     try {
       const historial = buildHistorial();
-      const data = await postJSON({
+      const data = await ejecutarEntrevista({
         accion: "finalizar",
         id_vacante: vacante.id_vacante,
         historial,

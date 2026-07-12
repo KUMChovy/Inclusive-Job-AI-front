@@ -24,7 +24,39 @@ import {
   loginYObtenerSesion,
   obtenerSesion,
   requerirSesion,
+  recuperarPassword,
+  registrarUsuario,
 } from './apiSesion';
+
+function useAsyncSesionAction(action) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const execute = useCallback(async (...args) => {
+    setLoading(true);
+    setError(null);
+    try {
+      return await action(...args);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo completar la solicitud.');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [action]);
+
+  return { execute, loading, error };
+}
+
+export function useRegistroSesion() {
+  const { execute, loading, error } = useAsyncSesionAction(registrarUsuario);
+  return { registrar: execute, loading, error };
+}
+
+export function useRecuperarPassword() {
+  const { execute, loading, error } = useAsyncSesionAction(recuperarPassword);
+  return { recuperar: execute, loading, error };
+}
 
 export function useSesion({
   allowedRoles = [],

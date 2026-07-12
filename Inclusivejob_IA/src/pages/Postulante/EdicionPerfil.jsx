@@ -2,10 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { postulantTheme } from "../../assets/Componentes/Portal/portalTheme";
 import { postulantNav } from "../../assets/Componentes/Portal/navItems";
+import { usePerfilPostulante } from "../../assets/Hook/Postulante/useDomain";
 
 const t = postulantTheme;
-const BASE_URL = "http://localhost/inclusijob_back/back-inclusiveJob";
-
 const TABS       = ["info", "skills", "accesibilidad"];
 const TAB_LABELS = { info: "Yo", skills: "Skills", accesibilidad: "Accesibilidad" };
 
@@ -72,6 +71,7 @@ function getDefaultLada() {
 }
 
 export default function PerfilPostulante() {
+  const { obtenerPerfil, actualizarPerfil, backendUrl } = usePerfilPostulante();
   const [perfil, setPerfil] = useState({
     nombre: "", nombres: "", apellidos: "",
     rol: "", email: "", tel: "",
@@ -106,11 +106,7 @@ export default function PerfilPostulante() {
   useEffect(() => {
     const fetchPerfil = async () => {
       try {
-        const res  = await fetch(
-          `${BASE_URL}/Modelo/Postulante/obtener_perfil.php`,
-          { credentials: "include" }
-        );
-        const data = await res.json();
+        const data = await obtenerPerfil();
 
         if (!data.success) {
           window.location.href = "/login";
@@ -130,7 +126,7 @@ export default function PerfilPostulante() {
           rol:         data.rol         || "",
           email:       data.correo      || "",
           tel:         telefono, // Solo números, sin LADA
-          foto_perfil: data.foto_perfil ? `${BASE_URL}/${data.foto_perfil}` : null,
+          foto_perfil: data.foto_perfil ? `${backendUrl}/${data.foto_perfil}` : null,
           experiencia: data.experiencia || "",
           skills,
           discapacidad: data.discapacidad || [],
@@ -151,7 +147,7 @@ export default function PerfilPostulante() {
       }
     };
     fetchPerfil();
-  }, []);
+  }, [backendUrl, obtenerPerfil]);
 
   // ── Focus trap ───────────────────────────────────────────
   useEffect(() => {
@@ -237,11 +233,7 @@ export default function PerfilPostulante() {
     if (fotoFile) fd.append("fotoPerfil", fotoFile);
 
     try {
-      const res  = await fetch(
-        `${BASE_URL}/Modelo/Postulante/actualizar_perfil.php`,
-        { method: "POST", credentials: "include", body: fd }
-      );
-      const data = await res.json();
+      const data = await actualizarPerfil(fd);
 
       if (!data.ok) {
         setSaveError(data.msg || "Error al guardar. Intenta de nuevo.");

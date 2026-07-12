@@ -1,9 +1,10 @@
 import React from "react";
 import { postulantTheme } from '../../assets/Componentes/Portal/portalTheme';
 import { useSesion } from "../../assets/Hook/Sesion/useSesion";
-import { ENDPOINTS as POSTULANTE_ENDPOINTS } from "../../assets/Hook/Postulante/apiPostulante";
+import { useFormularioPostulante } from "../../assets/Hook/Postulante/useDomain";
 
 export default function Formulario() {
+  const { guardarFormulario } = useFormularioPostulante();
   const { user, loading: cargandoSesion, allowed } = useSesion({
     allowedRoles: ["postulante"],
     required: true,
@@ -133,10 +134,7 @@ export default function Formulario() {
 
     setEnviando(true);
     try {
-      const res  = await fetch(POSTULANTE_ENDPOINTS.formulario.guardar, {
-        method: "POST", credentials: "include", body: data,
-      });
-      const json = await res.json();
+      const json = await guardarFormulario(data);
       if (json.success) {
         setMensaje({ texto: "¡Perfil guardado correctamente! Redirigiendo...", tipo: "ok" });
         setTimeout(() => { window.location.href = "/postulante"; }, 2000);

@@ -3,7 +3,8 @@
 // Aqui NO va logica de React ni llamadas fetch directas.
 // Cuando backend entregue rutas reales, agregarlas dentro de ENDPOINTS por dominio.
 
-export const BASE_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante';
+export const BACKEND_URL = 'http://localhost/inclusijob_back/back-inclusiveJob';
+export const BASE_URL = `${BACKEND_URL}/Modelo/Postulante`;
 
 export const ENDPOINTS = {
   dashboard: {
@@ -17,6 +18,29 @@ export const ENDPOINTS = {
 
   documentos: {
     cv: `${BASE_URL}/cv.php`,
+    certificaciones: `${BASE_URL}/certificaciones.php`,
+  },
+
+  perfil: {
+    obtener: `${BASE_URL}/obtener_perfil.php`,
+    actualizar: `${BASE_URL}/actualizar_perfil.php`,
+  },
+
+  vacantes: {
+    listar: `${BASE_URL}/obtener_vacantes.php`,
+  },
+
+  postulaciones: {
+    recurso: `${BASE_URL}/postulaciones.php`,
+  },
+
+  reportes: {
+    recurso: `${BASE_URL}/reportes.php`,
+  },
+
+  verificacion: {
+    reenviar: `${BASE_URL}/reenviar_codigo.php`,
+    verificar: `${BASE_URL}/verificar_codigo.php`,
   },
 
   ia: {

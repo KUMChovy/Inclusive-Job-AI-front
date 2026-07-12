@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useRecuperarPassword } from "../assets/Hook/Sesion/useSesion";
 
 export default function Rp() {
+  const { recuperar } = useRecuperarPassword();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,21 +30,9 @@ export default function Rp() {
     setMensaje({ texto: "", tipo: "" });
 
     try {
-      const response = await fetch(
-        "http://localhost/inclusijob_back/back-inclusiveJob/API/recuperar_password.php",
+      const data = await recuperar(email);
 
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
+      if (!data.error) {
         setMensaje({
           texto: "Revisa tu correo para restablecer contraseña.",
           tipo: "exito",
@@ -62,7 +52,7 @@ export default function Rp() {
       }
     } catch (error) {
       setMensaje({
-        texto: "Error de conexión con el servidor.",
+        texto: error instanceof Error ? error.message : "Error de conexión con el servidor.",
         tipo: "error",
       });
     } finally {

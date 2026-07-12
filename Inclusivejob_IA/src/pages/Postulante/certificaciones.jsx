@@ -11,6 +11,7 @@ import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
 import {
   useAnalisisCvIA,
+  useDocumentosPostulante,
   usePostulanteChatHistorial,
 } from '../../assets/Hook/Postulante/useDomain';
 
@@ -27,9 +28,6 @@ const MOCK_USER = {
   discapacidades: ['Visual'],
   completado: 100,
 };
-
-const CV_URL   = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/cv.php';
-const CERT_URL = 'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/certificaciones.php';
 
 const HOY = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
 
@@ -146,6 +144,15 @@ function AiGradientBtn({ icon, label, onClick, disabled = false }) {
 /* ─── Componente principal ──────────────────────────────── */
 
 export default function PostulanteDashboard() {
+  const {
+    verificarCv,
+    subirCv,
+    listarCertificaciones,
+    guardarCertificacion: guardarCertificacionApi,
+    eliminarCertificacion: eliminarCertificacionApi,
+    cvUrl: CV_URL,
+    certificacionesUrl: CERT_URL,
+  } = useDocumentosPostulante();
   const navigate = useNavigate();
 
   const fileInputRef = useRef(null);
@@ -172,22 +179,17 @@ export default function PostulanteDashboard() {
 
   /* Verifica CV */
   useEffect(() => {
-    fetch(CV_URL, {
-        credentials: 'include'
-      })
-      .then((res) => setTieneCV(res.ok))
+    verificarCv()
+      .then(setTieneCV)
       .catch(() => setTieneCV(false));
-  }, []);
+  }, [verificarCv]);
 
   /* Carga certificaciones */
   useEffect(() => {
-    fetch(CERT_URL, {
-      credentials: 'include'
-    })
-      .then((r) => r.json())
+    listarCertificaciones()
       .then((data) => setCertificaciones(data.ok ? data.certificaciones : []))
       .catch(() => setCertificaciones([]));
-  }, []);
+  }, [listarCertificaciones]);
 
   /* Recupera el ultimo analisis de CV guardado por el chatbot */
   useEffect(() => {
@@ -222,8 +224,7 @@ export default function PostulanteDashboard() {
     try {
       const formData = new FormData();
       formData.append('cv', file);
-      const res  = await fetch(CV_URL, { method:'POST', credentials:'include', body:formData });
-      const data = await res.json();
+      const data = await subirCv(formData);
       if (data.ok) {
         await successAlert(
           'CV actualizado',
@@ -296,10 +297,7 @@ export default function PostulanteDashboard() {
   }
 
   async function recargarCertificaciones() {
-    const r    = await fetch(CERT_URL, {
-                          credentials:'include'
-                        });
-    const data = await r.json();
+    const data = await listarCertificaciones();
     setCertificaciones(data.ok ? data.certificaciones : []);
   }
 
@@ -346,8 +344,7 @@ export default function PostulanteDashboard() {
       if (editandoCert)  formData.append('id',  editandoCert);
       if (formCert.pdf)  formData.append('pdf', formCert.pdf);
 
-      const res  = await fetch(CERT_URL, { method:'POST', credentials:'include', body:formData });
-      const data = await res.json();
+      const data = await guardarCertificacionApi(formData);
 
       if (data.ok) {
         await recargarCertificaciones();
@@ -384,13 +381,7 @@ export default function PostulanteDashboard() {
     if (!confirmado) return;
 
     try {
-      const res  = await fetch(CERT_URL, {
-        method: 'DELETE',
-        credentials:'include',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      const data = await res.json();
+      const data = await eliminarCertificacionApi(id);
 
       if (data.ok) {
         setCertificaciones(prev => prev.filter(c => c.id !== id));

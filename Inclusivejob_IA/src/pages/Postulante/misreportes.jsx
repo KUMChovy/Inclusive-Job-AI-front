@@ -7,6 +7,7 @@ import {
 import {
   postulantNav,
 } from '../../assets/Componentes/Portal/navItems';
+import { useReportesPostulante } from '../../assets/Hook/Postulante/useDomain';
 
 import {
   confirmAction,
@@ -620,6 +621,11 @@ function ModalEditarReporte({ reporte, onClose, onSave }) {
 }
 
 export default function PostulanteDashboard() {
+  const {
+    listarReportes,
+    eliminarReporte: eliminarReporteApi,
+    editarReporte: editarReporteApi,
+  } = useReportesPostulante();
 
   const [reportes, setReportes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -631,21 +637,7 @@ export default function PostulanteDashboard() {
 
   async function eliminarReporte(id) {
     try {
-      const res = await fetch(
-        'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
-        {
-          method: 'DELETE',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id_reporte: id,
-          }),
-        }
-      );
-
-      const data = await res.json();
+      const data = await eliminarReporteApi(id);
 
       if (data.ok) {
         setReportes((prev) => prev.filter((r) => r.id !== id));
@@ -701,22 +693,7 @@ export default function PostulanteDashboard() {
 
   if (!confirmado) return;
   try {
-    const res = await fetch(
-      'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
-      {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id_reporte: id,
-          motivo: motivo,
-        }),
-      }
-    );
-
-    const data = await res.json();
+    const data = await editarReporteApi(id, motivo);
 
     if (data.ok) {
       setReportes((prev) =>
@@ -753,15 +730,7 @@ export default function PostulanteDashboard() {
 
   async function cargarReportes() {
     try {
-      const res = await fetch(
-        'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/reportes.php',
-        {
-          method: 'GET',
-          credentials: 'include',
-        }
-      );
-
-      const data = await res.json();
+      const data = await listarReportes();
 
       if (data.ok) {
         setReportes(data.data);

@@ -3,16 +3,7 @@ import { Link } from "react-router-dom";
 import fondo  from "../assets/img/Designer (21).png";
 import img2   from "../assets/img/Designer1.png";
 import fondo4 from "../assets/img/fondoQ.png";
-
-const JSONBIN_BIN_ID  = "6a415fe7da38895dfe0c789b";       
-const JSONBIN_API_KEY = "$2a$10$5AOFsiDPtTLkMCyiq77ISOeWPWhSF.LkDgJSw2EY/3rxneU96bS86";       
-
-const JSONBIN_URL     = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
-const JSONBIN_HEADERS = {
-  "Content-Type":  "application/json",
-  "X-Master-Key":  JSONBIN_API_KEY,
-  "X-Bin-Versioning": "false",   // siempre sobreescribe la última versión
-};
+import { useComentariosPublicos } from "../assets/Hook/Publico/useDomain";
 
 // ── Helpers ────────────────────────────────────────────────
 function formatFecha(iso) {
@@ -72,6 +63,7 @@ function Reveal({ children, delay = 0, className = "" }) {
 
 // ── Componente principal ───────────────────────────────────
 export default function Home() {
+  const { cargarComentarios, publicarComentario } = useComentariosPublicos();
   const [active, setActive] = React.useState(null);
 
   // ── Estado comentarios ─────────────────────────────────
@@ -86,13 +78,7 @@ export default function Home() {
   React.useEffect(() => {
     const cargar = async () => {
       try {
-        const res  = await fetch(JSONBIN_URL, {
-          method:  "GET",
-          headers: JSONBIN_HEADERS,
-        });
-        const json = await res.json();
-        // JSONBin devuelve { record: { comentarios: [...] } }
-        setComentarios(json.record?.comentarios ?? []);
+        setComentarios(await cargarComentarios());
       } catch {
         // fallo silencioso
       } finally {
@@ -100,7 +86,7 @@ export default function Home() {
       }
     };
     cargar();
-  }, []);
+  }, [cargarComentarios]);
 
   // ── Enviar comentario ──────────────────────────────────
   const handleEnviar = async (e) => {
@@ -113,31 +99,8 @@ export default function Home() {
     setEnviando(true);
 
     try {
-      // 1. Leer el bin actual para no perder comentarios anteriores
-      const resGet  = await fetch(JSONBIN_URL, { method: "GET", headers: JSONBIN_HEADERS });
-      const jsonGet = await resGet.json();
-      const actuales = jsonGet.record?.comentarios ?? [];
+      const nuevaLista = await publicarComentario({ nombre, comentario: texto });
 
-      // 2. Construir el nuevo comentario
-      const nuevo = {
-        id:         Date.now(),
-        nombre:     nombre.trim(),
-        comentario: texto.trim(),
-        fecha:      new Date().toISOString(),
-      };
-
-      // 3. Guardar la lista actualizada (más reciente primero)
-      const nuevaLista = [nuevo, ...actuales];
-
-      const resPut = await fetch(JSONBIN_URL, {
-        method:  "PUT",
-        headers: JSONBIN_HEADERS,
-        body:    JSON.stringify({ comentarios: nuevaLista }),
-      });
-
-      if (!resPut.ok) throw new Error("Error al guardar");
-
-      // 4. Actualizar el estado local
       setComentarios(nuevaLista);
       setNombre("");
       setTexto("");

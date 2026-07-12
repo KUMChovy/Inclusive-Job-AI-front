@@ -5,6 +5,34 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+export async function requestPostulante(url, {
+  method = 'GET',
+  body,
+  headers = {},
+  parse = 'json',
+} = {}) {
+  if (!url) throw new Error('La URL es requerida para ejecutar la peticion.');
+
+  const token = localStorage.getItem('postulante_token');
+  const isFormData = body instanceof FormData;
+  const res = await fetch(url, {
+    method,
+    credentials: 'include',
+    headers: {
+      ...(!isFormData && body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    ...(body !== undefined ? { body: isFormData || typeof body === 'string' ? body : JSON.stringify(body) } : {}),
+  });
+
+  const data = parse === 'text'
+    ? await res.text()
+    : await res.json().catch(() => ({}));
+
+  return { res, data };
+}
+
 /**
  * useFetch - Hook generico para peticiones GET.
  * @param {string|null} url - URL completa del endpoint. Si es null, no hace la peticion.
@@ -22,19 +50,10 @@ export function useFetch(url, options = {}) {
     setError(null);
 
     try {
-      const token = localStorage.getItem('postulante_token');
-      const res = await fetch(url, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(options.headers || {}),
-        },
-      });
+      const { res, data: json } = await requestPostulante(url, { headers: options.headers || {} });
 
       if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
 
-      const json = await res.json();
       setData(json);
     } catch (err) {
       setError(err.message);
@@ -65,20 +84,11 @@ export function useApiAction() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('postulante_token');
-      const res = await fetch(url, {
-        method,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
+      const { res, data } = await requestPostulante(url, { method, body: body ?? undefined });
 
       if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
 
-      return await res.json();
+      return data;
     } catch (err) {
       setError(err.message);
       throw err;

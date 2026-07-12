@@ -18,11 +18,9 @@ import {
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
-import { useRecomendacionVacantesIA } from '../../assets/Hook/Postulante/useDomain';
+import { useRecomendacionVacantesIA, useVacantesPostulante } from '../../assets/Hook/Postulante/useDomain';
 
 // ── URL del backend ────────────────────────────────────────
-const API_BASE = "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante";
-
 // ── Helpers ────────────────────────────────────────────────
 function formatFecha(iso) {
   if (!iso) return '—';
@@ -127,6 +125,7 @@ function FilterButton({ active, children, onClick }) {
 
 //modal de reporte
 function ModalReporte({ vacante, onClose, onReportado }) {
+  const { reportarVacante } = useVacantesPostulante();
   const [motivo, setMotivo] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState('');
@@ -149,13 +148,7 @@ function ModalReporte({ vacante, onClose, onReportado }) {
     setEnviando(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/reportes.php`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_vacante: vacante.id_vacante, motivo: motivo.trim() }),
-      });
-      const json = await res.json();
+      const json = await reportarVacante(vacante.id_vacante, motivo.trim());
       if (json.ok) {
         onReportado(vacante.id_vacante);
         onClose();
@@ -305,6 +298,7 @@ function ModalReporte({ vacante, onClose, onReportado }) {
 
 // ── Modal Detalle Vacante ──────────────────────────────────
 function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
+  const { postularse } = useVacantesPostulante();
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
@@ -321,13 +315,7 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
 
   const handlePostularse = async () => {
     try {
-      const res = await fetch(`${API_BASE}/postulaciones.php`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_vacante: vacante.id_vacante }),
-      });
-      const json = await res.json();
+      const json = await postularse(vacante.id_vacante);
       if (json.ok) {
         onPostularse(vacante.id_vacante);
         mostrarToast('postulado');
@@ -714,6 +702,7 @@ function ModalVacante({ vacante, onClose, onAbrirReporte, onPostularse }) {
 
 // ── Componente principal ───────────────────────────────────
 export default function Vacantes() {
+  const { listarVacantes } = useVacantesPostulante();
   const navigate = useNavigate();
   const location = useLocation();
   const openedVacanteFromQueryRef = useRef(null);
@@ -789,11 +778,7 @@ export default function Vacantes() {
   useEffect(() => {
     const cargarVacantes = async () => {
       try {
-        const res  = await fetch(`${API_BASE}/obtener_vacantes.php`, {
-          method:      'GET',
-          credentials: 'include',
-        });
-        const json = await res.json();
+        const json = await listarVacantes();
 
         if (!json.auth) {
           window.location.href = '/login';
@@ -809,7 +794,7 @@ export default function Vacantes() {
     };
 
     cargarVacantes();
-  }, []);
+  }, [listarVacantes]);
 
   const vacantesFiltradas = useMemo(() => {
     let data = [...vacantes];

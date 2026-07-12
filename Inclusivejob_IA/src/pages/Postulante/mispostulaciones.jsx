@@ -4,6 +4,7 @@ import { MapPin, Eye, X, Briefcase, Star, Calendar, Accessibility, Bookmark, Che
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+import { usePostulacionesPostulante } from '../../assets/Hook/Postulante/useDomain';
 
 import {
   confirmDelete,
@@ -340,6 +341,7 @@ function ModalPostulacion({ postulacion, onClose, onDespostular}) {
 
 // ── Componente principal ──────────────────────────────────
 export default function PostulanteDashboard() {
+  const { listarPostulaciones, despostular: despostularApi } = usePostulacionesPostulante();
   const navigate = useNavigate();
   const [postulaciones, setPostulaciones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -351,13 +353,7 @@ export default function PostulanteDashboard() {
 
   async function cargarPostulaciones() {
     try {
-      const res = await fetch(
-         'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/postulaciones.php',
-          {
-            credentials: 'include'
-          }
-      );
-      const data = await res.json();
+      const data = await listarPostulaciones();
       if (data.ok) { setPostulaciones(data.data); }
     } catch (error) {
       console.log(error);
@@ -371,21 +367,7 @@ async function despostular(id) {
   if (!confirmado) return;
 
   try {
-    const res = await fetch(
-      'http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Postulante/postulaciones.php',
-      {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id_postulacion: id,
-        }),
-      }
-    );
-
-    const data = await res.json();
+    const data = await despostularApi(id);
 
     if (!data.ok) {
       await errorAlert(
