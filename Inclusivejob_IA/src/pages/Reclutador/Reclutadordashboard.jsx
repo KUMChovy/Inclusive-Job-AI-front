@@ -29,7 +29,7 @@ import {
   useMejorarRedaccionReclutador,
   useReclutadorDashboard,
 } from '../../assets/Hook/Reclutador/useDomain';
-import { INITIAL_VACANTE_FORM, VacanteFormModal } from './components/VacanteFormModal';
+import { INITIAL_VACANTE_FORM, VacanteFormModal, validateVacanteForm } from './components/VacanteFormModal';
 
 const ESTADO_COLOR = {
   activa: { bg: 'rgba(16,185,129,0.12)', text: '#6ee7b7', border: 'rgba(16,185,129,0.3)' },
@@ -237,6 +237,13 @@ export default function ReclutadorDashboard() {
         'No puedes publicar vacantes hasta que tu empresa sea validada.',
         t
       );
+      return;
+    }
+
+    const validationMessage = validateVacanteForm(formData);
+
+    if (validationMessage) {
+      await errorAlert('Datos invalidos', validationMessage, t);
       return;
     }
 

@@ -1,4 +1,7 @@
-﻿import { Accessibility, ArrowRight, FileText, Loader2, Sparkles, X } from 'lucide-react';
+import { Accessibility, ArrowRight, CalendarDays, FileText, Loader2, Sparkles, X } from 'lucide-react';
+
+export const SALARIO_MINIMO_VACANTE = 1000;
+export const SALARIO_MAXIMO_VACANTE = 1000000;
 
 export const INITIAL_VACANTE_FORM = {
   titulo_puesto: '',
@@ -7,6 +10,8 @@ export const INITIAL_VACANTE_FORM = {
   modalidad: 'Presencial',
   salario_min: '',
   salario_max: '',
+  fecha_publicacion: '',
+  fecha_cierre: '',
   estado: 'activa',
   discapacidades: [],
 };
@@ -44,7 +49,7 @@ export function VacanteFormModal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <form onSubmit={onSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <form onSubmit={onSubmit} noValidate className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           <CampoConIA
             campo="titulo_puesto"
             label="Titulo del puesto *"
@@ -65,8 +70,48 @@ export function VacanteFormModal({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Salario minimo" type="number" value={formData.salario_min} onChange={(value) => setFormData({ ...formData, salario_min: value })} />
-            <Input label="Salario maximo" type="number" value={formData.salario_max} onChange={(value) => setFormData({ ...formData, salario_max: value })} />
+            <Input
+              label="Salario minimo *"
+              type="number"
+              min={SALARIO_MINIMO_VACANTE}
+              max={SALARIO_MAXIMO_VACANTE}
+              value={formData.salario_min}
+              onChange={(value) => setFormData({ ...formData, salario_min: value })}
+              required
+            />
+            <Input
+              label="Salario maximo *"
+              type="number"
+              min={SALARIO_MINIMO_VACANTE}
+              max={SALARIO_MAXIMO_VACANTE}
+              value={formData.salario_max}
+              onChange={(value) => setFormData({ ...formData, salario_max: value })}
+              required
+            />
+          </div>
+
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase text-slate-400">
+              <CalendarDays className="h-4 w-4 text-purple-400" /> Fechas de publicacion
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Fecha de publicacion *"
+                type="date"
+                value={formData.fecha_publicacion}
+                max={formData.fecha_cierre || undefined}
+                onChange={(value) => setFormData({ ...formData, fecha_publicacion: value })}
+                required
+              />
+              <Input
+                label="Fecha de cierre *"
+                type="date"
+                value={formData.fecha_cierre}
+                min={formData.fecha_publicacion || undefined}
+                onChange={(value) => setFormData({ ...formData, fecha_cierre: value })}
+                required
+              />
+            </div>
           </div>
 
           <DiscapacidadSelector
@@ -284,8 +329,8 @@ function TextareaPlain({ value, onChange, rows = 3 }) {
 }
 
 // ── Campos con label propio, usados para Modalidad/Estado/Salarios ──
-function Input({ label, value, onChange, type = 'text', required = false }) {
-  return <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{label}<input required={required} type={type} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full bg-[#0b0f19] border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500" /></label>;
+function Input({ label, value, onChange, type = 'text', required = false, min, max }) {
+  return <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{label}<input required={required} type={type} min={min} max={max} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full bg-[#0b0f19] border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500" /></label>;
 }
 
 function Select({ label, value, onChange, options }) {
@@ -308,4 +353,45 @@ export function getVacanteDiscapacidadIds(vacante) {
     return vacante.discapacidades.map(getDiscapacidadId).filter(Boolean);
   }
   return [];
+}
+
+export function toDateInputValue(value) {
+  if (!value) return '';
+  const normalized = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : '';
+}
+
+export function validateVacanteForm(formData) {
+  if (!String(formData?.titulo_puesto ?? '').trim()) {
+    return 'El titulo de la vacante es obligatorio.';
+  }
+
+  const salarioMin = Number(formData?.salario_min);
+  const salarioMax = Number(formData?.salario_max);
+  const fechaPublicacion = toDateInputValue(formData?.fecha_publicacion);
+  const fechaCierre = toDateInputValue(formData?.fecha_cierre);
+  const salarioInvalido = !Number.isFinite(salarioMin)
+    || !Number.isFinite(salarioMax)
+    || salarioMin < SALARIO_MINIMO_VACANTE
+    || salarioMin > SALARIO_MAXIMO_VACANTE
+    || salarioMax < SALARIO_MINIMO_VACANTE
+    || salarioMax > SALARIO_MAXIMO_VACANTE;
+
+  if (salarioInvalido) {
+    return 'El salario debe estar entre $1,000 y $1,000,000 pesos.';
+  }
+
+  if (salarioMin > salarioMax) {
+    return 'El salario maximo debe ser mayor o igual al salario minimo.';
+  }
+
+  if (!fechaPublicacion || !fechaCierre) {
+    return 'La fecha de publicacion y la fecha de cierre son obligatorias.';
+  }
+
+  if (fechaPublicacion > fechaCierre) {
+    return 'La fecha de cierre debe ser posterior a la fecha de publicacion.';
+  }
+
+  return null;
 }

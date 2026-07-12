@@ -6,7 +6,7 @@ import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { confirmDelete, errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
 import { useDiscapacidadesReclutador, useGuardarVacanteReclutador, useMejorarRedaccionReclutador, useVacantesReclutador } from '../../assets/Hook/Reclutador/useDomain';
 import BubleChat from '../Reclutador/ChatBot.jsx';
-import { DiscapacidadBadges, INITIAL_VACANTE_FORM, VacanteFormModal, getVacanteDiscapacidadIds } from './components/VacanteFormModal';
+import { DiscapacidadBadges, INITIAL_VACANTE_FORM, VacanteFormModal, getVacanteDiscapacidadIds, toDateInputValue, validateVacanteForm } from './components/VacanteFormModal';
 
 export default function VacantesReclutador() {
   const { data, loading, error, refetch } = useVacantesReclutador();
@@ -43,6 +43,8 @@ export default function VacantesReclutador() {
       modalidad: vacante.modalidad || 'Presencial',
       salario_min: vacante.salario_min || '',
       salario_max: vacante.salario_max || '',
+      fecha_publicacion: toDateInputValue(vacante.fecha_publicacion),
+      fecha_cierre: toDateInputValue(vacante.fecha_cierre),
       estado: vacante.estado || 'activa',
       discapacidades: getVacanteDiscapacidadIds(vacante),
     } : INITIAL_VACANTE_FORM);
@@ -59,6 +61,13 @@ export default function VacantesReclutador() {
 
   const handleGuardarVacante = async (e) => {
     e.preventDefault();
+    const validationMessage = validateVacanteForm(formData);
+
+    if (validationMessage) {
+      await errorAlert('Datos invalidos', validationMessage, t);
+      return;
+    }
+
     const payload = editingVacante
       ? { ...formData, id_vacante: editingVacante.id_vacante }
       : formData;
@@ -204,7 +213,7 @@ export default function VacantesReclutador() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#182032] border-b border-slate-800 text-slate-400 font-bold text-xs uppercase">
-                  {['Titulo', 'Modalidad', 'Discapacidad', 'Salario', 'Estado', 'Publicacion', 'Acciones'].map((h) => <th key={h} className="px-6 py-4">{h}</th>)}
+                  {['Titulo', 'Modalidad', 'Discapacidad', 'Salario', 'Estado', 'Publicacion', 'Cierre', 'Acciones'].map((h) => <th key={h} className="px-6 py-4">{h}</th>)}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-sm">
@@ -216,6 +225,7 @@ export default function VacantesReclutador() {
                     <td className="px-6 py-4 text-slate-300">{formatPrecio(vacante.salario_min)} - {formatPrecio(vacante.salario_max)}</td>
                     <td className="px-6 py-4"><Estado estado={vacante.estado} /></td>
                     <td className="px-6 py-4 text-slate-400">{safeDate(vacante.fecha_publicacion)}</td>
+                    <td className="px-6 py-4 text-slate-400">{safeDate(vacante.fecha_cierre)}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => toggleEstado(vacante.id_vacante, vacante.estado)} className="text-slate-500 hover:text-purple-400 p-1.5">

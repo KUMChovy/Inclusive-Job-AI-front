@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Building, CheckCircle, Clock, FileText, Globe, MapPin, Save } from "lucide-react";
+import { AlertCircle, Building, CheckCircle, Clock, FileText, Globe, MapPin, Phone, Save } from "lucide-react";
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
@@ -10,10 +10,22 @@ const INITIAL_COMPANY = {
   nombre_empresa: "",
   rfc_empresa: "",
   sitio_web: "",
+  telefono_empresa: "",
   descripcion_empresa: "",
   direccion_empresa: "",
   empresa_validada: 0,
 };
+
+function validateCompanyPhone(value) {
+  const raw = String(value ?? "").trim();
+  const digits = raw.replace(/\D/g, "");
+
+  if (!raw) return "El numero de telefono es obligatorio.";
+  if (!/^[0-9+\s()-]+$/.test(raw)) return "El numero de telefono solo puede contener numeros, espacios, guiones o parentesis.";
+  if (digits.length < 10 || digits.length > 15) return "El numero de telefono debe tener entre 10 y 15 digitos.";
+
+  return "";
+}
 
 export default function MiEmpresa() {
   const { data, loading, error } = useEmpresaReclutador();
@@ -37,6 +49,12 @@ export default function MiEmpresa() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje({ texto: "", tipo: "" });
+
+    const telefonoError = validateCompanyPhone(companyData.telefono_empresa);
+    if (telefonoError) {
+      setMensaje({ texto: telefonoError, tipo: "error" });
+      return;
+    }
 
     try {
       const result = await actualizarEmpresa(companyData);
@@ -81,6 +99,11 @@ export default function MiEmpresa() {
             <Field label="Sitio web">
               <IconInput icon={Globe}>
                 <input type="url" name="sitio_web" value={companyData.sitio_web || ""} onChange={handleChange} style={{ ...inputStyle, paddingLeft: 34 }} />
+              </IconInput>
+            </Field>
+            <Field label="Numero de telefono *">
+              <IconInput icon={Phone}>
+                <input type="tel" name="telefono_empresa" value={companyData.telefono_empresa || ""} onChange={handleChange} required style={{ ...inputStyle, paddingLeft: 34 }} />
               </IconInput>
             </Field>
             <Field label="Direccion corporativa">
