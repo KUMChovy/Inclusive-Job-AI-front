@@ -24,6 +24,8 @@ export const ENDPOINTS = {
   usuarios: {
     list:      `${BASE_URL}/usuarios.php?accion=listar`,
     detail:    (id) => `${BASE_URL}/usuarios.php?accion=detalle&id=${id}`,
+    cv:        (id) => `${BASE_URL}/usuarios.php?accion=cv&id=${id}`,
+    certificacionPdf: (id) => `${BASE_URL}/usuarios.php?accion=certificacion_pdf&id=${id}`,
     suspender: (id) => `${BASE_URL}/usuarios.php?accion=suspender&id=${id}`,
     reactivar: (id) => `${BASE_URL}/usuarios.php?accion=reactivar&id=${id}`,
   },

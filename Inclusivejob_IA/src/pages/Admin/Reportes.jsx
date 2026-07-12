@@ -11,7 +11,7 @@ import Pagination from '../../assets/Componentes/Admin/Pagination';
 import { useSearch, usePagination } from '../../assets/Hook/Admin/useApi';
 import { useReporteAcciones, useReportes } from '../../assets/Hook/Admin/useDomain';
 import {
-  confirmDelete, confirmAction, successAlert, errorAlert,
+  confirmAction, successAlert, errorAlert,
 } from '../../assets/Componentes/Admin/alerts';
 
 const LIMITE = 15;
@@ -23,10 +23,10 @@ const ESTADO_BADGE = {
 };
 
 const FILTROS = [
-  { value: 'todas', label: 'Todas' },
-  { value: 'activa', label: 'Activas' },
-  { value: 'cerrada', label: 'Cerradas' },
-  { value: 'eliminada', label: 'Eliminadas' },
+  { value: 'pendientes', label: 'Por revisar' },
+  { value: 'activa', label: 'Vacante activa' },
+  { value: 'cerrada', label: 'Vacante cerrada' },
+  { value: 'eliminada', label: 'Vacante eliminada' },
 ];
 
 function safeDate(value) {
@@ -60,12 +60,12 @@ export default function Reportes() {
   const navigate = useNavigate();
   const { query, setQuery, debouncedQuery } = useSearch(400);
   const { page, goToPage, reset } = usePagination(1, LIMITE);
-  const [filtro, setFiltro] = useState('todas');
+  const [filtro, setFiltro] = useState('pendientes');
   const [actionLoading, setActionLoading] = useState(null);
 
   const buildParams = useCallback(() => {
     const params = new URLSearchParams();
-    if (filtro !== 'todas') params.set('estado', filtro);
+    if (filtro !== 'pendientes') params.set('estado', filtro);
     if (debouncedQuery) params.set('buscar', debouncedQuery);
     params.set('pagina', String(page));
     params.set('limite', String(LIMITE));
@@ -85,7 +85,7 @@ export default function Reportes() {
 
     const ok = await confirmAction({
       title: 'Ignorar reporte',
-      html: `<span>El reporte sobre <strong style="color:#fff">"${vacante}"</strong> sera descartado. La vacante permanecera activa.</span>`,
+      html: `<span>El reporte sobre <strong style="color:#fff">"${vacante}"</strong> sera descartado. La vacante conservara su estado actual.</span>`,
       confirmText: 'Ignorar',
       confirmColor: '#475569',
       icon: 'info',
@@ -108,7 +108,13 @@ export default function Reportes() {
     const id = getReporteId(row);
     const vacante = getVacante(row);
 
-    const ok = await confirmDelete(`la vacante "${vacante}"`);
+    const ok = await confirmAction({
+      title: 'Eliminar vacante reportada',
+      html: `<span>La vacante <strong style="color:#fff">"${vacante}"</strong> se marcara como eliminada y se cerraran sus reportes asociados.</span>`,
+      confirmText: 'Eliminar vacante',
+      confirmColor: '#dc2626',
+      icon: 'warning',
+    });
     if (!ok) return;
 
     setActionLoading(id);
@@ -169,6 +175,7 @@ export default function Reportes() {
       render: (_, row) => {
         const id = getReporteId(row);
         const isLoading = actionLoading === id;
+        const vacanteEliminada = row.estado_vacante === 'eliminada';
 
         return (
           <div className="flex items-center gap-1">
@@ -184,23 +191,25 @@ export default function Reportes() {
             <Button
               variant="ghost"
               size="sm"
-              title="Ignorar reporte"
+              title={vacanteEliminada ? 'Cerrar reporte pendiente' : 'Ignorar reporte'}
               loading={isLoading}
               onClick={() => handleIgnorar(row)}
-              aria-label="Ignorar reporte"
+              aria-label={vacanteEliminada ? 'Cerrar reporte pendiente' : 'Ignorar reporte'}
             >
               <X size={14} />
             </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              title="Eliminar vacante"
-              loading={isLoading}
-              onClick={() => handleEliminarVacante(row)}
-              aria-label="Eliminar vacante"
-            >
-              <Trash2 size={14} />
-            </Button>
+            {!vacanteEliminada && (
+              <Button
+                variant="danger"
+                size="sm"
+                title="Eliminar vacante"
+                loading={isLoading}
+                onClick={() => handleEliminarVacante(row)}
+                aria-label="Eliminar vacante"
+              >
+                <Trash2 size={14} />
+              </Button>
+            )}
           </div>
         );
       },

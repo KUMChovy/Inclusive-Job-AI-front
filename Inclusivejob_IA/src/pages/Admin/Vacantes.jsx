@@ -28,7 +28,7 @@ const FILTROS = [
 const MODALIDADES = [
   { value: 'todas', label: 'Todas las modalidades' },
   { value: 'Remoto', label: 'Remoto' },
-  { value: 'Híbrido', label: 'Híbrido' },
+  { value: 'Hibrido', label: 'Hibrido' },
   { value: 'Presencial', label: 'Presencial' },
 ];
 

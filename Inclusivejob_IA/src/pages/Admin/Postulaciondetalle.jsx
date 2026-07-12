@@ -8,6 +8,7 @@ import {
 
 import { Badge, Button, ErrorBanner, Select } from '../../assets/Componentes/Admin/UI';
 import { usePostulacionAcciones, usePostulacionDetalle } from '../../assets/Hook/Admin/useDomain';
+import { ENDPOINTS } from '../../assets/Hook/Admin/apiAdmin';
 import { errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
 
 const ESTADO_BADGE = {
@@ -69,6 +70,23 @@ function postulanteValue(postulante, keys) {
   return keys.map((key) => postulante?.[key]).find((value) => value !== null && value !== undefined && value !== '');
 }
 
+function getCertificacionId(cert) {
+  return cert.id_certificaciones ?? cert.id_certificacion ?? cert.id;
+}
+
+function getCertificacionInstitucion(cert) {
+  return cert.institucion_dada ?? cert.institucion ?? '-';
+}
+
+function getCertificacionFecha(cert) {
+  return cert.fecha_emitido ?? cert.fecha_emision;
+}
+
+function getCertificacionPdf(cert) {
+  const id = getCertificacionId(cert);
+  return id && Number(cert.tiene_pdf ?? 0) ? ENDPOINTS.usuarios.certificacionPdf(id) : '';
+}
+
 export default function PostulacionDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -85,6 +103,9 @@ export default function PostulacionDetalle() {
   const discapacidades = payload.discapacidades ?? [];
   const certificaciones = payload.certificaciones ?? [];
   const selectedEstado = estado || postulacion?.estado || '';
+  const cvUrl = postulacion?.id_usuario && Number(postulante?.tiene_cv ?? 0)
+    ? ENDPOINTS.usuarios.cv(postulacion.id_usuario)
+    : '';
 
   const handleGuardarEstado = async () => {
     if (!selectedEstado || selectedEstado === postulacion.estado) return;
@@ -169,7 +190,7 @@ export default function PostulacionDetalle() {
             <TextBlock label="Experiencia laboral" value={postulanteValue(postulante, ['experiencia_laboral', 'experiencia'])} />
             <TextBlock label="Habilidades" value={postulante?.habilidades} />
             <TextBlock label="Esfuerzo físico posible" value={postulanteValue(postulante, ['esfuerzo_fisico_maximo', 'esfuerzo_fisico_posible'])} />
-            <InfoField icon={FileText} label="CV" value={postulanteValue(postulante, ['cv_url', 'cv'])} />
+            <InfoField icon={FileText} label="CV" value={cvUrl ? 'Ver CV' : '-'} link={cvUrl} />
           </div>
         </section>
 
@@ -211,10 +232,20 @@ export default function PostulacionDetalle() {
           ) : (
             <ul className="space-y-3">
               {certificaciones.map((cert) => (
-                <li key={cert.id_certificacion ?? cert.id} className="bg-slate-700/30 rounded-xl p-3">
+                <li key={getCertificacionId(cert)} className="bg-slate-700/30 rounded-xl p-3">
                   <p className="text-white text-sm font-medium">{cert.nombre_certificacion ?? cert.nombre}</p>
-                  <p className="text-slate-400 text-xs">{cert.institucion || '-'}</p>
-                  <p className="text-slate-500 text-xs mt-1">{safeDate(cert.fecha_emision)}</p>
+                  <p className="text-slate-400 text-xs">{getCertificacionInstitucion(cert)}</p>
+                  <p className="text-slate-500 text-xs mt-1">{safeDate(getCertificacionFecha(cert))}</p>
+                  {getCertificacionPdf(cert) && (
+                    <a
+                      href={getCertificacionPdf(cert)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex mt-2 text-xs text-violet-400 hover:underline"
+                    >
+                      Ver certificado
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

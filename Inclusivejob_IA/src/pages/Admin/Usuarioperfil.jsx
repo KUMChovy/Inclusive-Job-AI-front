@@ -8,10 +8,18 @@ import {
 
 import { Badge, Button, ErrorBanner } from '../../assets/Componentes/Admin/UI';
 import { useUsuarioAcciones, useUsuarioDetalle } from '../../assets/Hook/Admin/useDomain';
+import { ENDPOINTS } from '../../assets/Hook/Admin/apiAdmin';
+import { resolveAssetUrl } from '../../assets/Hook/Sesion/apiSesion';
 import { confirmSuspend, confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
 
 const ESTADO_BADGE = { activo: 'success', suspendido: 'danger', inactivo: 'default' };
 const ROL_BADGE = { administrador: 'purple', reclutador: 'info', postulante: 'default' };
+const EMPRESA_ESTADO_MAP = {
+  0: { label: 'Pendiente', variant: 'warning' },
+  1: { label: 'Aprobada', variant: 'success' },
+  2: { label: 'Rechazada', variant: 'danger' },
+  3: { label: 'Suspendida', variant: 'default' },
+};
 
 function nombreCompleto(user) {
   return `${user?.nombres ?? ''} ${user?.apellidos ?? ''}`.trim() || 'Sin nombre';
@@ -33,6 +41,76 @@ function safeDate(value, options = {}) {
 function withProtocol(url) {
   if (!url) return '';
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+function getCertificacionId(cert) {
+  return cert.id_certificaciones ?? cert.id_certificacion ?? cert.id;
+}
+
+function getCertificacionInstitucion(cert) {
+  return cert.institucion_dada ?? cert.institucion ?? '-';
+}
+
+function getCertificacionFecha(cert) {
+  return cert.fecha_emitido ?? cert.fecha_emision;
+}
+
+function getCertificacionPdf(cert) {
+  const id = getCertificacionId(cert);
+  return id && Number(cert.tiene_pdf ?? 0) ? ENDPOINTS.usuarios.certificacionPdf(id) : '';
+}
+
+function parseSkills(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value !== 'string') return [];
+
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item).trim()).filter(Boolean);
+    }
+    if (typeof parsed === 'string') {
+      return parsed.trim() ? [parsed.trim()] : [];
+    }
+  } catch {
+    // Registros antiguos pueden venir como texto separado por comas.
+  }
+
+  return trimmed.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function parseDisabilityDescription(value) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return { description: '', percentage: '' };
+
+  const onlyPercentage = text.match(/^(\d+(?:\.\d+)?)%\s*$/);
+  if (onlyPercentage) return { description: '', percentage: `${onlyPercentage[1]}%` };
+
+  const match = text.match(/^(.*?)(?:\s*(?:\||-)\s*)(\d+(?:\.\d+)?)%\s*$/);
+  if (!match) return { description: text, percentage: '' };
+
+  return {
+    description: match[1].trim(),
+    percentage: `${match[2]}%`,
+  };
+}
+
+function formatPhysicalEffort(value) {
+  if (value === null || value === undefined || value === '') return '-';
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric)) return numeric === 1 ? 'Sí' : 'No';
+  return String(value);
+}
+
+function getEmpresaEstado(value) {
+  const numeric = Number(value ?? 0);
+  return EMPRESA_ESTADO_MAP[numeric] ?? EMPRESA_ESTADO_MAP[0];
 }
 
 function InfoField({ label, value, icon: Icon, link }) {
@@ -82,6 +160,13 @@ export default function UsuarioPerfil() {
 
   const isPostulante = usuario?.rol === 'postulante';
   const isReclutador = usuario?.rol === 'reclutador';
+  const postulanteSkills = parseSkills(postulante?.habilidades);
+  const disabilityDescription = parseDisabilityDescription(postulante?.descripcion_discapacidad);
+  const empresaEstado = getEmpresaEstado(reclutador?.empresa_validada ?? reclutador?.estado_validacion);
+  const profileImageUrl = resolveAssetUrl(usuario?.foto_perfil || usuario?.avatar || usuario?.imagen);
+  const cvUrl = usuario?.id_usuario && Number(postulante?.tiene_cv ?? 0)
+    ? ENDPOINTS.usuarios.cv(usuario.id_usuario)
+    : '';
 
   const runAction = async ({ type, request, title, text }) => {
     setActionLoading(type);
@@ -156,11 +241,20 @@ export default function UsuarioPerfil() {
 
       <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-violet-500/20 border-2 border-violet-500/40 flex items-center justify-center text-violet-300 text-2xl font-bold flex-shrink-0 overflow-hidden">
-          {usuario.foto_perfil ? (
-            <img src={usuario.foto_perfil} alt="" className="w-full h-full object-cover" />
-          ) : (
-            initials(usuario)
-          )}
+          {profileImageUrl ? (
+            <img
+              src={profileImageUrl}
+              alt={nombreCompleto(usuario)}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextSibling.style.display = 'block';
+              }}
+            />
+          ) : null}
+          <span style={{ display: profileImageUrl ? 'none' : 'block' }}>
+            {initials(usuario)}
+          </span>
         </div>
 
         <div className="flex-1 min-w-0">
@@ -207,8 +301,15 @@ export default function UsuarioPerfil() {
             </h2>
             <div className="space-y-4">
               <InfoField label="Puesto" value={reclutador?.puesto} />
-              <InfoField label="Empresa" value={reclutador?.nombre_empresas} icon={Building2} />
+              {reclutador?.sector && reclutador.sector !== 'No especificado' && (
+                <InfoField label="Sector" value={reclutador.sector} />
+              )}
+              <InfoField label="Empresa" value={reclutador?.empresa ?? reclutador?.nombre_empresas} icon={Building2} />
               <InfoField label="Correo empresa" value={reclutador?.correo_empresa} icon={Mail} />
+              <div>
+                <p className="text-slate-400 text-xs mb-1">Estado de validación</p>
+                <Badge variant={empresaEstado.variant}>{empresaEstado.label}</Badge>
+              </div>
             </div>
           </section>
         )}
@@ -238,16 +339,30 @@ export default function UsuarioPerfil() {
           <section className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-5">
             <h2 className="text-white font-semibold mb-4">Perfil profesional</h2>
             <div className="space-y-4">
-              <TextBlock label="Descripción de discapacidad" value={postulante?.descripcion_discapacidad} />
-              <TextBlock label="Experiencia laboral" value={postulante?.experiencia_laboral} />
-              <TextBlock label="Habilidades" value={postulante?.habilidades} />
+              <TextBlock label="Descripción de discapacidad" value={disabilityDescription.description} />
+              {disabilityDescription.percentage && (
+                <InfoField label="Porcentaje de discapacidad" value={disabilityDescription.percentage} />
+              )}
+              <TextBlock label="Experiencia laboral" value={postulante?.experiencia} />
               <div>
-                <p className="text-slate-400 text-xs mb-1">Esfuerzo físico máximo</p>
-                <Badge variant="info">{postulante?.esfuerzo_fisico_maximo || '-'}</Badge>
+                <p className="text-slate-400 text-xs mb-1">Habilidades</p>
+                {postulanteSkills.length === 0 ? (
+                  <p className="text-white text-sm">-</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {postulanteSkills.map((skill) => (
+                      <Badge key={skill} variant="purple">{skill}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-slate-400 text-xs mb-1">Puede realizar esfuerzo físico</p>
+                <Badge variant="info">{formatPhysicalEffort(postulante?.esfuerzo_fisico_posible)}</Badge>
               </div>
               <div className="flex gap-3 flex-wrap">
-                {postulante?.cv_url && (
-                  <a href={withProtocol(postulante.cv_url)} target="_blank" rel="noopener noreferrer">
+                {cvUrl && (
+                  <a href={cvUrl} target="_blank" rel="noopener noreferrer">
                     <Button variant="secondary" size="sm"><FileText size={13} /> Ver CV</Button>
                   </a>
                 )}
@@ -269,10 +384,20 @@ export default function UsuarioPerfil() {
             ) : (
               <ul className="space-y-3">
                 {certificaciones.map((cert) => (
-                  <li key={cert.id_certificacion ?? cert.id} className="bg-slate-700/30 rounded-xl p-3">
+                  <li key={getCertificacionId(cert)} className="bg-slate-700/30 rounded-xl p-3">
                     <p className="text-white text-sm font-medium">{cert.nombre_certificacion ?? cert.nombre}</p>
-                    <p className="text-slate-400 text-xs">{cert.institucion}</p>
-                    <p className="text-slate-500 text-xs mt-1">{safeDate(cert.fecha_emision)}</p>
+                    <p className="text-slate-400 text-xs">{getCertificacionInstitucion(cert)}</p>
+                    <p className="text-slate-500 text-xs mt-1">{safeDate(getCertificacionFecha(cert))}</p>
+                    {getCertificacionPdf(cert) && (
+                      <a
+                        href={getCertificacionPdf(cert)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex mt-2 text-xs text-violet-400 hover:underline"
+                      >
+                        Ver certificado
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>
