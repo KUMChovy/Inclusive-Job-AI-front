@@ -170,18 +170,26 @@ export function useMejorCandidatoReclutador() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const buscarMejorCandidato = useCallback(async (idVacante = null) => {
+  const buscarMejorCandidato = useCallback(async (idVacante = null, excluirPostulaciones = []) => {
     setLoading(true);
     setError(null);
 
     try {
+      const body = {};
+      if (idVacante) {
+        body.id_vacante = idVacante;
+      }
+      if (Array.isArray(excluirPostulaciones) && excluirPostulaciones.length > 0) {
+        body.excluir_postulaciones = excluirPostulaciones;
+      }
+
       const res = await fetch(ENDPOINTS.chat.recomendarCandidato, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(idVacante ? { id_vacante: idVacante } : {}),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json().catch(() => ({}));

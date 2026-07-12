@@ -48,6 +48,7 @@ export function VacanteFormModal({
           <CampoConIA
             campo="titulo_puesto"
             label="Titulo del puesto *"
+            mejorarLabel="Mejorar titulo"
             tipo="input"
             value={formData.titulo_puesto}
             onChange={(value) => setFormData({ ...formData, titulo_puesto: value })}
@@ -78,6 +79,7 @@ export function VacanteFormModal({
           <CampoConIA
             campo="descripcion_puesto"
             label="Descripcion"
+            mejorarLabel="Mejorar descripcion"
             tipo="textarea"
             value={formData.descripcion_puesto}
             onChange={(value) => setFormData({ ...formData, descripcion_puesto: value })}
@@ -90,6 +92,7 @@ export function VacanteFormModal({
           <CampoConIA
             campo="requisitos"
             label="Requisitos"
+            mejorarLabel="Mejorar requisitos"
             tipo="textarea"
             rows={2}
             value={formData.requisitos}
@@ -139,43 +142,51 @@ function VacanteModalStyles() {
   );
 }
 
-function CampoConIA({ campo, label, tipo, value, onChange, required = false, rows = 3, loading, sugerencia, onMejorar, onAplicar }) {
-  const Campo = tipo === 'textarea' ? Textarea : Input;
+// ── Campo con label + boton "Mejorar con IA" en la misma fila (simetrico) ──
+function CampoConIA({ campo, label, mejorarLabel, tipo, value, onChange, required = false, rows = 3, loading, sugerencia, onMejorar, onAplicar }) {
   const iaEnabled = Boolean(onMejorar && onAplicar);
+  const textoBoton = mejorarLabel || 'Mejorar con IA';
 
   return (
     <div>
-      {iaEnabled && (
-        <div className="flex items-center justify-end mb-1.5">
+      {/* Fila simetrica: label a la izquierda, boton de IA a la derecha */}
+      <div className="flex items-center justify-between gap-3 mb-1.5">
+        <label className="text-xs font-bold uppercase text-slate-400">{label}</label>
+
+        {iaEnabled && (
           <button
             type="button"
             onClick={onMejorar}
             disabled={loading}
-            className="ia-btn group relative inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/15 via-fuchsia-600/10 to-purple-600/15 px-3 py-1.5 text-xs font-semibold text-purple-300 transition-all duration-300 hover:border-purple-400/60 hover:text-purple-100 hover:shadow-[0_0_18px_-3px_rgba(192,132,252,0.55)] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
+            className="ia-btn group relative inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-600/15 via-fuchsia-600/10 to-purple-600/15 px-3 py-1.5 text-xs font-semibold text-purple-300 transition-all duration-300 hover:border-purple-400/60 hover:text-purple-100 hover:shadow-[0_0_18px_-3px_rgba(192,132,252,0.55)] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none shrink-0"
           >
             <span className="ia-btn-shimmer pointer-events-none absolute inset-0 overflow-hidden" />
             {loading ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span className="relative">Pensando...</span>
+                <span className="relative">Mejorando...</span>
               </>
             ) : (
               <>
                 <Sparkles className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
-                <span className="relative">Mejorar con IA</span>
+                <span className="relative">{textoBoton}</span>
               </>
             )}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
-      <Campo label={label} value={value} onChange={onChange} required={required} rows={rows} />
+      {tipo === 'textarea' ? (
+        <TextareaPlain value={value} onChange={onChange} rows={rows} />
+      ) : (
+        <InputPlain value={value} onChange={onChange} required={required} />
+      )}
 
       {iaEnabled && sugerencia && (
         <div className="ia-suggestion-panel relative mt-2.5 rounded-xl border border-purple-800/40 bg-gradient-to-b from-purple-950/25 via-[#0f1320] to-[#0b0f19] p-3.5 space-y-2.5 shadow-[0_4px_24px_-8px_rgba(147,51,234,0.35)]">
           <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-purple-400">
             <Sparkles className="h-3 w-3" />
-            Sugerencias de la IA
+            Sugerencias de la IA — {textoBoton.replace(/^Mejorar /i, '')}
           </div>
 
           {sugerencia.nota && (
@@ -263,16 +274,22 @@ export function DiscapacidadBadges({ discapacidades = [] }) {
   );
 }
 
+// ── Campos "planos" (sin label propio), usados dentro de CampoConIA ──
+function InputPlain({ value, onChange, type = 'text', required = false }) {
+  return <input required={required} type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-[#0b0f19] border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500" />;
+}
+
+function TextareaPlain({ value, onChange, rows = 3 }) {
+  return <textarea rows={rows} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-[#0b0f19] border border-slate-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-purple-500" />;
+}
+
+// ── Campos con label propio, usados para Modalidad/Estado/Salarios ──
 function Input({ label, value, onChange, type = 'text', required = false }) {
   return <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{label}<input required={required} type={type} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full bg-[#0b0f19] border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500" /></label>;
 }
 
 function Select({ label, value, onChange, options }) {
   return <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{label}<select value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full bg-[#0b0f19] border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-purple-500">{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>;
-}
-
-function Textarea({ label, value, onChange, rows = 3 }) {
-  return <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{label}<textarea rows={rows} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full bg-[#0b0f19] border border-slate-800 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-purple-500" /></label>;
 }
 
 export function getDiscapacidadId(item) {

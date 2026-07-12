@@ -17,7 +17,7 @@ export default function Formulario() {
   const [sinSesion,  setSinSesion]   = React.useState(false);
 
   const [form, setForm] = React.useState({
-    tipoDiscapacidad:        "",
+    tiposDiscapacidad:       [],   // ← ahora es un arreglo (selección múltiple)
     descripcionDiscapacidad: "",
     esfuerzoFisico:          "",
     experiencia:             "",
@@ -55,7 +55,7 @@ export default function Formulario() {
     setCargando(false);
   }, [allowed, cargandoSesion, user?.id]);
 
-  // ── Handlers (sin cambios) ────────────────────────────────
+  // ── Handlers ───────────────────────────────────────────────
   const handleRadio = (name, value) =>
     setForm(prev => ({ ...prev, [name]: value }));
 
@@ -65,10 +65,22 @@ export default function Formulario() {
   const handleFile = (e) =>
     setForm(prev => ({ ...prev, fotoPerfil: e.target.files[0] || null }));
 
+  // ── NUEVO: toggle de checkbox para tipos de discapacidad ──
+  const handleCheckboxTipo = (value) => {
+    setForm(prev => {
+      const yaExiste = prev.tiposDiscapacidad.includes(value);
+      return {
+        ...prev,
+        tiposDiscapacidad: yaExiste
+          ? prev.tiposDiscapacidad.filter(v => v !== value)
+          : [...prev.tiposDiscapacidad, value],
+      };
+    });
+  };
+
   // ── Calcular si el formulario está completo ───────────────
-  // Se usa para deshabilitar el botón y mostrar progreso
   const camposCompletos = {
-    tipoDiscapacidad:        !!form.tipoDiscapacidad,
+    tipoDiscapacidad:        form.tiposDiscapacidad.length > 0,
     descripcionDiscapacidad: !!form.descripcionDiscapacidad.trim(),
     esfuerzoFisico:          !!form.esfuerzoFisico,
     experiencia:             !!form.experiencia.trim(),
@@ -85,9 +97,8 @@ export default function Formulario() {
     e.preventDefault();
     setMensaje({ texto: "", tipo: "" });
 
-    // Validaciones (mismas que antes + foto obligatoria)
-    if (!form.tipoDiscapacidad) {
-      setMensaje({ texto: "Selecciona un tipo de discapacidad.", tipo: "error" });
+    if (form.tiposDiscapacidad.length === 0) {
+      setMensaje({ texto: "Selecciona al menos un tipo de discapacidad.", tipo: "error" });
       setOpenSection(0); return;
     }
     if (!form.descripcionDiscapacidad.trim()) {
@@ -106,7 +117,6 @@ export default function Formulario() {
       setMensaje({ texto: "Describe tus habilidades.", tipo: "error" });
       setOpenSection(1); return;
     }
-    // ── NUEVO: foto obligatoria ───────────────────────────
     if (!form.fotoPerfil) {
       setMensaje({ texto: "Sube una foto de perfil para continuar.", tipo: "error" });
       setOpenSection(1); return;
@@ -114,12 +124,12 @@ export default function Formulario() {
 
     const data = new FormData();
     data.append("id_usuario",             String(user.id));
-    data.append("tipoDiscapacidad",        form.tipoDiscapacidad);
+    form.tiposDiscapacidad.forEach(tipo => data.append("tipoDiscapacidad[]", tipo)); // ← múltiple
     data.append("descripcionDiscapacidad", form.descripcionDiscapacidad);
     data.append("esfuerzoFisico",          form.esfuerzoFisico);
     data.append("experiencia",             form.experiencia);
     data.append("habilidades",             form.habilidades);
-    data.append("fotoPerfil",              form.fotoPerfil);   // siempre presente
+    data.append("fotoPerfil",              form.fotoPerfil);
 
     setEnviando(true);
     try {
@@ -209,7 +219,7 @@ export default function Formulario() {
             ))}
           </div>
 
-          {/* ── NUEVO: barra de progreso del formulario ─────── */}
+          {/* BARRA DE PROGRESO DEL FORMULARIO */}
           <div style={{ background: '#FFFFFF', border: '1px solid rgba(37, 99, 235, 0.14)', borderRadius: '18px', padding: '18px 22px', boxShadow: '0 12px 30px rgba(37, 99, 235, 0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
@@ -219,11 +229,9 @@ export default function Formulario() {
                 {camposLlenos}/{totalCampos} campos — {progreso}%
               </span>
             </div>
-            {/* Barra */}
             <div style={{ height: '8px', borderRadius: '999px', background: '#EFF6FF', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${progreso}%`, borderRadius: '999px', background: formularioListo ? 'linear-gradient(90deg,#059669,#34d399)' : 'linear-gradient(90deg,#2448C7,#0EA5E9)', transition: 'width 0.4s ease' }} />
             </div>
-            {/* Checklist de campos */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
               {[
                 { key: 'tipoDiscapacidad',        label: 'Tipo de discapacidad' },
@@ -267,12 +275,12 @@ export default function Formulario() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
                     <div>
                       <p style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 750, color: t.textPrimary }}>
-                        ¿Cuál es tu tipo de discapacidad?
+                        ¿Cuál es tu tipo de discapacidad? <span style={{ fontWeight: 500, color: t.textMuted }}>(puedes elegir más de una)</span>
                       </p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                         {['Motriz', 'Visual', 'Auditiva', 'Intelectual', 'Psicosocial'].map((op) => (
-                          <label key={op} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 15px', borderRadius: '14px', border: `1px solid ${form.tipoDiscapacidad === op ? t.accent : t.border}`, background: form.tipoDiscapacidad === op ? t.accentSoft : t.bgElevated, cursor: 'pointer', transition: 'all 0.2s ease', color: t.textSecondary, fontSize: '13px', fontWeight: 500 }}>
-                            <input type="radio" name="tipoDiscapacidad" value={op} checked={form.tipoDiscapacidad === op} onChange={() => handleRadio('tipoDiscapacidad', op)} style={{ accentColor: t.accent }} />
+                          <label key={op} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 15px', borderRadius: '14px', border: `1px solid ${form.tiposDiscapacidad.includes(op) ? t.accent : t.border}`, background: form.tiposDiscapacidad.includes(op) ? t.accentSoft : t.bgElevated, cursor: 'pointer', transition: 'all 0.2s ease', color: t.textSecondary, fontSize: '13px', fontWeight: 500 }}>
+                            <input type="checkbox" name="tipoDiscapacidad" value={op} checked={form.tiposDiscapacidad.includes(op)} onChange={() => handleCheckboxTipo(op)} style={{ accentColor: t.accent }} />
                             <span>{op}</span>
                           </label>
                         ))}

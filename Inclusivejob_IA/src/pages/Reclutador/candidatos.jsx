@@ -53,7 +53,8 @@ export default function Candidatos() {
     }
 
     navigate(location.pathname, { replace: true, state: {} });
-  }, [vacantes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vacantes, location.state]);
 
   const verDetalleCandidatos = async (vacante) => {
     setVacanteSeleccionada(vacante);
@@ -202,7 +203,10 @@ export default function Candidatos() {
                     <div>
                       {esDestacado && (
                         <span style={badgeIAStyle}>
-                          <Sparkles size={12} /> Recomendado por IA · {candidatoDestacado.porcentaje_compatibilidad}% compatible
+                          <Sparkles size={12} />
+                          {typeof candidatoDestacado.porcentaje_compatibilidad === "number"
+                            ? `Recomendado por IA · ${candidatoDestacado.porcentaje_compatibilidad}% compatible`
+                            : "Visto desde el chat"}
                         </span>
                       )}
                       <h4 style={{ color: t.textPrimary, margin: 0, fontSize: 16, fontWeight: 600 }}>{cand.nombre_completo}</h4>

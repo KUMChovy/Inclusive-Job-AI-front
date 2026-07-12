@@ -329,9 +329,17 @@ function TarjetaSeleccionVacante({ vacantes, onElegir, disabled }) {
 // ── Tarjeta de notificación: un postulante completo una entrevista real ──
 // y llega su calificacion generada por la IA. Se muestra dentro de una
 // burbuja de bot, igual que TarjetaRecomendacion.
+//
+// NOTA: se le quito su animacion propia de entrada (antes tenia un
+// "resultCardIn" adicional, encima del "msgIn" que ya trae la Burbuja).
+// Esa doble animacion hacia que el boton "Ver candidato ->" (con su
+// "estela" pulsante, clase .ver-candidato-btn) se viera distinto o
+// desincronizado comparado con el mismo boton en la tarjeta de "mejor
+// candidato". Al quitarla, ambas tarjetas entran exactamente igual
+// (solo con el "msgIn" de la burbuja) y la estela del boton se ve y se
+// siente identica en los dos casos.
 function TarjetaEntrevistaCompletada({ info, onVerCandidato }) {
   const puntuacion = info.evaluacion?.puntuacion;
-  const puedeVerCandidato = Boolean(info.idVacante);
 
   return (
     <div style={{
@@ -343,7 +351,6 @@ function TarjetaEntrevistaCompletada({ info, onVerCandidato }) {
       display: "flex",
       flexDirection: "column",
       gap: "6px",
-      animation: "resultCardIn 0.45s cubic-bezier(0.34,1.4,0.64,1) both",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
         <strong style={{ fontSize: "12.5px", color: t.textPrimary }}>
@@ -370,24 +377,27 @@ function TarjetaEntrevistaCompletada({ info, onVerCandidato }) {
         </span>
       )}
 
-      {puedeVerCandidato && (
-        <button
-          className="ver-candidato-btn"
-          onClick={() => onVerCandidato({
-            id_vacante: info.idVacante,
-            id_postulacion: info.idPostulacion,
-          })}
-          style={{
-            marginTop: "4px", fontSize: "12px", fontWeight: 600,
-            color: "#fff", background: t.gradient, border: "none",
-            padding: "7px 12px", borderRadius: "8px", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Ver candidato →
-        </button>
-      )}
+      {/* El boton siempre se muestra, con la misma estela morada que el de
+          "mejor candidato". Si por alguna razon no llega el idVacante en
+          la notificacion, igual navega a Candidatos (ver
+          irACandidatoRecomendado), solo que sin poder resaltar la fila
+          exacta. Asi el efecto y el clic son siempre consistentes. */}
+      <button
+        className="ver-candidato-btn"
+        onClick={() => onVerCandidato({
+          id_vacante: info.idVacante,
+          id_postulacion: info.idPostulacion,
+        })}
+        style={{
+          marginTop: "4px", fontSize: "12px", fontWeight: 600,
+          color: "#fff", background: t.gradient, border: "none",
+          padding: "7px 12px", borderRadius: "8px", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Ver candidato →
+      </button>
     </div>
   );
 }
@@ -609,31 +619,35 @@ export default function ChatBot() {
     ]);
   };
 
-  const ejecutarBusquedaMejorCandidato = async (textoUsuario, idVacante, { mostrarBurbujaUsuario = true } = {}) => {
-    if (mostrarBurbujaUsuario) {
-      setMensajes((prev) => [...prev, { tipo: "usuario", texto: textoUsuario }]);
-    }
+const ejecutarBusquedaMejorCandidato = async (
+  textoUsuario,
+  idVacante,
+  { mostrarBurbujaUsuario = true, excluirPostulaciones = [] } = {}
+) => {
+  if (mostrarBurbujaUsuario) {
+    setMensajes((prev) => [...prev, { tipo: "usuario", texto: textoUsuario }]);
+  }
 
-    try {
-      const data = await buscarMejorCandidato(idVacante);
-      if (data?.recomendacion) {
-        setMensajes((prev) => [
-          ...prev,
-          { tipo: "bot", texto: data.mensaje, recomendacion: data.recomendacion },
-        ]);
-      } else {
-        setMensajes((prev) => [
-          ...prev,
-          { tipo: "bot", texto: data?.mensaje || "No encontré candidatos para analizar todavía." },
-        ]);
-      }
-    } catch (err) {
+  try {
+    const data = await buscarMejorCandidato(idVacante, excluirPostulaciones);
+    if (data?.recomendacion) {
       setMensajes((prev) => [
         ...prev,
-        { tipo: "bot", texto: err?.message || "Ocurrió un error al buscar el mejor candidato.", error: true },
+        { tipo: "bot", texto: data.mensaje, recomendacion: data.recomendacion },
+      ]);
+    } else {
+      setMensajes((prev) => [
+        ...prev,
+        { tipo: "bot", texto: data?.mensaje || "No encontré candidatos para analizar todavía." },
       ]);
     }
-  };
+  } catch (err) {
+    setMensajes((prev) => [
+      ...prev,
+      { tipo: "bot", texto: err?.message || "Ocurrió un error al buscar el mejor candidato.", error: true },
+    ]);
+  }
+};
 
   const elegirVacanteParaAnalizar = async (idVacante) => {
     if (cargandoRespuesta) return;
@@ -663,25 +677,63 @@ export default function ChatBot() {
   // que deja una notificación en el chat del postulante (vía chabots
   // compartida). No abre ningún modal aquí del lado reclutador — la
   // entrevista la responde el postulante desde su propio chat.
-  const solicitarEntrevistaCandidato = async (recomendacion) => {
-    if (solicitandoEntrevistaId) return;
-    setSolicitandoEntrevistaId(recomendacion.id_postulacion);
+const solicitarEntrevistaCandidato = async (recomendacion) => {
+  if (solicitandoEntrevistaId) return;
+  setSolicitandoEntrevistaId(recomendacion.id_postulacion);
 
-    try {
-      const data = await solicitarEntrevista(recomendacion.id_postulacion);
+  let yaCompletada = false;
+
+  try {
+    const data = await solicitarEntrevista(recomendacion.id_postulacion);
+    yaCompletada = Boolean(data?.ya_completada);
+
+    if (yaCompletada) {
+      // El candidato ya habia completado su entrevista real: se le
+      // muestra al reclutador la calificacion en vez de reenviar la
+      // solicitud (evita duplicar notificaciones al postulante).
+      setMensajes((prev) => [
+        ...prev,
+        {
+          tipo: "bot",
+          texto: data.mensaje || `${recomendacion.nombre_completo} ya completó su entrevista.`,
+          entrevistaCompletada: {
+            nombreCompleto: data.candidato?.nombre_completo ?? recomendacion.nombre_completo,
+            tituloPuesto: data.vacante?.titulo_puesto ?? recomendacion.titulo_puesto,
+            idVacante: data.vacante?.id_vacante ?? recomendacion.id_vacante ?? null,
+            idPostulacion: data.candidato?.id_postulacion ?? recomendacion.id_postulacion ?? null,
+            evaluacion: data.evaluacion,
+          },
+        },
+      ]);
+    } else {
       setMensajes((prev) => [
         ...prev,
         { tipo: "bot", texto: data?.mensaje || `Se envió la solicitud de entrevista a ${recomendacion.nombre_completo}.` },
       ]);
-    } catch (err) {
-      setMensajes((prev) => [
-        ...prev,
-        { tipo: "bot", texto: err?.message || "No se pudo enviar la solicitud de entrevista.", error: true },
-      ]);
-    } finally {
-      setSolicitandoEntrevistaId(null);
     }
-  };
+  } catch (err) {
+    setMensajes((prev) => [
+      ...prev,
+      { tipo: "bot", texto: err?.message || "No se pudo enviar la solicitud de entrevista.", error: true },
+    ]);
+    setSolicitandoEntrevistaId(null);
+    return;
+  } finally {
+    setSolicitandoEntrevistaId(null);
+  }
+
+  // Si ya habia completado la entrevista, se busca automaticamente un
+  // siguiente candidato disponible para esa misma vacante. No se muestra
+  // burbuja de "usuario" (ya se mostro la tarjeta de arriba) y se excluye
+  // explicitamente a este candidato como defensa extra, aunque el backend
+  // ya lo filtra de por si en recomendar_candidatos.php.
+  if (yaCompletada) {
+    await ejecutarBusquedaMejorCandidato(null, recomendacion.id_vacante, {
+      mostrarBurbujaUsuario: false,
+      excluirPostulaciones: [recomendacion.id_postulacion],
+    });
+  }
+};
 
   return (
     <>
@@ -727,7 +779,11 @@ export default function ChatBot() {
            :hover, porque en móvil/touch el hover no se dispara de forma
            confiable (y aquí el clic navega de inmediato a Candidatos, así
            que nunca daría tiempo de verla con hover). Por eso se dispara
-           sola, sin necesidad de pasar el mouse, apenas el botón aparece. */
+           sola, sin necesidad de pasar el mouse, apenas el botón aparece.
+           Ambas tarjetas (recomendacion y entrevista completada) entran
+           usando SOLO la animacion "msgIn" de la burbuja -sin animacion
+           propia adicional en la tarjeta- para que la estela arranque en
+           el mismo instante relativo y se vea identica en los dos casos. */
         @keyframes verCandidatoEstela {
           0%   { box-shadow: 0 0 0 0 ${t.accentGlow}; }
           70%  { box-shadow: 0 0 0 10px transparent; }
@@ -743,15 +799,6 @@ export default function ChatBot() {
           filter: brightness(1.05);
         }
         .ver-candidato-btn:active:not(:disabled) { transform: scale(0.95); }
-
-        /* Entrada llamativa para la tarjeta que avisa que ya llegó el
-           resultado de una entrevista real completada, para que se note
-           que es contenido nuevo apenas aparece en el chat. */
-        @keyframes resultCardIn {
-          0%   { opacity: 0; transform: scale(0.9) translateY(8px); }
-          60%  { transform: scale(1.02) translateY(0); }
-          100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
 
         /* ── Responsivo ── */
         .chatbot-panel {
