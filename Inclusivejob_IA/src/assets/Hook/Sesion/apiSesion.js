@@ -60,7 +60,7 @@ export function rolCanonico(usuario = {}) {
 // Ejemplo: "uploads/foto.jpg" -> "http://localhost/.../uploads/foto.jpg".
 export function resolveAssetUrl(src) {
   if (!src) return '';
-  if (/^https?:\/\//i.test(src)) return src;
+  if (/^(https?:|blob:|data:)/i.test(src)) return src;
   return `${BACKEND_URL}/${src.replace(/^\/+/, '')}`;
 }
 
@@ -70,7 +70,7 @@ export function normalizarUsuarioSesion(usuario = {}, fallback = {}) {
   const nombres = usuario.nombres || fallback.nombres || '';
   const apellidos = usuario.apellido || usuario.apellidos || fallback.apellido || fallback.apellidos || '';
   const nombreCompleto = [nombres, apellidos].filter(Boolean).join(' ').trim();
-  const avatar = usuario.avatar || usuario.foto_perfil || usuario.imagen || fallback.avatar || fallback.foto_perfil || '';
+  const avatar = fallback.avatar || fallback.foto_perfil || usuario.avatar || usuario.foto_perfil || usuario.imagen || '';
   const rolOriginal = usuario.rol || usuario.nombre_rol || fallback.rol || '';
   const idRol = Number(usuario.id_rol ?? usuario.idRol ?? usuario.rol_id ?? fallback.id_rol ?? 0) || null;
 

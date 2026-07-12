@@ -5,15 +5,18 @@ import { useCallback, useEffect, useState } from 'react';
 
 async function requestJson(url, { method = 'GET', body, headers = {} } = {}) {
   if (!url) throw new Error('La URL es requerida para ejecutar la peticion.');
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
   const res = await fetch(url, {
     method,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    headers: isFormData
+      ? { ...headers }
+      : {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+    ...(body !== undefined ? { body: isFormData ? body : JSON.stringify(body) } : {}),
   });
 
   const data = await res.json().catch(() => ({}));

@@ -4,13 +4,14 @@ import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { confirmDelete, errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
-import { useDiscapacidadesReclutador, useGuardarVacanteReclutador, useMejorarRedaccionReclutador, useVacantesReclutador } from '../../assets/Hook/Reclutador/useDomain';
+import { useDiscapacidadesReclutador, useEmpresaReclutador, useGuardarVacanteReclutador, useMejorarRedaccionReclutador, useVacantesReclutador } from '../../assets/Hook/Reclutador/useDomain';
 import BubleChat from '../Reclutador/ChatBot.jsx';
 import { DiscapacidadBadges, INITIAL_VACANTE_FORM, VacanteFormModal, getVacanteDiscapacidadIds, toDateInputValue, validateVacanteForm } from './components/VacanteFormModal';
 
 export default function VacantesReclutador() {
   const { data, loading, error, refetch } = useVacantesReclutador();
   const { data: discapacidadesData, loading: loadingDiscapacidades, error: errorDiscapacidades } = useDiscapacidadesReclutador();
+  const { data: empresaData } = useEmpresaReclutador();
   const { guardarVacante, editarVacante, actualizarEstadoVacante, eliminarVacante, loading: saving } = useGuardarVacanteReclutador();
   const { mejorarTexto } = useMejorarRedaccionReclutador();
 
@@ -34,7 +35,25 @@ export default function VacantesReclutador() {
     return payload?.discapacidades ?? [];
   }, [discapacidadesData]);
 
-  const handleOpenModal = (vacante = null) => {
+  const empresa = empresaData?.data ?? {};
+  const empresaCargada = Boolean(empresaData);
+  const empresaAprobada = Number(empresa.empresa_validada ?? 0) === 1;
+
+  const handleOpenModal = async (vacante = null) => {
+    if (!vacante && !empresaCargada) {
+      await errorAlert('Validando empresa', 'Espera un momento mientras verificamos el estado de tu empresa.', t);
+      return;
+    }
+
+    if (!vacante && !empresaAprobada) {
+      await errorAlert(
+        'Empresa pendiente',
+        'No puedes publicar vacantes hasta que tu empresa sea aprobada por el administrador.',
+        t
+      );
+      return;
+    }
+
     setEditingVacante(vacante);
     setFormData(vacante ? {
       titulo_puesto: vacante.titulo_puesto || '',
@@ -174,7 +193,16 @@ export default function VacantesReclutador() {
             <p className="text-slate-400 text-sm mt-0.5">Visualiza y administra tus vacantes publicadas</p>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <button onClick={() => handleOpenModal()} className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 rounded-lg transition">
+            <button
+              onClick={() => handleOpenModal()}
+              disabled={!empresaCargada || !empresaAprobada}
+              title={!empresaCargada ? 'Validando empresa...' : !empresaAprobada ? 'Tu empresa debe estar aprobada para publicar vacantes' : 'Publicar vacante'}
+              className={`inline-flex items-center gap-2 text-white font-medium px-4 py-2 rounded-lg transition ${
+                empresaCargada && empresaAprobada
+                  ? 'bg-purple-600 hover:bg-purple-700'
+                  : 'bg-slate-700 cursor-not-allowed opacity-70'
+              }`}
+            >
               <Plus className="h-4 w-4" /> Publicar vacante
             </button>
             <button onClick={refetch} className="flex items-center gap-1.5 text-slate-400 hover:text-white transition">
@@ -184,6 +212,11 @@ export default function VacantesReclutador() {
         </div>
 
         {error && <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+        {empresaCargada && !empresaAprobada && (
+          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Tu empresa aún no está aprobada. Puedes revisar tus vacantes existentes, pero no publicar nuevas hasta que el administrador la valide.
+          </div>
+        )}
         {errorDiscapacidades && <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">No se pudo cargar el catalogo de discapacidades: {errorDiscapacidades}</div>}
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">

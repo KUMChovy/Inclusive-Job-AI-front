@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, CheckCircle, Code, Eye, FileText, GraduationCap, Mail, Mic, Phone, Sparkles, Users, XCircle } from "lucide-react";
+import { Accessibility, ArrowLeft, Award, Briefcase, CheckCircle, Code, Eye, FileText, Globe, Mail, Mic, Phone, Sparkles, User, Users, XCircle } from "lucide-react";
 import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
 import BubleChat from "../Reclutador/ChatBot.jsx";
 import { errorAlert, successAlert } from "../../assets/Componentes/Admin/alerts";
+import { resolveAssetUrl } from "../../assets/Hook/Sesion/apiSesion";
 import {
   useCandidatosVacanteReclutador,
   useVacantesConCandidatosReclutador,
   useSolicitarEntrevistaReclutador,
 } from "../../assets/Hook/Reclutador/useDomain";
+import { ENDPOINTS } from "../../assets/Hook/Reclutador/apiReclutador";
 
 export default function Candidatos() {
   const location = useLocation();
@@ -148,6 +150,37 @@ export default function Candidatos() {
     }
   };
 
+  const getCvUrl = (cand) => {
+    if (cand?.cv_url) return cand.cv_url;
+    if (Number(cand?.tiene_cv ?? 0) && cand?.id_postulacion) {
+      return ENDPOINTS.candidatos.cv(cand.id_postulacion);
+    }
+    return "";
+  };
+
+  const getHabilidades = (cand) => {
+    const raw = cand?.habilidades;
+    if (Array.isArray(raw)) return raw.map((item) => String(item).trim()).filter(Boolean);
+    if (!raw) return [];
+
+    const text = String(raw).trim();
+    if (!text) return [];
+
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return parsed.map((item) => String(item).trim()).filter(Boolean);
+    } catch {
+      // Registros antiguos pueden venir como texto separado por comas.
+    }
+
+    return text.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean);
+  };
+
+  const getCertificacionPdfUrl = (cert) => {
+    const id = cert?.id_certificaciones ?? cert?.id_certificacion ?? cert?.id;
+    return id && Number(cert?.tiene_pdf ?? 0) ? ENDPOINTS.candidatos.certificacionPdf(id) : "";
+  };
+
   return (
     <PortalLayout theme={t} navItems={reclutadorNav} pageTitle="Seguimiento de Candidatos">
       {!vacanteSeleccionada && !candidatoSeleccionado && (
@@ -256,12 +289,37 @@ export default function Candidatos() {
             <h2 style={{ color: t.textPrimary, margin: 0, fontSize: 18 }}>Perfil Profesional de {candidatoSeleccionado.nombre_completo}</h2>
             <EstadoPostulacion estado={candidatoSeleccionado.estado_postulacion} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1fr) 2fr", gap: 20, alignItems: "start" }}>
-            <div style={{ ...sectionStyle, display: "flex", flexDirection: "column", gap: 14 }}>
-              <h3 style={{ margin: 0, color: t.textPrimary, fontSize: 18 }}>{candidatoSeleccionado.nombre_completo}</h3>
-              <div style={iconRowStyle}><Mail size={16} style={{ color: t.accent }} /> <span>{candidatoSeleccionado.correo}</span></div>
-              <div style={iconRowStyle}><Phone size={16} style={{ color: t.accent }} /> <span>{candidatoSeleccionado.telefono}</span></div>
-              {candidatoSeleccionado.cv_url && <a href={candidatoSeleccionado.cv_url} target="_blank" rel="noreferrer" style={cvLinkStyle}><FileText size={16} /> Ver CV</a>}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.9fr) 2fr", gap: 20, alignItems: "start" }}>
+            <div style={{ ...sectionStyle, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <AvatarPostulante candidato={candidatoSeleccionado} />
+                <div>
+                  <h3 style={{ margin: 0, color: t.textPrimary, fontSize: 18 }}>{candidatoSeleccionado.nombre_completo}</h3>
+                  <p style={{ margin: "4px 0 0", color: t.textMuted, fontSize: 12 }}>
+                    Postulado el {safeDate(candidatoSeleccionado.fecha_postulacion)}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <InfoLine icon={Mail} label="Correo" value={candidatoSeleccionado.correo} link={`mailto:${candidatoSeleccionado.correo}`} />
+                <InfoLine icon={Phone} label="Telefono" value={candidatoSeleccionado.telefono} />
+                <InfoLine icon={User} label="Registro" value={safeDate(candidatoSeleccionado.fecha_registro)} />
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {getCvUrl(candidatoSeleccionado) && (
+                  <a href={getCvUrl(candidatoSeleccionado)} target="_blank" rel="noreferrer" style={cvLinkStyle}>
+                    <FileText size={16} /> Ver CV
+                  </a>
+                )}
+                {candidatoSeleccionado.portafolio_url && (
+                  <a href={withProtocol(candidatoSeleccionado.portafolio_url)} target="_blank" rel="noreferrer" style={secondaryLinkStyle}>
+                    <Globe size={15} /> Portafolio
+                  </a>
+                )}
+              </div>
+
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
                   onClick={() => cambiarEstadoPostulacion(candidatoSeleccionado, "aceptado")}
@@ -279,17 +337,70 @@ export default function Candidatos() {
                 </button>
               </div>
             </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <Section icon={Users} title="Resumen Profesional">{candidatoSeleccionado.resumen_profesional}</Section>
+              <Section icon={Accessibility} title="Discapacidad">
+                {parseDisabilityDescription(candidatoSeleccionado.descripcion_discapacidad).description || "Sin descripcion registrada."}
+              </Section>
+
+              <div style={sectionStyle}>
+                <h4 style={sectionTitleStyle}><Accessibility size={16} /> Tipos de discapacidad</h4>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {(candidatoSeleccionado.discapacidades || []).map((disc) => (
+                    <span key={disc.id_discapacidad ?? disc.nombre} style={pillStyle("purple")}>{disc.nombre}</span>
+                  ))}
+                  {(candidatoSeleccionado.discapacidades || []).length === 0 && (
+                    <span style={{ color: t.textMuted, fontSize: 13 }}>No registradas</span>
+                  )}
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <span style={pillStyle("info")}>
+                    Puede realizar esfuerzo fisico: {formatPhysicalEffort(candidatoSeleccionado.esfuerzo_fisico_posible)}
+                  </span>
+                  {parseDisabilityDescription(candidatoSeleccionado.descripcion_discapacidad).percentage && (
+                    <span style={{ ...pillStyle("info"), marginLeft: 8 }}>
+                      Porcentaje: {parseDisabilityDescription(candidatoSeleccionado.descripcion_discapacidad).percentage}
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <Section icon={Briefcase} title="Experiencia Laboral">{candidatoSeleccionado.experiencia}</Section>
-              <Section icon={GraduationCap} title="Educacion y Certificaciones">{candidatoSeleccionado.educacion}</Section>
+
               <div style={sectionStyle}>
                 <h4 style={sectionTitleStyle}><Code size={16} /> Habilidades</h4>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {String(candidatoSeleccionado.habilidades || "").split(",").filter(Boolean).map((hab) => (
-                    <span key={hab} style={{ background: t.bgElevated, border: `1px solid ${t.border}`, color: t.textPrimary, padding: "4px 10px", borderRadius: 6, fontSize: 12 }}>{hab.trim()}</span>
+                  {getHabilidades(candidatoSeleccionado).map((hab) => (
+                    <span key={hab} style={pillStyle("purple")}>{hab.trim()}</span>
                   ))}
+                  {getHabilidades(candidatoSeleccionado).length === 0 && (
+                    <span style={{ color: t.textMuted, fontSize: 13 }}>No especificadas</span>
+                  )}
                 </div>
+              </div>
+
+              <div style={sectionStyle}>
+                <h4 style={sectionTitleStyle}><Award size={16} /> Certificaciones</h4>
+                {(candidatoSeleccionado.certificaciones || []).length === 0 ? (
+                  <p style={{ color: t.textMuted, margin: 0, fontSize: 13 }}>No hay certificaciones registradas.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {(candidatoSeleccionado.certificaciones || []).map((cert) => (
+                      <div key={cert.id_certificaciones ?? cert.id_certificacion} style={certCardStyle}>
+                        <div>
+                          <strong style={{ color: t.textPrimary, fontSize: 13 }}>{cert.nombre_certificacion || cert.nombre}</strong>
+                          <p style={{ color: t.textMuted, fontSize: 12, margin: "3px 0" }}>{cert.institucion_dada || cert.institucion || "-"}</p>
+                          <p style={{ color: t.textMuted, fontSize: 11, margin: 0 }}>{safeDate(cert.fecha_emitido || cert.fecha_emision)}</p>
+                        </div>
+                        {getCertificacionPdfUrl(cert) && (
+                          <a href={getCertificacionPdfUrl(cert)} target="_blank" rel="noreferrer" style={miniLinkStyle}>
+                            Ver PDF
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -357,6 +468,50 @@ export default function Candidatos() {
   );
 }
 
+function AvatarPostulante({ candidato }) {
+  const foto = resolveAssetUrl(candidato?.foto_perfil || candidato?.avatar || candidato?.imagen);
+
+  return (
+    <div style={avatarStyle}>
+      {foto ? (
+        <img
+          src={foto}
+          alt={candidato?.nombre_completo || "Postulante"}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+            const fallback = e.currentTarget.nextSibling;
+            if (fallback) fallback.style.display = "flex";
+          }}
+        />
+      ) : null}
+      <span style={{ display: foto ? "none" : "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+        {candidateInitials(candidato)}
+      </span>
+    </div>
+  );
+}
+
+function InfoLine({ icon: Icon, label, value, link }) {
+  const content = value || "-";
+
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, minWidth: 0 }}>
+      <Icon size={15} style={{ color: t.accent, marginTop: 2, flexShrink: 0 }} />
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, color: t.textMuted, fontSize: 11 }}>{label}</p>
+        {link && value ? (
+          <a href={link} target="_blank" rel="noreferrer" style={{ color: t.accent, fontSize: 13, wordBreak: "break-word" }}>
+            {content}
+          </a>
+        ) : (
+          <p style={{ margin: 0, color: t.textPrimary, fontSize: 13, wordBreak: "break-word" }}>{content}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TableCard({ children }) {
   return <div style={{ background: t.bgSurface, border: `1px solid ${t.border}`, borderRadius: 12, overflow: "hidden" }}>{children}</div>;
 }
@@ -414,6 +569,40 @@ function EntrevistaBadge({ puntuacion }) {
   );
 }
 
+function candidateInitials(candidato = {}) {
+  const name = candidato.nombre_completo || `${candidato.nombres || ""} ${candidato.apellidos || ""}`.trim();
+  const parts = String(name || "P").trim().split(/\s+/).filter(Boolean);
+  return `${parts[0]?.charAt(0) || "P"}${parts[1]?.charAt(0) || ""}`.toUpperCase();
+}
+
+function withProtocol(url) {
+  if (!url) return "";
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+function parseDisabilityDescription(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return { description: "", percentage: "" };
+
+  const onlyPercentage = text.match(/^(\d+(?:\.\d+)?)%\s*$/);
+  if (onlyPercentage) return { description: "", percentage: `${onlyPercentage[1]}%` };
+
+  const match = text.match(/^(.*?)(?:\s*(?:\||-)\s*)(\d+(?:\.\d+)?)%\s*$/);
+  if (!match) return { description: text, percentage: "" };
+
+  return {
+    description: match[1].trim(),
+    percentage: `${match[2]}%`,
+  };
+}
+
+function formatPhysicalEffort(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric)) return numeric === 1 ? "Si" : "No";
+  return String(value);
+}
+
 const buttonStyle = (disabled) => ({ background: disabled ? t.bgElevated : t.gradient, color: disabled ? t.textMuted : "#fff", border: "none", padding: "6px 12px", borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12 });
 const actionButtonStyle = (type, disabled = false) => {
   const variants = {
@@ -444,9 +633,65 @@ const cardStyleDestacado = { ...cardStyle, border: `2px solid ${t.accent}`, back
 const badgeIAStyle = { display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: t.accent, background: "#fff", padding: "3px 8px", borderRadius: 20, marginBottom: 6 };
 const infoBadgeStyle = { display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: t.textSecondary };
 const sectionStyle = { background: t.bgSurface, border: `1px solid ${t.border}`, borderRadius: 12, padding: 18 };
-const iconRowStyle = { display: "flex", alignItems: "center", gap: 10, color: t.textSecondary, fontSize: 14 };
 const cvLinkStyle = { textDecoration: "none", background: t.gradient, color: "#fff", padding: "10px", borderRadius: 8, textAlign: "center", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10 };
 const sectionTitleStyle = { display: "flex", alignItems: "center", gap: 8, color: t.accent, margin: "0 0 10px 0", fontSize: 15, fontWeight: 600, borderBottom: `1px solid ${t.border}`, paddingBottom: 6 };
+const avatarStyle = {
+  width: 66,
+  height: 66,
+  borderRadius: "999px",
+  overflow: "hidden",
+  flexShrink: 0,
+  background: t.accentSoft,
+  border: `2px solid ${t.accentBorder}`,
+  color: t.accent,
+  fontWeight: 800,
+  fontSize: 22,
+};
+const secondaryLinkStyle = {
+  ...cvLinkStyle,
+  marginTop: 10,
+  background: t.bgElevated,
+  color: t.textPrimary,
+  border: `1px solid ${t.border}`,
+};
+const miniLinkStyle = {
+  textDecoration: "none",
+  color: t.accent,
+  border: `1px solid ${t.accentBorder}`,
+  background: t.accentSoft,
+  padding: "6px 10px",
+  borderRadius: 8,
+  fontSize: 12,
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+};
+const certCardStyle = {
+  background: t.bgElevated,
+  border: `1px solid ${t.border}`,
+  borderRadius: 10,
+  padding: 12,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+};
+const pillStyle = (type = "default") => {
+  const variants = {
+    purple: { bg: t.accentSoft, color: t.accent, border: t.accentBorder },
+    info: { bg: "rgba(59,130,246,0.14)", color: "#93c5fd", border: "rgba(59,130,246,0.35)" },
+    default: { bg: t.bgElevated, color: t.textPrimary, border: t.border },
+  };
+  const current = variants[type] || variants.default;
+  return {
+    background: current.bg,
+    border: `1px solid ${current.border}`,
+    color: current.color,
+    padding: "5px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+  };
+};
 
 // ── Estilos del bloque especial "Entrevista con IA" (ya existian) ──
 const entrevistaSectionStyle = {

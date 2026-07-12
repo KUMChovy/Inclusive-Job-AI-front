@@ -37,11 +37,14 @@ export const ENDPOINTS = {
   candidatos: {
     porVacante: `${BASE_URL}/candidatos.php?accion=listar_por_vacante`,
     detallePorVacante: (idVacante) => `${BASE_URL}/candidatos.php?${qs({ accion: 'detalles_candidatos', id_vacante: idVacante })}`,
+    cv: (idPostulacion) => `${BASE_URL}/candidatos.php?${qs({ accion: 'cv', id_postulacion: idPostulacion })}`,
+    certificacionPdf: (idCertificacion) => `${BASE_URL}/candidatos.php?${qs({ accion: 'certificacion_pdf', id_certificacion: idCertificacion })}`,
     actualizarEstadoPostulacion: `${BASE_URL}/candidatos.php?accion=actualizar_estado_postulacion`,
   },
 
   reportes: {
     listar: `${BASE_URL}/mostrar_reportes.php`,
+    marcarAvisoAtendido: (idAviso) => `${BASE_URL}/mostrar_reportes.php?${qs({ accion: 'marcar_aviso_atendido', id: idAviso })}`,
   },
 
   chat: {

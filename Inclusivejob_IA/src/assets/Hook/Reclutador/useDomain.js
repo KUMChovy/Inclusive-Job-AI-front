@@ -80,6 +80,16 @@ export function useReportesReclutador() {
   return useFetch(ENDPOINTS.reportes.listar);
 }
 
+export function useAvisosReportesReclutador() {
+  const { execute, loading, error } = useApiAction();
+
+  return {
+    marcarAvisoAtendido: (idAviso) => execute(ENDPOINTS.reportes.marcarAvisoAtendido(idAviso), 'POST'),
+    loading,
+    error,
+  };
+}
+
 export function useReclutadorResource(url, options = {}) {
   return useFetch(url, options);
 }

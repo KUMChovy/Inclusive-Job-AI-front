@@ -112,7 +112,7 @@ export function useReporteAcciones() {
   const { execute, loading, error } = useApiAction();
   return {
     ignorar:         (id) => execute(ENDPOINTS.reportes.ignorar(id),        'POST'),
-    eliminarVacante: (id) => execute(ENDPOINTS.reportes.eliminarVacante(id), 'POST'),
+    eliminarVacante: (id, data = {}) => execute(ENDPOINTS.reportes.eliminarVacante(id), 'POST', data),
     loading,
     error,
   };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Flag, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle2, Eye, Flag, RefreshCw, X } from 'lucide-react';
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
@@ -8,20 +8,34 @@ import { Button, ErrorBanner, PageHeader, SearchBar } from '../../assets/Compone
 import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
 import BubleChat from "../Reclutador/ChatBot.jsx";
-import { useReportesReclutador } from '../../assets/Hook/Reclutador/useDomain';
+import { useAvisosReportesReclutador, useReportesReclutador } from '../../assets/Hook/Reclutador/useDomain';
+import { errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
 
 const LIMITE = 15;
 
 export default function ReportesMios() {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = useReportesReclutador();
+  const { marcarAvisoAtendido } = useAvisosReportesReclutador();
   const [reportes, setReportes] = useState([]);
+  const [avisos, setAvisos] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [page, setPage] = useState(1);
   const [modalReporte, setModalReporte] = useState(null);
+  const [avisoLoading, setAvisoLoading] = useState(null);
 
   useEffect(() => {
-    if (data?.data) setReportes(data.data);
+    const payload = data?.data ?? data;
+    if (!payload) return;
+
+    if (Array.isArray(payload)) {
+      setReportes(payload);
+      setAvisos([]);
+      return;
+    }
+
+    setReportes(Array.isArray(payload.reportes) ? payload.reportes : []);
+    setAvisos(Array.isArray(payload.avisos) ? payload.avisos : []);
   }, [data]);
 
   const reportesFiltrados = useMemo(() => {
@@ -42,6 +56,21 @@ export default function ReportesMios() {
 
   const total = reportesFiltrados.length;
   const datosPagina = reportesFiltrados.slice((page - 1) * LIMITE, page * LIMITE);
+
+  const handleMarcarAvisoAtendido = async (idAviso) => {
+    setAvisoLoading(idAviso);
+
+    try {
+      await marcarAvisoAtendido(idAviso);
+      setAvisos((prev) => prev.filter((aviso) => aviso.id !== idAviso));
+      await successAlert('Aviso atendido', 'La alerta fue marcada como atendida.', t);
+      await refetch();
+    } catch (err) {
+      await errorAlert('No se pudo actualizar', err.message || 'Intenta de nuevo.', t);
+    } finally {
+      setAvisoLoading(null);
+    }
+  };
 
   const columns = [
     {
@@ -99,7 +128,7 @@ export default function ReportesMios() {
       <div className="space-y-5 w-full">
         <PageHeader
           title="Reportes de Vacantes"
-          description="Modera las vacantes reportadas por usuarios de la plataforma"
+          description="Consulta los reportes pendientes sobre tus vacantes. Cuando administracion resuelva un reporte, recibiras el aviso en el asistente."
           action={(
             <div className="flex items-center gap-3">
               <span className="text-slate-400 text-sm flex items-center gap-1">
@@ -114,10 +143,21 @@ export default function ReportesMios() {
           )}
         />
         <ErrorBanner message={error} />
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Estos son reportes aun pendientes de revision. Si el administrador descarta un reporte o elimina una vacante reportada, el reporte desaparecera de esta lista y te llegara una notificacion en el chat bot o aqui mismo.
+        </div>
+
+        <AvisosReportes
+          avisos={avisos}
+          loading={loading}
+          avisoLoading={avisoLoading}
+          onMarcarAtendido={handleMarcarAvisoAtendido}
+        />
+
         <SearchBar
           value={busqueda}
-          onChange={(e) => {
-            setBusqueda(e.target.value);
+          onChange={(value) => {
+            setBusqueda(value);
             setPage(1);
           }}
           placeholder="Buscar por vacante, usuario o motivo..."
@@ -169,6 +209,101 @@ export default function ReportesMios() {
       )}
       <BubleChat/>
     </PortalLayout>
+  );
+}
+
+function AvisosReportes({
+  avisos = [],
+  loading = false,
+  avisoLoading = null,
+  onMarcarAtendido = () => {},
+}) {
+  const recientes = avisos.slice(0, 5);
+
+  return (
+    <section className="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4 shadow-lg shadow-black/10">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-white font-semibold flex items-center gap-2">
+            <Bell size={16} className="text-violet-300" />
+            Avisos de administracion sobre tus reportes
+          </h2>
+          <p className="text-slate-400 text-sm">
+            Aqui aparecen las decisiones del administrador cuando un reporte se descarta o genera una sancion formal.
+          </p>
+        </div>
+        <span className="text-xs text-slate-500">{avisos.length} avisos</span>
+      </div>
+
+      {loading ? (
+        <div className="mt-4 rounded-xl border border-slate-700/50 bg-slate-800/50 p-4 text-sm text-slate-400">
+          Cargando avisos...
+        </div>
+      ) : recientes.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-slate-700/50 bg-slate-800/50 p-4 text-sm text-slate-400">
+          Todavia no tienes avisos de administracion sobre reportes resueltos.
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3">
+          {recientes.map((aviso) => {
+            const esSancion = aviso.accion === 'vacante_eliminada'
+              || aviso.resultado === 'reporte_vacante_eliminada_admin';
+            const Icon = esSancion ? AlertTriangle : CheckCircle2;
+
+            return (
+              <article
+                key={aviso.id}
+                className={`rounded-xl border p-4 ${
+                  esSancion
+                    ? 'border-rose-500/30 bg-rose-500/10'
+                    : 'border-emerald-500/30 bg-emerald-500/10'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <Icon
+                    size={18}
+                    className={esSancion ? 'text-rose-300 mt-0.5' : 'text-emerald-300 mt-0.5'}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <h3 className="text-white text-sm font-semibold truncate">
+                        {aviso.vacante || 'Vacante'}
+                      </h3>
+                      <span className="text-xs text-slate-400">{safeDate(aviso.fecha)}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-300">{aviso.texto}</p>
+
+                    {aviso.motivo && (
+                      <p className="mt-2 text-xs text-slate-400">
+                        <span className="text-slate-300">Motivo del reporte:</span> {aviso.motivo}
+                      </p>
+                    )}
+
+                    {aviso.comentario_admin && (
+                      <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-xs uppercase tracking-wide text-slate-400">Explicacion del administrador</p>
+                        <p className="mt-1 text-sm text-slate-200">{aviso.comentario_admin}</p>
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        loading={avisoLoading === aviso.id}
+                        onClick={() => onMarcarAtendido(aviso.id)}
+                      >
+                        Marcar como atendida
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 

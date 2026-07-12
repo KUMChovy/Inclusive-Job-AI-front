@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ArrowRight,
   Briefcase,
-  Eye,
   Plus,
   TrendingUp,
   Users,
@@ -23,6 +22,7 @@ import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
+import { resolveAssetUrl } from '../../assets/Hook/Sesion/apiSesion';
 import {
   useDiscapacidadesReclutador,
   useGuardarVacanteReclutador,
@@ -196,6 +196,7 @@ export default function ReclutadorDashboard() {
   const dashboard = data?.data ?? data ?? {};
   const currentUser = dashboard?.user ?? {};
   const currentEmpresa = dashboard?.empresa ?? {};
+  const currentUserAvatar = resolveAssetUrl(currentUser.avatar || currentUser.foto_perfil);
   const empresaAprobada = Boolean(
     currentEmpresa && (currentEmpresa.aprobada ?? currentEmpresa.estado === 'aprobada')
   );
@@ -360,8 +361,21 @@ export default function ReclutadorDashboard() {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0, background: t.accentSoft, border: `2px solid ${t.accentBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 800, color: t.accent }}>
-            {(currentUser.nombre || 'Reclutador').split(' ').slice(0, 2).map((w) => w[0]).join('')}
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0, background: t.accentSoft, border: `2px solid ${t.accentBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 800, color: t.accent, overflow: 'hidden' }}>
+            {currentUserAvatar ? (
+              <img
+                src={currentUserAvatar}
+                alt={`Foto de perfil de ${currentUser.nombre || 'Reclutador'}`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextSibling.style.display = 'block';
+                }}
+              />
+            ) : null}
+            <span style={{ display: currentUserAvatar ? 'none' : 'block' }}>
+              {(currentUser.nombre || 'Reclutador').split(' ').slice(0, 2).map((w) => w[0]).join('')}
+            </span>
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: t.textPrimary, letterSpacing: '-0.3px' }}>
@@ -442,7 +456,7 @@ export default function ReclutadorDashboard() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${t.border}` }}>
-                  {['Vacante', 'Postulaciones', 'Vistas', 'Dias activa', 'Estado', ''].map((h) => (
+                  {['Vacante', 'Postulaciones', 'Dias activa', 'Estado', ''].map((h) => (
                     <th key={h} style={{ padding: '10px 20px', textAlign: 'left', color: t.textMuted, fontWeight: 600, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -454,9 +468,6 @@ export default function ReclutadorDashboard() {
                     <td style={{ padding: '13px 20px', color: t.textSecondary }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Users size={13} style={{ color: t.accent }} />{v.postulaciones}</span>
                     </td>
-                    <td style={{ padding: '13px 20px', color: t.textSecondary }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Eye size={13} style={{ color: '#4f46e5' }} />{v.vistas}</span>
-                    </td>
                     <td style={{ padding: '13px 20px', color: t.textSecondary }}>{v.dias}d</td>
                     <td style={{ padding: '13px 20px' }}><Badge estado={v.estado} /></td>
                     <td style={{ padding: '13px 20px' }}>
@@ -465,7 +476,7 @@ export default function ReclutadorDashboard() {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan="6" style={{ padding: '18px 20px', color: t.textMuted }}>
+                    <td colSpan="5" style={{ padding: '18px 20px', color: t.textMuted }}>
                       Aun no tienes vacantes registradas.
                     </td>
                   </tr>

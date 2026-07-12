@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Building2, DollarSign, Monitor } from 'lucide-react';
+import { ArrowLeft, Building2, DollarSign, Monitor, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
 import { Badge, Button, ErrorBanner } from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
-import { useDetalleVacanteReclutador } from '../../assets/Hook/Reclutador/useDomain';
+import { confirmDelete, errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
+import { useDetalleVacanteReclutador, useGuardarVacanteReclutador } from '../../assets/Hook/Reclutador/useDomain';
 
 const VACANTE_BADGE = {
   activa: 'success',
@@ -47,9 +49,53 @@ const postulacionesColumns = [
 export default function VacanteDetalleReclutador() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data, loading, error } = useDetalleVacanteReclutador(id);
+  const { data, loading, error, refetch } = useDetalleVacanteReclutador(id);
+  const { actualizarEstadoVacante, eliminarVacante } = useGuardarVacanteReclutador();
+  const [actionLoading, setActionLoading] = useState(null);
   const vacante = data?.data?.vacante ?? null;
   const postulaciones = data?.data?.postulaciones ?? [];
+
+  const handleToggleEstado = async () => {
+    if (!vacante || vacante.estado === 'eliminada') return;
+
+    const estadoActual = vacante.estado || 'activa';
+    const nuevoEstado = estadoActual === 'activa' ? 'pausada' : 'activa';
+    setActionLoading('estado');
+
+    try {
+      await actualizarEstadoVacante({
+        id_vacante: Number(vacante.id_vacante ?? id),
+        estado: nuevoEstado,
+      });
+      await refetch();
+      await successAlert('Estado actualizado', `La vacante ahora esta ${nuevoEstado}.`, t);
+    } catch (err) {
+      await errorAlert('Error al actualizar', err.message || 'No se pudo actualizar el estado.', t);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleEliminar = async () => {
+    if (!vacante || vacante.estado === 'eliminada') return;
+
+    const ok = await confirmDelete(
+      vacante.titulo_puesto ? `la vacante "${vacante.titulo_puesto}"` : 'esta vacante',
+      t
+    );
+    if (!ok) return;
+
+    setActionLoading('eliminar');
+
+    try {
+      await eliminarVacante(Number(vacante.id_vacante ?? id));
+      await successAlert('Vacante eliminada', 'La vacante fue eliminada correctamente.', t);
+      navigate('/reclutador/vacantes');
+    } catch (err) {
+      await errorAlert('Error al eliminar', err.message || 'No se pudo eliminar la vacante.', t);
+      setActionLoading(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -80,12 +126,45 @@ export default function VacanteDetalleReclutador() {
         </button>
 
         <div>
-          <h1 className="text-xl font-bold text-white">{vacante.titulo_puesto}</h1>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Badge variant={VACANTE_BADGE[vacante.estado] ?? 'default'}>{vacante.estado || '-'}</Badge>
-            <Badge variant="info">{vacante.modalidad || '-'}</Badge>
-            <span className="text-slate-500 text-xs">Publicada: {safeDate(vacante.fecha_publicacion)}</span>
-            <span className="text-slate-500 text-xs">Cierre: {safeDate(vacante.fecha_cierre)}</span>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-white">{vacante.titulo_puesto}</h1>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge variant={VACANTE_BADGE[vacante.estado] ?? 'default'}>{vacante.estado || '-'}</Badge>
+                <Badge variant="info">{vacante.modalidad || '-'}</Badge>
+                <span className="text-slate-500 text-xs">Publicada: {safeDate(vacante.fecha_publicacion)}</span>
+                <span className="text-slate-500 text-xs">Cierre: {safeDate(vacante.fecha_cierre)}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {vacante.estado !== 'eliminada' ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={actionLoading === 'estado'}
+                    onClick={handleToggleEstado}
+                  >
+                    {vacante.estado === 'activa' ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                    {vacante.estado === 'activa' ? 'Pausar' : 'Activar'}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    loading={actionLoading === 'eliminar'}
+                    onClick={handleEliminar}
+                  >
+                    <Trash2 size={15} />
+                    Eliminar
+                  </Button>
+                </>
+              ) : (
+                <span className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                  Esta vacante fue eliminada y no admite acciones.
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

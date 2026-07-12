@@ -11,7 +11,7 @@ import Pagination from '../../assets/Componentes/Admin/Pagination';
 import { useSearch, usePagination } from '../../assets/Hook/Admin/useApi';
 import { useReporteAcciones, useReportes } from '../../assets/Hook/Admin/useDomain';
 import {
-  confirmAction, successAlert, errorAlert,
+  confirmAction, confirmTextareaAction, successAlert, errorAlert,
 } from '../../assets/Componentes/Admin/alerts';
 
 const LIMITE = 15;
@@ -108,20 +108,22 @@ export default function Reportes() {
     const id = getReporteId(row);
     const vacante = getVacante(row);
 
-    const ok = await confirmAction({
+    const explicacion = await confirmTextareaAction({
       title: 'Eliminar vacante reportada',
-      html: `<span>La vacante <strong style="color:#fff">"${vacante}"</strong> se marcara como eliminada y se cerraran sus reportes asociados.</span>`,
+      html: `<span>La vacante <strong style="color:#fff">"${vacante}"</strong> se marcara como eliminada y se cerraran sus reportes asociados. Esta explicacion se enviara al reclutador como aviso formal.</span>`,
+      inputLabel: 'Explicacion para el reclutador',
+      inputPlaceholder: 'Ejemplo: La vacante incumple las politicas porque...',
       confirmText: 'Eliminar vacante',
       confirmColor: '#dc2626',
       icon: 'warning',
     });
-    if (!ok) return;
+    if (explicacion === null) return;
 
     setActionLoading(id);
     try {
-      await eliminarVacante(id);
+      await eliminarVacante(id, { explicacion });
       await refetch();
-      successAlert('Vacante eliminada', `"${vacante}" fue eliminada de la plataforma.`);
+      successAlert('Vacante eliminada', `"${vacante}" fue eliminada y se aviso al reclutador.`);
     } catch {
       errorAlert('Error', 'No se pudo eliminar la vacante.');
     } finally {
@@ -178,15 +180,17 @@ export default function Reportes() {
         const vacanteEliminada = row.estado_vacante === 'eliminada';
 
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-2 min-w-[260px]">
             <Button
               variant="ghost"
               size="sm"
               title="Ver vacante"
               onClick={() => navigate(`/admin/vacantes/${getVacanteId(row)}`)}
               aria-label="Ver vacante"
+              className="whitespace-nowrap"
             >
               <Eye size={14} />
+              Ver vacante
             </Button>
             <Button
               variant="ghost"
@@ -195,8 +199,10 @@ export default function Reportes() {
               loading={isLoading}
               onClick={() => handleIgnorar(row)}
               aria-label={vacanteEliminada ? 'Cerrar reporte pendiente' : 'Ignorar reporte'}
+              className="whitespace-nowrap"
             >
               <X size={14} />
+              {vacanteEliminada ? 'Cerrar reporte' : 'Descartar reporte'}
             </Button>
             {!vacanteEliminada && (
               <Button
@@ -206,8 +212,10 @@ export default function Reportes() {
                 loading={isLoading}
                 onClick={() => handleEliminarVacante(row)}
                 aria-label="Eliminar vacante"
+                className="whitespace-nowrap"
               >
                 <Trash2 size={14} />
+                Eliminar vacante
               </Button>
             )}
           </div>

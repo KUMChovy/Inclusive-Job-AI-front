@@ -88,6 +88,70 @@ export async function confirmAction({
   return result.isConfirmed;
 }
 
+export async function confirmTextareaAction({
+  title = 'Confirmar accion',
+  html = '',
+  inputLabel = 'Explicacion',
+  inputPlaceholder = 'Escribe una explicacion breve...',
+  inputValue = '',
+  maxLength = 500,
+  requiredMessage = 'Escribe una explicacion breve.',
+  confirmText = 'Confirmar',
+  confirmColor = '#7c3aed',
+  cancelText = 'Cancelar',
+  icon = 'warning',
+  theme = null,
+} = {}) {
+  const result = await Swal.fire({
+    ...BASE,
+    ...themedOptions(theme),
+    title,
+    html,
+    icon,
+    iconColor: theme?.accent || undefined,
+    input: 'textarea',
+    inputLabel,
+    inputPlaceholder,
+    inputValue,
+    inputAttributes: {
+      maxlength: String(maxLength),
+      'aria-label': inputLabel,
+    },
+    showCancelButton: true,
+    confirmButtonText: confirmText,
+    cancelButtonText: cancelText,
+    confirmButtonColor: theme?.accentHover || theme?.accent || confirmColor,
+    cancelButtonColor: theme?.name === 'postulante'
+      ? (theme.bgElevated || '#e0ecff')
+      : (theme?.textMuted || '#475569'),
+    didOpen: (popup) => {
+      themedOptions(theme).didOpen?.(popup);
+      const textarea = popup.querySelector('.swal2-textarea');
+      if (textarea) {
+        textarea.style.background = theme?.bgElevated || '#0f172a';
+        textarea.style.color = theme?.textPrimary || '#f8fafc';
+        textarea.style.border = `1px solid ${theme?.border || '#334155'}`;
+        textarea.style.borderRadius = '12px';
+        textarea.style.fontSize = '14px';
+      }
+    },
+    preConfirm: (value) => {
+      const text = String(value ?? '').trim();
+      if (!text) {
+        Swal.showValidationMessage(requiredMessage);
+        return false;
+      }
+      if (text.length > maxLength) {
+        Swal.showValidationMessage(`La explicacion debe tener maximo ${maxLength} caracteres.`);
+        return false;
+      }
+      return text;
+    },
+  });
+
+  return result.isConfirmed ? String(result.value ?? '').trim() : null;
+}
+
 /**
  * Alerta de éxito con autocierre
  */
