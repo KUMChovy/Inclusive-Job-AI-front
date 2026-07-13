@@ -15,7 +15,6 @@ export default function PortalLayout({
   children,
   pageTitle,
   headerActions,
-  notifications = 0,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,7 +102,6 @@ export default function PortalLayout({
           onMobileMenuOpen={() => setMobileOpen(true)}
           title={pageTitle}
           actions={headerActions}
-          notifications={notifications}
         />
 
         <main

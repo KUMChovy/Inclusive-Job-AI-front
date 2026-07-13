@@ -4,7 +4,7 @@
 //
 // Props:
 //   theme      → objeto de tema (reclutadorTheme | postulantTheme)
-//   navItems   → array de { to, label, icon, badge? }
+//   navItems   → array de { to, label, icon }
 //   user       → { nombre, rol, avatar? }
 //   collapsed  → boolean
 //   onToggle   → () => void
@@ -134,7 +134,7 @@ export default function PortalSidebar({
         {/* ── Navegación ── */}
         <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 8px' }}>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            {navItems.map(({ to, label, icon: Icon, badge }) => (
+            {navItems.map(({ to, label, icon: Icon }) => (
               <li key={to}>
                 <NavLink
                   to={to}
@@ -162,25 +162,9 @@ export default function PortalSidebar({
                     <>
                       <Icon size={18} style={{ flexShrink: 0, color: isActive ? t.accent : t.textSecondary }} />
                       {!collapsed && (
-                        <>
-                          <span style={{ flex: 1, truncate: 'true', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {label}
-                          </span>
-                          {badge !== undefined && badge > 0 && (
-                            <span style={{
-                              background: t.accent,
-                              color: '#fff',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              padding: '1px 7px',
-                              borderRadius: '999px',
-                              minWidth: '20px',
-                              textAlign: 'center',
-                            }}>
-                              {badge}
-                            </span>
-                          )}
-                        </>
+                        <span style={{ flex: 1, truncate: 'true', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {label}
+                        </span>
                       )}
                     </>
                   )}

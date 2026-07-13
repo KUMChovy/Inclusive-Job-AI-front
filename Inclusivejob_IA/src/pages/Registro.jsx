@@ -213,6 +213,34 @@ const ms = {
 
 /* ================= REGISTRO ================= */
 
+const PAISES_LADA = [
+  { code: "+52", name: "México", flag: "🇲🇽" },
+  { code: "+1", name: "Estados Unidos", flag: "🇺🇸" },
+  { code: "+34", name: "España", flag: "🇪🇸" },
+  { code: "+54", name: "Argentina", flag: "🇦🇷" },
+  { code: "+56", name: "Chile", flag: "🇨🇱" },
+  { code: "+57", name: "Colombia", flag: "🇨🇴" },
+  { code: "+51", name: "Perú", flag: "🇵🇪" },
+  { code: "+58", name: "Venezuela", flag: "🇻🇪" },
+  { code: "+502", name: "Guatemala", flag: "🇬🇹" },
+  { code: "+503", name: "El Salvador", flag: "🇸🇻" },
+  { code: "+504", name: "Honduras", flag: "🇭🇳" },
+  { code: "+505", name: "Nicaragua", flag: "🇳🇮" },
+  { code: "+506", name: "Costa Rica", flag: "🇨🇷" },
+  { code: "+507", name: "Panamá", flag: "🇵🇦" },
+  { code: "+591", name: "Bolivia", flag: "🇧🇴" },
+  { code: "+593", name: "Ecuador", flag: "🇪🇨" },
+  { code: "+595", name: "Paraguay", flag: "🇵🇾" },
+  { code: "+598", name: "Uruguay", flag: "🇺🇾" },
+  { code: "+55", name: "Brasil", flag: "🇧🇷" },
+];
+
+function getTelefonoConLada({ lada, telefono }) {
+  const ladaDigits = String(lada ?? "").replace(/\D/g, "");
+  const telefonoDigits = String(telefono ?? "").replace(/\D/g, "");
+  return `${ladaDigits}${telefonoDigits}`;
+}
+
 const Registro = () => {
   const { registrar } = useRegistroSesion();
   const [mode, setMode] = useState("postulante");
@@ -224,6 +252,7 @@ const Registro = () => {
     nombres: "",
     correo: "",
     password: "",
+    lada: "+52",
     telefono: ""
   });
 
@@ -263,15 +292,49 @@ const Registro = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleRegistroChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === "telefono") {
+      setForm({ ...form, telefono: value.replace(/\D/g, "").slice(0, 10) });
+      return;
+    }
+
+    setForm({ ...form, [name]: value });
+  };
+
+  const validarRegistro = () => {
+    const { nombres, correo, password, telefono, lada } = form;
+    const nombreRegex = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ ]{3,60}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,64}$/;
+    const ladaRegex = /^\+\d{1,4}$/;
+    const telefonoRegex = /^[0-9]{10}$/;
+
+    if (!nombreRegex.test(nombres)) return "Nombre invalido";
+    if (!emailRegex.test(correo)) return "Correo invalido";
+    if (!passwordRegex.test(password)) return "Contrasena debil";
+    if (!ladaRegex.test(lada)) return "Selecciona una LADA valida";
+    if (!telefonoRegex.test(telefono)) return "El telefono debe tener exactamente 10 digitos";
+
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const error = validar();
+    const error = validarRegistro();
     if (error) {
       await errorAlert("Datos inválidos", error, alertTheme);
       return;
     }
     try {
-      const data = await registrar(isPostulante ? 'postulante' : 'reclutador', form);
+      const payload = {
+        ...form,
+        telefono: getTelefonoConLada(form),
+      };
+      delete payload.lada;
+
+      const data = await registrar(isPostulante ? 'postulante' : 'reclutador', payload);
       console.log("Respuesta API:", data);
       if (data.success) {
         setCorreoRegistrado(form.correo);
@@ -283,6 +346,12 @@ const Registro = () => {
       }
     } catch (err) {
       console.error(err);
+      const message = err instanceof Error
+        ? err.message
+        : "No se pudo completar el registro.";
+
+      await errorAlert("No se pudo registrar", message, alertTheme);
+      return;
       await errorAlert("Error de conexión", "No se pudo conectar con el servidor.", alertTheme);
     }
   };
@@ -343,7 +412,7 @@ const Registro = () => {
               placeholder="Nombre completo"
               maxLength={60}
               value={form.nombres}
-              onChange={handleChange}
+              onChange={handleRegistroChange}
               style={{ ...styles.input, border: `2px solid ${theme.border}` }}
             />
             <input
@@ -353,7 +422,7 @@ const Registro = () => {
               placeholder="Correo electrónico"
               maxLength={100}
               value={form.correo}
-              onChange={handleChange}
+              onChange={handleRegistroChange}
               style={{ ...styles.input, border: `2px solid ${theme.border}` }}
             />
             <input
@@ -363,19 +432,36 @@ const Registro = () => {
               placeholder="Contraseña"
               maxLength={128}
               value={form.password}
-              onChange={handleChange}
+              onChange={handleRegistroChange}
               style={{ ...styles.input, border: `2px solid ${theme.border}` }}
             />
+            <select
+              name="lada"
+              aria-label="LADA"
+              value={form.lada}
+              onChange={handleRegistroChange}
+              style={{ ...styles.input, border: `2px solid ${theme.border}` }}
+            >
+              {PAISES_LADA.map((pais) => (
+                <option key={pais.code} value={pais.code}>
+                  {pais.flag} {pais.code} · {pais.name}
+                </option>
+              ))}
+            </select>
             <input
               type="tel"
-              autoComplete="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
               name="telefono"
               placeholder="Teléfono"
-              maxLength={15}
+              maxLength={10}
               value={form.telefono}
-              onChange={handleChange}
+              onChange={handleRegistroChange}
               style={{ ...styles.input, border: `2px solid ${theme.border}` }}
             />
+            <p style={styles.phoneHint}>
+              {PAISES_LADA.find((pais) => pais.code === form.lada)?.name || "Pais"} · LADA obligatoria · Numero nacional de 10 digitos
+            </p>
 
             {/* REGISTER */}
             <button
@@ -620,6 +706,12 @@ const styles = {
     minHeight: 58, height: "auto", borderRadius: 18, padding: "0 22px",
     fontSize: 16, outline: "none", background: "rgba(255,255,255,0.82)",
     transition: "0.3s ease", boxShadow: "0 4px 10px rgba(0,0,0,0.03)",
+  },
+  phoneHint: {
+    margin: "-10px 4px 0",
+    color: "#64748b",
+    fontSize: 12,
+    lineHeight: 1.4,
   },
   registerBtn: {
     minHeight: 58, border: "none", borderRadius: 18, color: "#fff",

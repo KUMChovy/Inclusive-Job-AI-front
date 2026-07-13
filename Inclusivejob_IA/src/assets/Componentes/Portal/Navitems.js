@@ -1,8 +1,7 @@
-
 // ============================================================
-// ITEMS DE NAVEGACIÓN POR ROL
-// Importa el array correcto y pásalo al PortalLayout.
-// badge: número que se mostrará como indicador (0 = oculto)
+// ITEMS DE NAVEGACION POR ROL
+// Importa el array correcto y pasalo al PortalLayout.
+// El portal de postulante/reclutador no muestra badges ni contadores.
 // ============================================================
 
 import {
@@ -12,14 +11,11 @@ import {
   Users,
   UserCircle,
   Flag,
-  FileText,
   Award,
   Search,
   BookmarkCheck,
-  Accessibility,
 } from 'lucide-react';
 
-// ── Reclutador ───────────────────────────────────────────────
 export const reclutadorNav = [
   {
     to: '/reclutador',
@@ -45,7 +41,6 @@ export const reclutadorNav = [
     to: '/reclutador/reportes',
     label: 'Reportes',
     icon: Flag,
-    badge: 2, // número dinámico — reemplazar con dato real
   },
   {
     to: '/reclutador/perfil',
@@ -54,7 +49,6 @@ export const reclutadorNav = [
   },
 ];
 
-// ── Postulante ───────────────────────────────────────────────
 export const postulantNav = [
   {
     to: '/postulante',
@@ -70,7 +64,6 @@ export const postulantNav = [
     to: '/postulante/postulaciones',
     label: 'Mis postulaciones',
     icon: BookmarkCheck,
-    badge: 3, // número dinámico
   },
   {
     to: '/postulante/certificaciones',

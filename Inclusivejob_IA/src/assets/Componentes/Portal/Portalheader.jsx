@@ -8,14 +8,13 @@
 //   actions          -> ReactNode (botones extra en el header)
 // ============================================================
 
-import { Menu, Bell, Search } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 
 export default function PortalHeader({
   theme,
   onMobileMenuOpen,
   title,
   actions,
-  notifications = 0,
 }) {
   const t = theme;
 
@@ -114,40 +113,6 @@ export default function PortalHeader({
           }}
         />
       </div>
-
-      <button
-        aria-label={`Notificaciones${notifications > 0 ? ` (${notifications})` : ''}`}
-        style={{
-          position: 'relative',
-          padding: '8px',
-          borderRadius: '10px',
-          border: `1px solid ${t.border}`,
-          background: 'transparent',
-          cursor: 'pointer',
-          color: t.textSecondary,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <Bell size={17} />
-        {notifications > 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              top: '5px',
-              right: '5px',
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: t.accent,
-              border: `2px solid ${t.bg}`,
-            }}
-            aria-hidden="true"
-          />
-        )}
-      </button>
     </header>
   );
 }

@@ -135,7 +135,7 @@ async function requestJson(url, options = {}) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.message || data.error || `Error ${res.status}: ${res.statusText}`);
+    throw new Error(data.message || data.msg || data.mensaje || data.error || `Error ${res.status}: ${res.statusText}`);
   }
 
   return data;
