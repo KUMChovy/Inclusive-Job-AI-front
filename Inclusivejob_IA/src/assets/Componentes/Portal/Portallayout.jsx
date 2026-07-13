@@ -31,7 +31,7 @@ export default function PortalLayout({
     user: sessionUser,
     loading: checkingSession,
     allowed,
-  } = useSesion({ allowedRoles, fallbackUser: user, required: true });
+  } = useSesion({ allowedRoles, required: true });
   const currentUser = useMemo(() => normalizarUsuarioSesion(sessionUser || {}, user), [user, sessionUser]);
 
   useEffect(() => {

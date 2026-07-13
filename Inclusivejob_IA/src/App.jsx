@@ -212,9 +212,9 @@ function App() {
           ================================================================ */}
       <Route element={<ProtectedPortalLayout allowedRoles={['postulante']} />}>
         <Route element={<PostulanteFormularioGate />}>
+          <Route path="/formulario" element={<Formulario />} />
           <Route element={<PostulanteChatLayout />}>
             <Route path="/postulante" element={<PostulanteDashboard />} />
-            <Route path="/formulario" element={<Formulario />} />
             <Route path="/postulante/certificaciones" element={<Certificaciones />} />
             <Route path="/postulante/vacantes" element={<VacantesPos />} />
             <Route path="/postulante/postulaciones" element={<Mispostulaciones />} />
