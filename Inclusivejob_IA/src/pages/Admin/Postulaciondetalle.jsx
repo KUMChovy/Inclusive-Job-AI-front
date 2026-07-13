@@ -10,6 +10,7 @@ import { Badge, Button, ErrorBanner, Select } from '../../assets/Componentes/Adm
 import { usePostulacionAcciones, usePostulacionDetalle } from '../../assets/Hook/Admin/useDomain';
 import { ENDPOINTS } from '../../assets/Hook/Admin/apiAdmin';
 import { errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
+import PdfPreviewModal from '../../assets/Componentes/PdfPreviewModal';
 
 const ESTADO_BADGE = {
   pendiente: 'warning',
@@ -38,14 +39,22 @@ function postulanteName(data) {
   return data?.postulante ?? data?.nombre_postulante ?? (fullName || '-');
 }
 
-function InfoField({ icon: Icon, label, value, link }) {
+function InfoField({ icon: Icon, label, value, link, onClick }) {
   const display = value || '-';
   return (
     <div className="flex items-start gap-3 min-w-0">
       {Icon && <Icon size={15} className="text-slate-400 mt-0.5 flex-shrink-0" />}
       <div className="min-w-0">
         <p className="text-slate-400 text-xs">{label}</p>
-        {link && value ? (
+        {onClick && value ? (
+          <button
+            type="button"
+            onClick={onClick}
+            className="text-violet-400 hover:underline text-sm break-all bg-transparent border-0 p-0 cursor-pointer"
+          >
+            {display}
+          </button>
+        ) : link && value ? (
           <a href={link} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline text-sm break-all">
             {display}
           </a>
@@ -95,6 +104,7 @@ export default function PostulacionDetalle() {
   const { actualizarEstado } = usePostulacionAcciones();
   const [estado, setEstado] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState(null);
 
   const payload = data?.data ?? data ?? {};
   const postulacion = payload.postulacion;
@@ -106,6 +116,11 @@ export default function PostulacionDetalle() {
   const cvUrl = postulacion?.id_usuario && Number(postulante?.tiene_cv ?? 0)
     ? ENDPOINTS.usuarios.cv(postulacion.id_usuario)
     : '';
+
+  const openPdfPreview = (sourceUrl, title) => {
+    if (!sourceUrl) return;
+    setPdfPreview({ sourceUrl, title });
+  };
 
   const handleGuardarEstado = async () => {
     if (!selectedEstado || selectedEstado === postulacion.estado) return;
@@ -190,7 +205,12 @@ export default function PostulacionDetalle() {
             <TextBlock label="Experiencia laboral" value={postulanteValue(postulante, ['experiencia_laboral', 'experiencia'])} />
             <TextBlock label="Habilidades" value={postulante?.habilidades} />
             <TextBlock label="Esfuerzo físico posible" value={postulanteValue(postulante, ['esfuerzo_fisico_maximo', 'esfuerzo_fisico_posible'])} />
-            <InfoField icon={FileText} label="CV" value={cvUrl ? 'Ver CV' : '-'} link={cvUrl} />
+            <InfoField
+              icon={FileText}
+              label="CV"
+              value={cvUrl ? 'Ver CV' : '-'}
+              onClick={cvUrl ? () => openPdfPreview(cvUrl, `CV - ${postulanteName(postulacion)}`) : undefined}
+            />
           </div>
         </section>
 
@@ -237,14 +257,13 @@ export default function PostulacionDetalle() {
                   <p className="text-slate-400 text-xs">{getCertificacionInstitucion(cert)}</p>
                   <p className="text-slate-500 text-xs mt-1">{safeDate(getCertificacionFecha(cert))}</p>
                   {getCertificacionPdf(cert) && (
-                    <a
-                      href={getCertificacionPdf(cert)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex mt-2 text-xs text-violet-400 hover:underline"
+                    <button
+                      type="button"
+                      onClick={() => openPdfPreview(getCertificacionPdf(cert), cert.nombre_certificacion ?? cert.nombre ?? 'Certificado')}
+                      className="inline-flex mt-2 text-xs text-violet-400 hover:underline bg-transparent border-0 p-0 cursor-pointer"
                     >
                       Ver certificado
-                    </a>
+                    </button>
                   )}
                 </li>
               ))}
@@ -252,6 +271,21 @@ export default function PostulacionDetalle() {
           )}
         </section>
       </div>
+
+      <PdfPreviewModal
+        open={Boolean(pdfPreview)}
+        sourceUrl={pdfPreview?.sourceUrl}
+        title={pdfPreview?.title}
+        onClose={() => setPdfPreview(null)}
+        theme={{
+          bgSurface: '#111827',
+          bgElevated: '#1e293b',
+          border: 'rgba(148,163,184,0.22)',
+          textPrimary: '#fff',
+          textMuted: '#94a3b8',
+          accent: '#8b5cf6',
+        }}
+      />
     </div>
   );
 }

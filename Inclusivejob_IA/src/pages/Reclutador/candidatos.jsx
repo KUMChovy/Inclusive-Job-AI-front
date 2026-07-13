@@ -7,6 +7,7 @@ import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
 import BubleChat from "../Reclutador/ChatBot.jsx";
 import { errorAlert, successAlert } from "../../assets/Componentes/Admin/alerts";
 import { resolveAssetUrl } from "../../assets/Hook/Sesion/apiSesion";
+import PdfPreviewModal from "../../assets/Componentes/PdfPreviewModal";
 import {
   useCandidatosVacanteReclutador,
   useVacantesConCandidatosReclutador,
@@ -26,6 +27,7 @@ export default function Candidatos() {
   const [candidatoSeleccionado, setCandidatoSeleccionado] = useState(null);
   const [candidatoDestacado, setCandidatoDestacado] = useState(null);
   const [postulacionActualizando, setPostulacionActualizando] = useState(null);
+  const [pdfPreview, setPdfPreview] = useState(null);
 
   // NUEVO: control del boton "Mandar entrevista" dentro del perfil del
   // candidato. `entrevistaEnviando` guarda el id_postulacion mientras la
@@ -181,8 +183,25 @@ export default function Candidatos() {
     return id && Number(cert?.tiene_pdf ?? 0) ? ENDPOINTS.candidatos.certificacionPdf(id) : "";
   };
 
+  const openPdfPreview = (sourceUrl, title) => {
+    if (!sourceUrl) return;
+    setPdfPreview({ sourceUrl, title });
+  };
+
   return (
     <PortalLayout theme={t} navItems={reclutadorNav} pageTitle="Seguimiento de Candidatos">
+      <style>{`
+        @media (max-width: 920px) {
+          .reclutador-candidato-detalle-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .reclutador-cert-card {
+            align-items: flex-start !important;
+            flex-direction: column !important;
+          }
+        }
+      `}</style>
       {!vacanteSeleccionada && !candidatoSeleccionado && (
         <TableCard>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -289,7 +308,7 @@ export default function Candidatos() {
             <h2 style={{ color: t.textPrimary, margin: 0, fontSize: 18 }}>Perfil Profesional de {candidatoSeleccionado.nombre_completo}</h2>
             <EstadoPostulacion estado={candidatoSeleccionado.estado_postulacion} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.9fr) 2fr", gap: 20, alignItems: "start" }}>
+          <div className="reclutador-candidato-detalle-grid" style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.9fr) 2fr", gap: 20, alignItems: "start" }}>
             <div style={{ ...sectionStyle, display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <AvatarPostulante candidato={candidatoSeleccionado} />
@@ -309,9 +328,13 @@ export default function Candidatos() {
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {getCvUrl(candidatoSeleccionado) && (
-                  <a href={getCvUrl(candidatoSeleccionado)} target="_blank" rel="noreferrer" style={cvLinkStyle}>
+                  <button
+                    type="button"
+                    onClick={() => openPdfPreview(getCvUrl(candidatoSeleccionado), `CV - ${candidatoSeleccionado.nombre_completo}`)}
+                    style={{ ...cvLinkStyle, border: "none", cursor: "pointer" }}
+                  >
                     <FileText size={16} /> Ver CV
-                  </a>
+                  </button>
                 )}
                 {candidatoSeleccionado.portafolio_url && (
                   <a href={withProtocol(candidatoSeleccionado.portafolio_url)} target="_blank" rel="noreferrer" style={secondaryLinkStyle}>
@@ -386,16 +409,20 @@ export default function Candidatos() {
                 ) : (
                   <div style={{ display: "grid", gap: 10 }}>
                     {(candidatoSeleccionado.certificaciones || []).map((cert) => (
-                      <div key={cert.id_certificaciones ?? cert.id_certificacion} style={certCardStyle}>
+                      <div key={cert.id_certificaciones ?? cert.id_certificacion} className="reclutador-cert-card" style={certCardStyle}>
                         <div>
                           <strong style={{ color: t.textPrimary, fontSize: 13 }}>{cert.nombre_certificacion || cert.nombre}</strong>
                           <p style={{ color: t.textMuted, fontSize: 12, margin: "3px 0" }}>{cert.institucion_dada || cert.institucion || "-"}</p>
                           <p style={{ color: t.textMuted, fontSize: 11, margin: 0 }}>{safeDate(cert.fecha_emitido || cert.fecha_emision)}</p>
                         </div>
                         {getCertificacionPdfUrl(cert) && (
-                          <a href={getCertificacionPdfUrl(cert)} target="_blank" rel="noreferrer" style={miniLinkStyle}>
+                          <button
+                            type="button"
+                            onClick={() => openPdfPreview(getCertificacionPdfUrl(cert), cert.nombre_certificacion || cert.nombre || "Certificado")}
+                            style={{ ...miniLinkStyle, cursor: "pointer" }}
+                          >
                             Ver PDF
-                          </a>
+                          </button>
                         )}
                       </div>
                     ))}
@@ -464,6 +491,13 @@ export default function Candidatos() {
         </div>
       )}
       <BubleChat/>
+      <PdfPreviewModal
+        open={Boolean(pdfPreview)}
+        sourceUrl={pdfPreview?.sourceUrl}
+        title={pdfPreview?.title}
+        onClose={() => setPdfPreview(null)}
+        theme={t}
+      />
     </PortalLayout>
   );
 }

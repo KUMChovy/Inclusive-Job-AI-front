@@ -9,6 +9,7 @@ import {
 import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+import PdfPreviewModal from '../../assets/Componentes/PdfPreviewModal';
 import {
   useAnalisisCvIA,
   useDocumentosPostulante,
@@ -230,6 +231,7 @@ export default function PostulanteDashboard() {
   const [modalCert,    setModalCert]    = useState(false);
   const [guardandoCert,setGuardandoCert]= useState(false);
   const [editandoCert, setEditandoCert] = useState(null);
+  const [pdfPreview, setPdfPreview] = useState(null);
 
   // ← fecha agregada al estado
   const [formCert, setFormCert] = useState({
@@ -394,14 +396,17 @@ export default function PostulanteDashboard() {
   async function abrirCv() {
     try {
       if (cvPreviewUrl) {
-        window.open(cvPreviewUrl, '_blank', 'noopener,noreferrer');
+        setPdfPreview({ sourceUrl: cvPreviewUrl, title: 'Mi CV' });
         return;
       }
 
       const blob = await obtenerCvBlob();
-      const objectUrl = URL.createObjectURL(blob);
-      window.open(objectUrl, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      const nextUrl = URL.createObjectURL(blob);
+      setCvPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return nextUrl;
+      });
+      setPdfPreview({ sourceUrl: nextUrl, title: 'Mi CV' });
     } catch {
       await errorAlert(
         'No se pudo abrir el CV',
@@ -564,7 +569,12 @@ export default function PostulanteDashboard() {
         @media(max-width:900px){
           .cards-grid { grid-template-columns:1fr; }
           .cert-row   { flex-direction:column; gap:14px; }
-          .cert-btns  { flex-direction:row; }
+          .cert-btns  { flex-direction:row; flex-wrap:wrap; justify-content:flex-start !important; }
+          .cert-btns .ij-action-btn { flex:1 1 120px; justify-content:center; }
+        }
+        @media(max-width:560px){
+          .cert-btns { width:100%; }
+          .cert-btns .ij-action-btn { flex:1 1 100%; }
         }
         @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes ij-soft-float { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-3px); } }
@@ -665,7 +675,14 @@ export default function PostulanteDashboard() {
                         <small style={{ color:t.textMuted }}>{c.fecha}</small>
                       </div>
                       <div className="cert-btns" style={{ display:'flex', flexDirection:'row', gap:'10px', flexWrap:'wrap', justifyContent:'flex-end', alignItems:'center' }}>
-                        <ActionBtn icon={<Eye size={11}/>}    label="Ver"      onClick={() => window.open(`${CERT_URL}?id=${c.id}&archivo=1`,'_blank')} />
+                        <ActionBtn
+                          icon={<Eye size={11}/>}
+                          label="Ver"
+                          onClick={() => setPdfPreview({
+                            sourceUrl: `${CERT_URL}?id=${c.id}&archivo=1`,
+                            title: c.nombre || 'Certificado',
+                          })}
+                        />
                         <ActionBtn icon={<Pencil size={11}/>} label="Editar"   onClick={() => abrirEditarCert(c)} />
                         <ActionBtn icon={<Trash2 size={11}/>} label="Eliminar" onClick={() => eliminarCertificacion(c.id)} />
                       </div>
@@ -951,6 +968,13 @@ export default function PostulanteDashboard() {
           </div>
         </div>
       )}
+      <PdfPreviewModal
+        open={Boolean(pdfPreview)}
+        sourceUrl={pdfPreview?.sourceUrl}
+        title={pdfPreview?.title}
+        onClose={() => setPdfPreview(null)}
+        theme={t}
+      />
     </PortalLayout>
   );
 }

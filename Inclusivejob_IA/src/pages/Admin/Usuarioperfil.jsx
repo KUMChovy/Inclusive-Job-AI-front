@@ -11,6 +11,7 @@ import { useUsuarioAcciones, useUsuarioDetalle } from '../../assets/Hook/Admin/u
 import { ENDPOINTS } from '../../assets/Hook/Admin/apiAdmin';
 import { resolveAssetUrl } from '../../assets/Hook/Sesion/apiSesion';
 import { confirmSuspend, confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
+import PdfPreviewModal from '../../assets/Componentes/PdfPreviewModal';
 
 const ESTADO_BADGE = { activo: 'success', suspendido: 'danger', inactivo: 'default' };
 const ROL_BADGE = { administrador: 'purple', reclutador: 'info', postulante: 'default' };
@@ -148,6 +149,7 @@ export default function UsuarioPerfil() {
   const { data, loading, error, refetch } = useUsuarioDetalle(id);
   const { suspender, reactivar } = useUsuarioAcciones();
   const [actionLoading, setActionLoading] = useState(null);
+  const [pdfPreview, setPdfPreview] = useState(null);
 
   const detalle = data?.data ?? {};
   const usuario = detalle.usuario;
@@ -167,6 +169,11 @@ export default function UsuarioPerfil() {
   const cvUrl = usuario?.id_usuario && Number(postulante?.tiene_cv ?? 0)
     ? ENDPOINTS.usuarios.cv(usuario.id_usuario)
     : '';
+
+  const openPdfPreview = (sourceUrl, title) => {
+    if (!sourceUrl) return;
+    setPdfPreview({ sourceUrl, title });
+  };
 
   const runAction = async ({ type, request, title, text }) => {
     setActionLoading(type);
@@ -362,9 +369,9 @@ export default function UsuarioPerfil() {
               </div>
               <div className="flex gap-3 flex-wrap">
                 {cvUrl && (
-                  <a href={cvUrl} target="_blank" rel="noopener noreferrer">
-                    <Button variant="secondary" size="sm"><FileText size={13} /> Ver CV</Button>
-                  </a>
+                  <Button variant="secondary" size="sm" onClick={() => openPdfPreview(cvUrl, `CV - ${nombreCompleto(usuario)}`)}>
+                    <FileText size={13} /> Ver CV
+                  </Button>
                 )}
                 {postulante?.portafolio_url && (
                   <a href={withProtocol(postulante.portafolio_url)} target="_blank" rel="noopener noreferrer">
@@ -389,14 +396,13 @@ export default function UsuarioPerfil() {
                     <p className="text-slate-400 text-xs">{getCertificacionInstitucion(cert)}</p>
                     <p className="text-slate-500 text-xs mt-1">{safeDate(getCertificacionFecha(cert))}</p>
                     {getCertificacionPdf(cert) && (
-                      <a
-                        href={getCertificacionPdf(cert)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex mt-2 text-xs text-violet-400 hover:underline"
+                      <button
+                        type="button"
+                        onClick={() => openPdfPreview(getCertificacionPdf(cert), cert.nombre_certificacion ?? cert.nombre ?? 'Certificado')}
+                        className="inline-flex mt-2 text-xs text-violet-400 hover:underline bg-transparent border-0 p-0 cursor-pointer"
                       >
                         Ver certificado
-                      </a>
+                      </button>
                     )}
                   </li>
                 ))}
@@ -449,6 +455,21 @@ export default function UsuarioPerfil() {
           </section>
         )}
       </div>
+
+      <PdfPreviewModal
+        open={Boolean(pdfPreview)}
+        sourceUrl={pdfPreview?.sourceUrl}
+        title={pdfPreview?.title}
+        onClose={() => setPdfPreview(null)}
+        theme={{
+          bgSurface: '#111827',
+          bgElevated: '#1e293b',
+          border: 'rgba(148,163,184,0.22)',
+          textPrimary: '#fff',
+          textMuted: '#94a3b8',
+          accent: '#8b5cf6',
+        }}
+      />
     </div>
   );
 }
