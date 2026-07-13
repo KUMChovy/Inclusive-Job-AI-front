@@ -1,7 +1,7 @@
 ﻿// src/assets/Hook/Reclutador/apiReclutador.js
 // Centraliza la URL base y todos los endpoints del modulo Reclutador.
 
-export const BACKEND_URL = 'http://localhost/inclusijob_back/back-inclusiveJob';
+export const BACKEND_URL = 'https://mediumslateblue-stingray-893442.hostingersite.com';
 export const BASE_URL = `${BACKEND_URL}/Modelo/Reclutador`;
 
 const qs = (params = {}) => new URLSearchParams(params).toString();

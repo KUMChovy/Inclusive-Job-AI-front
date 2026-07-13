@@ -3,7 +3,7 @@
 // Aqui NO va logica de React ni llamadas fetch directas.
 // Cuando backend entregue rutas reales, agregarlas dentro de ENDPOINTS por dominio.
 
-export const BACKEND_URL = 'http://localhost/inclusijob_back/back-inclusiveJob';
+export const BACKEND_URL = 'https://mediumslateblue-stingray-893442.hostingersite.com';
 export const BASE_URL = `${BACKEND_URL}/Modelo/Postulante`;
 
 export const ENDPOINTS = {
