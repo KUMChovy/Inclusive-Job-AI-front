@@ -1,7 +1,7 @@
 const GOOGLE_API = {
-  registro: "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Google/registro_google.php",
-  login:    "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Google/login_google.php",
-  completar_password: "http://localhost/inclusijob_back/back-inclusiveJob/Modelo/Google/pass_google.php"
+  registro: "https://mediumslateblue-stingray-893442.hostingersite.com/Modelo/Google/registro_google.php",
+  login:    "https://mediumslateblue-stingray-893442.hostingersite.com/Modelo/Google/login_google.php",
+  completar_password: "https://mediumslateblue-stingray-893442.hostingersite.com/Modelo/Google/pass_google.php"
 };
 
 export default GOOGLE_API;

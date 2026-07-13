@@ -2,7 +2,7 @@
 // Centraliza endpoints y helpers de sesion para todo el front.
 
 
-export const BACKEND_URL = 'http://localhost/inclusijob_back/back-inclusiveJob';
+export const BACKEND_URL = 'https://mediumslateblue-stingray-893442.hostingersite.com';
 export const BASE_URL = `${BACKEND_URL}/Modelo/Sesion`;
 
 export const ENDPOINTS = {
