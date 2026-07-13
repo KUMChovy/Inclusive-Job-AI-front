@@ -6,15 +6,15 @@
 
 import { useState } from 'react';
 // ↓ 1. Importa el Layout genérico
-import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
+import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
 
 // ↓ 2. Elige UNO de los dos temas según el rol:
 import { reclutadorTheme } from '../../assets/Componentes/Portal/portalTheme';
 // import { postulantTheme }  from '../../assets/Componentes/Portal/portalTheme';
 
 // ↓ 3. Elige el menú de navegación segun el rol:
-import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
-// import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+import { reclutadorNav } from '../../assets/Componentes/Portal/Navitems';
+// import { postulantNav } from '../../assets/Componentes/Portal/Navitems';
 
 // ↓ 4. Iconos de Lucide es la que ocupe para los iconos bonitos
 import { Plus, Search } from 'lucide-react';

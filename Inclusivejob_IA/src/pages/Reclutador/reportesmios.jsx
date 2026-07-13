@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Bell, CheckCircle2, Eye, Flag, RefreshCw, X } from 'lucide-react';
-import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
+import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
-import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
+import { reclutadorNav } from '../../assets/Componentes/Portal/Navitems';
 import { Button, ErrorBanner, PageHeader, SearchBar } from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';

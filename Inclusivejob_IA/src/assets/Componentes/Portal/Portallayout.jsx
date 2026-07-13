@@ -1,8 +1,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import PortalSidebar from './PortalSidebar';
-import PortalHeader from './PortalHeader';
+import PortalSidebar from './Portalsidebar';
+import PortalHeader from './Portalheader';
 import { normalizarUsuarioSesion } from '../../Hook/Sesion/apiSesion';
 import { useSesion } from '../../Hook/Sesion/useSesion';
 

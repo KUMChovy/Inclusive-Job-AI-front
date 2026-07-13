@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Building2, DollarSign, Monitor, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
-import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
+import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
-import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
+import { reclutadorNav } from '../../assets/Componentes/Portal/Navitems';
 import { Badge, Button, ErrorBanner } from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import { confirmDelete, errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';

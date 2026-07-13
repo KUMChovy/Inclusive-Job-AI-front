@@ -8,9 +8,9 @@ import {
   ArrowRight, Sparkles, MapPin, Briefcase,
   ChevronRight, FileText, Bell,
 } from 'lucide-react';
-import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
+import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
-import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+import { postulantNav } from '../../assets/Componentes/Portal/Navitems';
 import { usePostulanteDashboard } from '../../assets/Hook/Postulante/useDomain';
 
 function useCountUp(end, duration = 1200) {

@@ -19,9 +19,9 @@ import {
   Globe,
 } from 'lucide-react';
 
-import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
+import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
-import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+import { postulantNav } from '../../assets/Componentes/Portal/Navitems';
 import { useRecomendacionVacantesIA, useVacantesPostulante } from '../../assets/Hook/Postulante/useDomain';
 import { BACKEND_URL } from '../../assets/Hook/Postulante/apiPostulante';
 

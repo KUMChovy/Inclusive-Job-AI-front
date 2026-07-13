@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
+import PortalLayout from "../../assets/Componentes/Portal/Portallayout";
 import { postulantTheme } from "../../assets/Componentes/Portal/portalTheme";
-import { postulantNav } from "../../assets/Componentes/Portal/navItems";
+import { postulantNav } from "../../assets/Componentes/Portal/Navitems";
 import { usePerfilPostulante } from "../../assets/Hook/Postulante/useDomain";
 
 const t = postulantTheme;

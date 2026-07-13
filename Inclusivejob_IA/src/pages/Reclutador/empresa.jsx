@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, Building, CheckCircle, Clock, FileText, Globe, MapPin, Phone, Save } from "lucide-react";
-import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
+import PortalLayout from "../../assets/Componentes/Portal/Portallayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
-import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
+import { reclutadorNav } from "../../assets/Componentes/Portal/Navitems";
 import BubleChat from "../Reclutador/ChatBot.jsx";
 import { useActualizarEmpresaReclutador, useEmpresaReclutador } from "../../assets/Hook/Reclutador/useDomain";
 

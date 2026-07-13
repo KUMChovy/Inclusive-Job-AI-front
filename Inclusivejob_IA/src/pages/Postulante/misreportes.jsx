@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { MapPin, Eye, X, Briefcase, Star, Calendar, Accessibility, Bookmark, CheckCircle } from 'lucide-react';
-import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
+import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
 import {
   postulantTheme as t,
 } from '../../assets/Componentes/Portal/portalTheme';
 import {
   postulantNav,
-} from '../../assets/Componentes/Portal/navItems';
+} from '../../assets/Componentes/Portal/Navitems';
 import { useReportesPostulante } from '../../assets/Hook/Postulante/useDomain';
 
 import {

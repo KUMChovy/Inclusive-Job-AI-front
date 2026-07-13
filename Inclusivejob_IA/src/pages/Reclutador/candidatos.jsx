@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Accessibility, ArrowLeft, Award, Briefcase, CheckCircle, Code, Eye, FileText, Globe, Mail, Mic, Phone, Sparkles, User, Users, XCircle } from "lucide-react";
-import PortalLayout from "../../assets/Componentes/Portal/PortalLayout";
+import PortalLayout from "../../assets/Componentes/Portal/Portallayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
-import { reclutadorNav } from "../../assets/Componentes/Portal/navItems";
+import { reclutadorNav } from "../../assets/Componentes/Portal/Navitems";
 import BubleChat from "../Reclutador/ChatBot.jsx";
 import { errorAlert, successAlert } from "../../assets/Componentes/Admin/alerts";
 import { resolveAssetUrl } from "../../assets/Hook/Sesion/apiSesion";

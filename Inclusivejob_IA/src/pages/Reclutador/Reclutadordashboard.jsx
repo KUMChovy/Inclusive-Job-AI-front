@@ -18,8 +18,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
-import { reclutadorNav } from '../../assets/Componentes/Portal/navItems';
+import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
+import { reclutadorNav } from '../../assets/Componentes/Portal/Navitems';
 import { reclutadorTheme as t } from '../../assets/Componentes/Portal/portalTheme';
 import { errorAlert, successAlert } from '../../assets/Componentes/Admin/alerts';
 import { resolveAssetUrl } from '../../assets/Hook/Sesion/apiSesion';

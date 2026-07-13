@@ -6,9 +6,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import PortalLayout from '../../assets/Componentes/Portal/PortalLayout';
+import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
 import { postulantTheme as t } from '../../assets/Componentes/Portal/portalTheme';
-import { postulantNav } from '../../assets/Componentes/Portal/navItems';
+import { postulantNav } from '../../assets/Componentes/Portal/Navitems';
 import PdfPreviewModal from '../../assets/Componentes/PdfPreviewModal';
 import {
   useAnalisisCvIA,
