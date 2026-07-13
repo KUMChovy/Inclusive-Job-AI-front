@@ -994,6 +994,7 @@ export default function Vacantes() {
       pageTitle="Vacantes"
       headerActions={
         <button
+          className="ij-vacantes-action"
           onClick={() => navigate('/postulante/postulaciones')}
           style={{
             display: 'flex', alignItems: 'center', gap: '6px',
@@ -1009,7 +1010,28 @@ export default function Vacantes() {
     >
       <style>{`
         @keyframes floatBlob { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(15px,-20px) scale(1.05)} }
+        @keyframes ij-soft-float { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-3px); } }
         .hero-blob { position:absolute; border-radius:50%; filter:blur(60px); pointer-events:none; animation:floatBlob 10s ease-in-out infinite; }
+        .ij-vacantes-action,
+        .ij-vacantes-ai-btn,
+        .ij-vacantes-floating-ai {
+          transition: transform .32s cubic-bezier(.22,1,.36,1), box-shadow .32s cubic-bezier(.22,1,.36,1), opacity .2s ease, border-color .25s ease;
+        }
+        .ij-vacantes-action:hover:not(:disabled),
+        .ij-vacantes-ai-btn:hover:not(:disabled),
+        .ij-vacantes-floating-ai:hover:not(:disabled) {
+          transform: translateY(-3px) scale(1.01);
+          box-shadow: 0 18px 38px rgba(37,99,235,.34), 0 0 22px rgba(124,58,237,.24) !important;
+        }
+        .ij-vacantes-floating-ai {
+          animation: ij-soft-float 7s ease-in-out infinite;
+        }
+        .ij-vacante-card {
+          transition: transform .28s cubic-bezier(.22,1,.36,1), background .22s ease, box-shadow .28s ease;
+        }
+        .ij-vacante-card:hover {
+          transform: translateY(-2px);
+        }
       `}</style>
 
       {vacanteSeleccionada && (
@@ -1074,6 +1096,7 @@ export default function Vacantes() {
 
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <button
+              className="ij-vacantes-ai-btn"
               onClick={handleRecomendarVacantes}
               disabled={cargandoRecomendacion}
               style={{
@@ -1174,6 +1197,7 @@ export default function Vacantes() {
                   const vacante = item.vacante ?? {};
                   return (
                     <button
+                      className="ij-vacante-card"
                       key={item.id_vacante}
                       onClick={() => abrirVacanteRecomendada(item)}
                       style={{
@@ -1243,6 +1267,7 @@ export default function Vacantes() {
                 const recomendacionIA = recomendacionesMap.get(Number(v.id_vacante));
                 return (
                 <div
+                  className="ij-vacante-card"
                   key={v.id_vacante}
                   style={{
                     padding: '20px',
@@ -1356,6 +1381,7 @@ export default function Vacantes() {
         </Card>
       </div>
       <button
+        className="ij-vacantes-floating-ai"
         onClick={handleRecomendarVacantes}
         disabled={cargandoRecomendacion}
         aria-label="Recomendar vacantes con IA"

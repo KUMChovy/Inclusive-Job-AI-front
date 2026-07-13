@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useEntrevistaIA } from "../assets/Hook/Postulante/useDomain";
 
 const COLORS = {
-  primary: "#4f46e5",
-  primaryDark: "#4338ca",
-  bg: "#f7f7fb",
-  border: "#e5e5ea",
+  primary: "#2563eb",
+  primaryDark: "#1e40af",
+  accent: "#7c3aed",
+  bg: "#eef6ff",
+  border: "#dbe7ff",
+  gradient: "linear-gradient(135deg, #1e40af 0%, #2563eb 42%, #7c3aed 72%, #06b6d4 100%)",
 };
 
 function CloseIcon({ size = 20 }) {
@@ -242,6 +244,14 @@ export default function EntrevistaModal({ vacante, onClose, onEvaluacionLista })
       </div>
 
       <style>{`
+        @keyframes entrevista-modal-in {
+          from { opacity: 0; transform: translateY(18px) scale(0.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes entrevista-message-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         @keyframes entrevista-typing-bounce {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
           30% { transform: translateY(-4px); opacity: 1; }
@@ -255,7 +265,8 @@ const styles = {
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(17, 17, 27, 0.55)",
+    background: "rgba(15, 23, 42, 0.62)",
+    backdropFilter: "blur(6px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -263,55 +274,58 @@ const styles = {
     padding: 16,
   },
   modal: {
-    width: 640,
+    width: 760,
     maxWidth: "100%",
     height: "80vh",
-    maxHeight: 720,
+    maxHeight: 760,
     background: "#fff",
-    borderRadius: 18,
-    boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+    borderRadius: 28,
+    boxShadow: "0 28px 90px rgba(15,23,42,0.38)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+    border: "1px solid rgba(219,231,255,0.95)",
+    animation: "entrevista-modal-in 0.28s cubic-bezier(.2,.9,.2,1)",
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
   header: {
-    background: COLORS.primary,
+    background: COLORS.gradient,
     color: "#fff",
-    padding: "16px 20px",
+    padding: "20px 24px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     flexShrink: 0,
   },
   headerTitle: {
-    fontWeight: 700,
-    fontSize: 16,
+    fontWeight: 850,
+    fontSize: 18,
+    letterSpacing: "-0.2px",
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     opacity: 0.85,
     marginTop: 2,
   },
   closeBtn: {
     background: "rgba(255,255,255,0.15)",
-    border: "none",
+    border: "1px solid rgba(255,255,255,0.24)",
     color: "#fff",
     cursor: "pointer",
     padding: 6,
-    borderRadius: 8,
+    borderRadius: 12,
     display: "flex",
     alignItems: "center",
   },
   messagesBox: {
     flex: 1,
     overflowY: "auto",
-    padding: 20,
+    padding: 24,
     display: "flex",
     flexDirection: "column",
     gap: 12,
-    background: COLORS.bg,
+    background: "radial-gradient(circle at top left, rgba(37,99,235,0.10), transparent 34%), linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%)",
   },
   systemNote: {
     alignSelf: "center",
@@ -322,24 +336,26 @@ const styles = {
   msg: {
     maxWidth: "80%",
     padding: "11px 15px",
-    borderRadius: 16,
+    borderRadius: 18,
     fontSize: 14.5,
     lineHeight: 1.45,
     wordWrap: "break-word",
     whiteSpace: "pre-line",
+    animation: "entrevista-message-in 0.22s ease-out",
   },
   msgBot: {
     alignSelf: "flex-start",
     background: "#fff",
     border: `1px solid ${COLORS.border}`,
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 7,
     color: "#1f1f1f",
   },
   msgUser: {
     alignSelf: "flex-end",
-    background: COLORS.primary,
+    background: COLORS.gradient,
     color: "#fff",
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 7,
+    boxShadow: "0 12px 28px rgba(37,99,235,0.22)",
   },
   typingRow: {
     alignSelf: "flex-start",
@@ -348,14 +364,14 @@ const styles = {
     padding: "10px 14px",
     background: "#fff",
     border: `1px solid ${COLORS.border}`,
-    borderRadius: 14,
-    borderBottomLeftRadius: 4,
+    borderRadius: 18,
+    borderBottomLeftRadius: 7,
   },
   dot: {
     width: 6,
     height: 6,
     borderRadius: "50%",
-    background: "#aaa",
+    background: COLORS.primary,
     animation: "entrevista-typing-bounce 1.1s infinite",
   },
   errorNote: {
@@ -371,7 +387,7 @@ const styles = {
     alignSelf: "stretch",
     background: "#fff",
     border: "1px solid #ddd6fe",
-    borderRadius: 14,
+    borderRadius: 18,
     padding: 16,
     boxShadow: "0 8px 20px rgba(79, 70, 229, 0.1)",
   },
@@ -428,8 +444,8 @@ const styles = {
   input: {
     flex: 1,
     border: "1px solid #e0e0e6",
-    borderRadius: 20,
-    padding: "10px 15px",
+    borderRadius: 18,
+    padding: "12px 15px",
     fontSize: 14,
     outline: "none",
     resize: "none",
@@ -437,12 +453,12 @@ const styles = {
     maxHeight: 90,
   },
   sendBtn: {
-    background: COLORS.primary,
+    background: COLORS.gradient,
     border: "none",
     color: "#fff",
-    width: 38,
-    height: 38,
-    borderRadius: "50%",
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
@@ -466,7 +482,7 @@ const styles = {
     border: "1px solid #e5e5ea",
     background: "#fff",
     color: "#4b5563",
-    borderRadius: 10,
+    borderRadius: 14,
     padding: "10px 14px",
     fontSize: 13.5,
     fontWeight: 700,
@@ -475,9 +491,9 @@ const styles = {
   finishBtn: {
     flex: 1,
     border: "none",
-    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)",
+    background: COLORS.gradient,
     color: "#fff",
-    borderRadius: 10,
+    borderRadius: 14,
     padding: "10px 14px",
     fontSize: 13.5,
     fontWeight: 800,

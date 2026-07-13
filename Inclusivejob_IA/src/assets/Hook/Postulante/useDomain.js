@@ -12,6 +12,65 @@ async function requestData(url, options) {
   return { ...data, httpOk: res.ok };
 }
 
+async function requestDocumentoData(url, {
+  method = 'GET',
+  body,
+} = {}) {
+  if (!url) throw new Error('La URL es requerida para ejecutar la peticion.');
+
+  const isFormData = body instanceof FormData;
+  const res = await fetch(url, {
+    method,
+    credentials: 'include',
+    headers: {
+      ...(!isFormData && body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(body !== undefined ? { body: isFormData || typeof body === 'string' ? body : JSON.stringify(body) } : {}),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  return { ...data, httpOk: res.ok };
+}
+
+function parseJsonFromResponseText(text) {
+  const raw = String(text ?? '').trim();
+  if (!raw) return {};
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+
+    if (start >= 0 && end > start) {
+      const possibleJson = raw.slice(start, end + 1);
+      try {
+        return JSON.parse(possibleJson);
+      } catch {
+        // Continua hacia el error descriptivo de abajo.
+      }
+    }
+  }
+
+  throw new Error(
+    `El backend no devolvio JSON valido: ${raw.slice(0, 220)}`
+  );
+}
+
+async function obtenerCvBlobPostulante() {
+  const res = await fetch(ENDPOINTS.documentos.cv, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  const contentType = res.headers.get('content-type') || '';
+  if (!res.ok || !contentType.includes('application/pdf')) {
+    throw new Error('No hay CV PDF disponible.');
+  }
+
+  return res.blob();
+}
+
 export function useFormularioPostulante() {
   const obtenerEstadoFormulario = useCallback(() => (
     requestData(ENDPOINTS.formulario.estado)
@@ -45,23 +104,28 @@ export function usePerfilPostulante() {
 
 export function useDocumentosPostulante() {
   const verificarCv = useCallback(async () => {
-    const { res } = await requestPostulante(ENDPOINTS.documentos.cv);
-    return res.ok;
+    const res = await fetch(ENDPOINTS.documentos.cv, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    return res.ok && res.headers.get('content-type')?.includes('application/pdf');
   }, []);
   const subirCv = useCallback((formData) => (
-    requestData(ENDPOINTS.documentos.cv, { method: 'POST', body: formData })
+    requestDocumentoData(ENDPOINTS.documentos.cv, { method: 'POST', body: formData })
   ), []);
   const listarCertificaciones = useCallback(() => (
-    requestData(ENDPOINTS.documentos.certificaciones)
+    requestDocumentoData(ENDPOINTS.documentos.certificaciones)
   ), []);
   const guardarCertificacion = useCallback((formData) => (
-    requestData(ENDPOINTS.documentos.certificaciones, { method: 'POST', body: formData })
+    requestDocumentoData(ENDPOINTS.documentos.certificaciones, { method: 'POST', body: formData })
   ), []);
   const eliminarCertificacion = useCallback((id) => (
-    requestData(ENDPOINTS.documentos.certificaciones, { method: 'DELETE', body: { id } })
+    requestDocumentoData(ENDPOINTS.documentos.certificaciones, { method: 'DELETE', body: { id } })
   ), []);
 
   return {
+    obtenerCvBlob: obtenerCvBlobPostulante,
     verificarCv,
     subirCv,
     listarCertificaciones,
@@ -239,7 +303,8 @@ export function useAnalisisCvIA() {
         body: JSON.stringify({ source: 'session_cv' }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const rawText = await res.text();
+      const data = parseJsonFromResponseText(rawText);
 
       if (!res.ok || data.ok === false) {
         throw new Error(data.message || data.msg || `Error ${res.status}: ${res.statusText}`);

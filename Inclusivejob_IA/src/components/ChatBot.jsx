@@ -11,14 +11,21 @@ import EntrevistaModal from "./modal_entrevista";
 import EntrevistaRealModal from "./modal_entrevista_real";
 
 const COLORS = {
-  primary: "#4f46e5",
-  primaryDark: "#4338ca",
-  bg: "#f7f7fb",
-  border: "#e5e5ea",
+  primary: "#2563eb",
+  primaryDark: "#1e40af",
+  accent: "#7c3aed",
+  cyan: "#06b6d4",
+  ink: "#0f172a",
+  muted: "#64748b",
+  bg: "#eef6ff",
+  surface: "#ffffff",
+  border: "#dbe7ff",
+  gradient: "linear-gradient(135deg, #1e40af 0%, #2563eb 42%, #7c3aed 72%, #06b6d4 100%)",
+  softGradient: "linear-gradient(180deg, #ffffff 0%, #f8fbff 58%, #eef6ff 100%)",
 };
 
 const DEFAULT_MESSAGES = [
-  { sender: "bot", text: "Hola! En que puedo ayudarte hoy?" },
+  { sender: "bot", text: "Hola, soy el Asistente InclusiveJob. Puedo ayudarte a encontrar vacantes, revisar tu CV o practicar una entrevista." },
 ];
 
 function cleanAiText(value) {
@@ -386,6 +393,8 @@ export default function ChatBubble() {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const openRef = useRef(open);
+  const quickActionsRef = useRef(null);
+  const quickDragRef = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
 
   useEffect(() => {
     openRef.current = open;
@@ -596,6 +605,63 @@ export default function ChatBubble() {
     }
   }
 
+  function handleQuickPointerDown(e) {
+    const el = quickActionsRef.current;
+    if (!el) return;
+    if (e.target.closest("button")) return;
+
+    quickDragRef.current = {
+      active: true,
+      startX: e.clientX,
+      scrollLeft: el.scrollLeft,
+      moved: false,
+    };
+    el.setPointerCapture?.(e.pointerId);
+    el.style.cursor = "grabbing";
+  }
+
+  function handleQuickPointerMove(e) {
+    const el = quickActionsRef.current;
+    const drag = quickDragRef.current;
+    if (!el || !drag.active) return;
+
+    e.preventDefault();
+    const delta = e.clientX - drag.startX;
+    if (Math.abs(delta) > 5) {
+      drag.moved = true;
+    }
+    el.scrollLeft = drag.scrollLeft - delta;
+  }
+
+  function handleQuickPointerEnd(e) {
+    const el = quickActionsRef.current;
+    quickDragRef.current.active = false;
+    if (!el) return;
+
+    el.releasePointerCapture?.(e.pointerId);
+    el.style.cursor = "grab";
+  }
+
+  function handleQuickWheel(e) {
+    const el = quickActionsRef.current;
+    if (!el) return;
+
+    const canScroll = el.scrollWidth > el.clientWidth;
+    if (!canScroll) return;
+
+    el.scrollLeft += e.deltaY || e.deltaX;
+  }
+
+  function handleQuickScroll(direction) {
+    const el = quickActionsRef.current;
+    if (!el) return;
+
+    el.scrollBy({
+      left: direction * 170,
+      behavior: "smooth",
+    });
+  }
+
   function handleOpenVacante(item) {
     const idVacante = getVacanteId(item);
     if (!idVacante) return;
@@ -664,6 +730,7 @@ export default function ChatBubble() {
   return (
     <>
       <button
+        type="button"
         onClick={toggleOpen}
         aria-label={open ? "Cerrar chat" : "Abrir chat"}
         style={styles.bubbleBtn}
@@ -675,11 +742,22 @@ export default function ChatBubble() {
       {open && (
         <div style={styles.window}>
           <div style={styles.header}>
-            <div style={styles.headerTitle}>
-              <span style={styles.statusDot} />
-              Asistente virtual
+            <div style={styles.headerIdentity}>
+              <div style={styles.assistantAvatar}>
+                <ChatIcon />
+              </div>
+              <div>
+                <div style={styles.headerTitle}>
+                  <span style={styles.statusDot} />
+                  Asistente InclusiveJob
+                </div>
+                <div style={styles.headerSubtitle}>
+                  Soporte inteligente para postulantes
+                </div>
+              </div>
             </div>
             <button
+              type="button"
               onClick={toggleOpen}
               aria-label="Cerrar chat"
               style={styles.closeBtn}
@@ -745,46 +823,90 @@ export default function ChatBubble() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div style={styles.quickActions}>
+          <div style={styles.quickActionsShell}>
             <button
-              onClick={handleRecommendVacantes}
-              disabled={isSending}
-              style={{
-                ...styles.quickActionBtn,
-                ...(isSending ? styles.quickActionBtnDisabled : {}),
-              }}
+              type="button"
+              aria-label="Ver preguntas anteriores"
+              className="inclusive-quick-nav"
+              onClick={() => handleQuickScroll(-1)}
+              style={{ ...styles.quickNavBtn, left: 8 }}
             >
-              Recomendar vacantes
+              ‹
             </button>
-            <button
-              onClick={handleReviewCv}
-              disabled={isSending}
-              style={{
-                ...styles.quickActionBtn,
-                ...(isSending ? styles.quickActionBtnDisabled : {}),
-              }}
+
+            <div
+              ref={quickActionsRef}
+              className="inclusive-quick-actions"
+              style={styles.quickActions}
+              onPointerDown={handleQuickPointerDown}
+              onPointerMove={handleQuickPointerMove}
+              onPointerUp={handleQuickPointerEnd}
+              onPointerCancel={handleQuickPointerEnd}
+              onPointerLeave={handleQuickPointerEnd}
+              onWheel={handleQuickWheel}
             >
-              Revisar CV
-            </button>
+              <button
+                type="button"
+                className="inclusive-quick-action"
+                onClick={handleRecommendVacantes}
+                disabled={isSending}
+                style={{
+                  ...styles.quickActionBtn,
+                  ...(isSending ? styles.quickActionBtnDisabled : {}),
+                }}
+              >
+                <span style={styles.quickActionIcon}>✦</span>
+                <span>Vacantes</span>
+              </button>
+              <button
+                type="button"
+                className="inclusive-quick-action"
+                onClick={handleReviewCv}
+                disabled={isSending}
+                style={{
+                  ...styles.quickActionBtn,
+                  ...(isSending ? styles.quickActionBtnDisabled : {}),
+                }}
+              >
+                <span style={styles.quickActionIcon}>CV</span>
+                <span>Revisar CV</span>
+              </button>
+              <button
+                type="button"
+                className="inclusive-quick-action"
+                onClick={handleSimularEntrevista}
+                disabled={isSending}
+                style={{
+                  ...styles.quickActionBtn,
+                  ...(isSending ? styles.quickActionBtnDisabled : {}),
+                }}
+              >
+                <span style={styles.quickActionIcon}>🎙</span>
+                <span>Entrevista</span>
+              </button>
+              <button
+                type="button"
+                className="inclusive-quick-action"
+                onClick={handleAppHelp}
+                disabled={isSending}
+                style={{
+                  ...styles.quickActionBtn,
+                  ...(isSending ? styles.quickActionBtnDisabled : {}),
+                }}
+              >
+                <span style={styles.quickActionIcon}>?</span>
+                <span>Ayuda</span>
+              </button>
+            </div>
+
             <button
-              onClick={handleSimularEntrevista}
-              disabled={isSending}
-              style={{
-                ...styles.quickActionBtn,
-                ...(isSending ? styles.quickActionBtnDisabled : {}),
-              }}
+              type="button"
+              aria-label="Ver más preguntas"
+              className="inclusive-quick-nav"
+              onClick={() => handleQuickScroll(1)}
+              style={{ ...styles.quickNavBtn, right: 8 }}
             >
-              Simular entrevista
-            </button>
-            <button
-              onClick={handleAppHelp}
-              disabled={isSending}
-              style={{
-                ...styles.quickActionBtn,
-                ...(isSending ? styles.quickActionBtnDisabled : {}),
-              }}
-            >
-              Ayuda
+              ›
             </button>
           </div>
 
@@ -799,6 +921,7 @@ export default function ChatBubble() {
               style={styles.input}
             />
             <button
+              type="button"
               onClick={handleSend}
               disabled={!input.trim() || isSending}
               aria-label="Enviar mensaje"
@@ -830,9 +953,39 @@ export default function ChatBubble() {
       )}
 
       <style>{`
+        @keyframes chat-window-in {
+          from { opacity: 0; transform: translateY(14px) scale(0.985); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes chat-message-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes chat-card-in {
+          from { opacity: 0; transform: translateY(6px) scale(0.99); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes chat-float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-3px); }
+        }
         @keyframes chat-typing-bounce {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
           30% { transform: translateY(-4px); opacity: 1; }
+        }
+        .inclusive-quick-actions::-webkit-scrollbar { height: 5px; }
+        .inclusive-quick-actions::-webkit-scrollbar-track { background: #eff6ff; border-radius: 999px; }
+        .inclusive-quick-actions::-webkit-scrollbar-thumb { background: linear-gradient(90deg,#bfdbfe,#c4b5fd); border-radius: 999px; }
+        .inclusive-quick-actions { scrollbar-width: thin; scrollbar-color: #bfdbfe #eff6ff; }
+        .inclusive-quick-action:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(37,99,235,0.13);
+          border-color: #bfdbfe;
+        }
+        .inclusive-quick-nav:hover {
+          transform: translateY(-50%) scale(1.04);
+          box-shadow: 0 10px 22px rgba(37,99,235,0.18);
+          border-color: #bfdbfe;
         }
       `}</style>
     </>
@@ -842,149 +995,216 @@ export default function ChatBubble() {
 const styles = {
   bubbleBtn: {
     position: "fixed",
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: "50%",
-    background: COLORS.primary,
+    bottom: 28,
+    right: 28,
+    width: 62,
+    height: 62,
+    borderRadius: 20,
+    background: COLORS.gradient,
     color: "#fff",
-    border: "none",
+    border: "1px solid rgba(255,255,255,0.32)",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+    boxShadow: "0 18px 40px rgba(37, 99, 235, 0.42)",
     zIndex: 999999,
+    animation: "chat-float 7s ease-in-out infinite",
   },
   badge: {
     position: "absolute",
-    top: -2,
-    right: -2,
-    background: "#ef4444",
+    top: -5,
+    right: -5,
+    background: "linear-gradient(135deg, #ef4444 0%, #f97316 100%)",
     color: "#fff",
     fontSize: 11,
     fontWeight: 600,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 999,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     padding: "0 4px",
+    border: "2px solid #fff",
+    boxShadow: "0 8px 18px rgba(239,68,68,0.35)",
   },
   window: {
     position: "fixed",
-    bottom: 96,
-    right: 24,
-    width: 340,
+    bottom: 102,
+    right: 28,
+    width: 400,
     maxWidth: "calc(100vw - 32px)",
-    height: 460,
-    maxHeight: "calc(100vh - 140px)",
-    background: "#fff",
-    borderRadius: 16,
-    boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+    height: 560,
+    maxHeight: "calc(100vh - 126px)",
+    background: COLORS.surface,
+    borderRadius: 28,
+    boxShadow: "0 28px 80px rgba(15,23,42,0.28)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+    border: "1px solid rgba(219,231,255,0.95)",
     zIndex: 999999,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    animation: "chat-window-in 0.42s cubic-bezier(.22,1,.36,1)",
   },
   header: {
-    background: COLORS.primary,
+    background: COLORS.gradient,
     color: "#fff",
-    padding: "14px 16px",
+    padding: "16px 18px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     flexShrink: 0,
+    position: "relative",
+    overflow: "hidden",
+  },
+  headerIdentity: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    position: "relative",
+    zIndex: 1,
+  },
+  assistantAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    background: "rgba(255,255,255,0.18)",
+    border: "1px solid rgba(255,255,255,0.32)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.24)",
   },
   headerTitle: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
+    gap: 7,
+    fontWeight: 850,
+    fontSize: 16,
+    letterSpacing: "-0.2px",
+  },
+  headerSubtitle: {
+    marginTop: 2,
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 12,
     fontWeight: 600,
-    fontSize: 15,
   },
   statusDot: {
-    width: 8,
-    height: 8,
+    width: 9,
+    height: 9,
     borderRadius: "50%",
     background: "#22c55e",
+    boxShadow: "0 0 0 4px rgba(34,197,94,0.18)",
   },
   closeBtn: {
-    background: "none",
-    border: "none",
+    background: "rgba(255,255,255,0.14)",
+    border: "1px solid rgba(255,255,255,0.24)",
     color: "#fff",
     cursor: "pointer",
-    opacity: 0.85,
-    padding: 4,
+    opacity: 0.95,
+    padding: 7,
+    borderRadius: 12,
     display: "flex",
     alignItems: "center",
+    position: "relative",
+    zIndex: 1,
+  },
+  heroHint: {
+    padding: "14px 18px 12px",
+    background: "linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%)",
+    borderBottom: `1px solid ${COLORS.border}`,
+    display: "flex",
+    flexDirection: "column",
+    gap: 3,
+    flexShrink: 0,
+  },
+  heroEyebrow: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: 850,
+    textTransform: "uppercase",
+    letterSpacing: "0.7px",
+  },
+  heroTitle: {
+    color: COLORS.ink,
+    fontSize: 15,
+    letterSpacing: "-0.2px",
+  },
+  heroText: {
+    color: COLORS.muted,
+    fontSize: 12.5,
+    lineHeight: 1.35,
   },
   messagesBox: {
     flex: 1,
     overflowY: "auto",
-    padding: 16,
+    padding: "18px 18px 16px",
     display: "flex",
     flexDirection: "column",
-    gap: 10,
-    background: COLORS.bg,
+    gap: 12,
+    background: "radial-gradient(circle at top left, rgba(37,99,235,0.10), transparent 34%), linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%)",
   },
   msg: {
-    maxWidth: "78%",
-    padding: "9px 13px",
-    borderRadius: 14,
+    maxWidth: "80%",
+    padding: "11px 14px",
+    borderRadius: 18,
     fontSize: 14,
-    lineHeight: 1.4,
+    lineHeight: 1.48,
     wordWrap: "break-word",
     whiteSpace: "pre-line",
+    animation: "chat-message-in 0.34s cubic-bezier(.22,1,.36,1)",
   },
   msgBot: {
     alignSelf: "flex-start",
     background: "#fff",
     border: `1px solid ${COLORS.border}`,
-    borderBottomLeftRadius: 4,
-    color: "#1f1f1f",
+    borderBottomLeftRadius: 7,
+    color: COLORS.ink,
+    boxShadow: "0 10px 26px rgba(15,23,42,0.06)",
   },
   msgRecommendations: {
-    maxWidth: "92%",
-    width: "92%",
+    maxWidth: "96%",
+    width: "96%",
   },
   recommendationsList: {
     display: "grid",
-    gap: 8,
-    marginTop: 10,
+    gap: 10,
+    marginTop: 12,
   },
   recommendationCard: {
-    border: "1px solid #ddd6fe",
-    borderRadius: 12,
-    background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
-    padding: 10,
-    boxShadow: "0 8px 20px rgba(79, 70, 229, 0.08)",
+    border: "1px solid #bfdbfe",
+    borderRadius: 18,
+    background: COLORS.softGradient,
+    padding: 14,
+    boxShadow: "0 14px 32px rgba(37, 99, 235, 0.12)",
+    position: "relative",
+    overflow: "hidden",
+    animation: "chat-card-in 0.42s cubic-bezier(.22,1,.36,1) both",
   },
   recommendationTop: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
-    marginBottom: 7,
+    marginBottom: 9,
   },
   recommendationBadge: {
     display: "inline-flex",
     alignItems: "center",
     borderRadius: 999,
-    background: "#eef2ff",
-    border: "1px solid #c4b5fd",
-    color: "#5b21b6",
+    background: "linear-gradient(135deg, #eef2ff 0%, #e0f2fe 100%)",
+    border: "1px solid #bfdbfe",
+    color: COLORS.primaryDark,
     fontSize: 11,
     fontWeight: 800,
-    padding: "3px 8px",
+    padding: "4px 9px",
     whiteSpace: "nowrap",
   },
   recommendationMode: {
-    color: "#64748b",
+    color: COLORS.muted,
     fontSize: 11,
     fontWeight: 700,
     overflow: "hidden",
@@ -993,35 +1213,35 @@ const styles = {
   },
   recommendationTitle: {
     display: "block",
-    color: "#111827",
-    fontSize: 13,
-    lineHeight: 1.25,
-    marginBottom: 2,
+    color: COLORS.ink,
+    fontSize: 14,
+    lineHeight: 1.3,
+    marginBottom: 3,
   },
   recommendationCompany: {
     display: "block",
-    color: "#64748b",
+    color: COLORS.muted,
     fontSize: 12,
     fontWeight: 700,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   recommendationReason: {
-    margin: "0 0 9px",
+    margin: "0 0 11px",
     color: "#475569",
-    fontSize: 12,
-    lineHeight: 1.35,
+    fontSize: 12.5,
+    lineHeight: 1.45,
   },
   recommendationButton: {
     width: "100%",
     border: "none",
-    borderRadius: 10,
-    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)",
+    borderRadius: 14,
+    background: COLORS.gradient,
     color: "#fff",
-    padding: "8px 10px",
-    fontSize: 12,
+    padding: "10px 12px",
+    fontSize: 12.5,
     fontWeight: 800,
     cursor: "pointer",
-    boxShadow: "0 8px 18px rgba(79, 70, 229, 0.22)",
+    boxShadow: "0 12px 24px rgba(37, 99, 235, 0.24)",
   },
   recommendationButtonDisabled: {
     opacity: 0.55,
@@ -1030,23 +1250,23 @@ const styles = {
   cvAnalysisButton: {
     width: "100%",
     border: "none",
-    borderRadius: 10,
-    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #0ea5e9 100%)",
+    borderRadius: 14,
+    background: COLORS.gradient,
     color: "#fff",
-    padding: "8px 10px",
-    fontSize: 12,
+    padding: "10px 12px",
+    fontSize: 12.5,
     fontWeight: 800,
     cursor: "pointer",
     marginTop: 10,
-    boxShadow: "0 8px 18px rgba(79, 70, 229, 0.22)",
+    boxShadow: "0 12px 24px rgba(37, 99, 235, 0.24)",
   },
   entrevistaSolicitadaCard: {
-    marginTop: 10,
+    marginTop: 12,
     border: "1px solid #fde68a",
-    borderRadius: 12,
+    borderRadius: 18,
     background: "linear-gradient(180deg, #fffbeb 0%, #fff8e8 100%)",
-    padding: 10,
-    boxShadow: "0 8px 20px rgba(217, 119, 6, 0.1)",
+    padding: 14,
+    boxShadow: "0 14px 30px rgba(217, 119, 6, 0.12)",
   },
   entrevistaSolicitadaTop: {
     display: "flex",
@@ -1062,16 +1282,16 @@ const styles = {
     color: "#92400e",
     fontSize: 11,
     fontWeight: 800,
-    padding: "3px 9px",
+    padding: "4px 10px",
     whiteSpace: "nowrap",
   },
   entrevistaRealCard: {
-    marginTop: 10,
+    marginTop: 12,
     border: "1px solid #bbf7d0",
-    borderRadius: 12,
+    borderRadius: 18,
     background: "linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%)",
-    padding: 10,
-    boxShadow: "0 8px 20px rgba(16, 185, 129, 0.1)",
+    padding: 14,
+    boxShadow: "0 14px 30px rgba(16, 185, 129, 0.12)",
   },
   entrevistaRealBadge: {
     display: "inline-flex",
@@ -1083,58 +1303,118 @@ const styles = {
     color: "#065f46",
     fontSize: 11,
     fontWeight: 800,
-    padding: "3px 9px",
+    padding: "4px 10px",
     whiteSpace: "nowrap",
   },
   msgUser: {
     alignSelf: "flex-end",
-    background: COLORS.primary,
+    background: COLORS.gradient,
     color: "#fff",
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 7,
+    boxShadow: "0 12px 28px rgba(37,99,235,0.22)",
   },
   typingRow: {
     alignSelf: "flex-start",
     display: "flex",
-    gap: 4,
-    padding: "10px 14px",
+    gap: 5,
+    padding: "11px 15px",
     background: "#fff",
     border: `1px solid ${COLORS.border}`,
-    borderRadius: 14,
-    borderBottomLeftRadius: 4,
+    borderRadius: 18,
+    borderBottomLeftRadius: 7,
+    boxShadow: "0 10px 26px rgba(15,23,42,0.06)",
   },
   dot: {
-    width: 6,
-    height: 6,
+    width: 7,
+    height: 7,
     borderRadius: "50%",
-    background: "#aaa",
+    background: COLORS.primary,
     animation: "chat-typing-bounce 1.1s infinite",
   },
   inputRow: {
     display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: 10,
+    alignItems: "flex-end",
+    gap: 10,
+    padding: "12px 14px 14px",
     borderTop: `1px solid ${COLORS.border}`,
     background: "#fff",
     flexShrink: 0,
   },
-  quickActions: {
-    display: "flex",
-    gap: 8,
-    padding: "8px 10px 0",
+  quickActionsShell: {
+    position: "relative",
     background: "#fff",
     borderTop: `1px solid ${COLORS.border}`,
-    flexWrap: "wrap",
+    flexShrink: 0,
+    padding: "8px 36px 7px",
+  },
+  quickActions: {
+    display: "flex",
+    gap: 9,
+    padding: "2px 2px 7px",
+    background: "#fff",
+    overflowX: "auto",
+    overflowY: "hidden",
+    overscrollBehaviorX: "contain",
+    scrollBehavior: "smooth",
+    scrollSnapType: "x proximity",
+    WebkitOverflowScrolling: "touch",
+    cursor: "grab",
+    userSelect: "none",
+    touchAction: "pan-x",
+    position: "relative",
+    maskImage: "linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%)",
+    WebkitMaskImage: "linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%)",
+  },
+  quickNavBtn: {
+    position: "absolute",
+    top: "44%",
+    transform: "translateY(-50%)",
+    width: 27,
+    height: 31,
+    borderRadius: 12,
+    border: `1px solid ${COLORS.border}`,
+    background: "#f8fbff",
+    color: COLORS.primaryDark,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 24,
+    lineHeight: 1,
+    fontWeight: 900,
+    cursor: "pointer",
+    boxShadow: "0 8px 18px rgba(15,23,42,0.07)",
+    transition: "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease",
   },
   quickActionBtn: {
-    border: `1px solid ${COLORS.primary}`,
-    background: "#eef2ff",
-    color: COLORS.primaryDark,
-    borderRadius: 999,
-    padding: "7px 11px",
-    fontSize: 12,
-    fontWeight: 700,
+    border: `1px solid ${COLORS.border}`,
+    background: "#f8fbff",
+    color: COLORS.ink,
+    borderRadius: 16,
+    padding: "10px 11px",
+    minWidth: 138,
+    fontSize: 12.5,
+    fontWeight: 800,
     cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    boxShadow: "0 8px 18px rgba(15,23,42,0.05)",
+    transition: "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease",
+    flex: "0 0 auto",
+    scrollSnapAlign: "start",
+  },
+  quickActionIcon: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 9,
+    background: "linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%)",
+    color: COLORS.primaryDark,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 11,
+    fontWeight: 900,
   },
   quickActionBtnDisabled: {
     opacity: 0.55,
@@ -1142,30 +1422,35 @@ const styles = {
   },
   input: {
     flex: 1,
-    border: `1px solid #e0e0e6`,
-    borderRadius: 20,
-    padding: "9px 14px",
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    padding: "12px 14px",
     fontSize: 14,
     outline: "none",
     resize: "none",
     fontFamily: "inherit",
-    maxHeight: 90,
+    maxHeight: 110,
+    background: "#f8fbff",
+    color: COLORS.ink,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8)",
   },
   sendBtn: {
-    background: COLORS.primary,
+    background: COLORS.gradient,
     border: "none",
     color: "#fff",
-    width: 36,
-    height: 36,
-    borderRadius: "50%",
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    boxShadow: "0 12px 26px rgba(37,99,235,0.28)",
   },
   sendBtnDisabled: {
-    background: "#c7c7d1",
+    background: "#cbd5e1",
+    boxShadow: "none",
     cursor: "not-allowed",
   },
 };

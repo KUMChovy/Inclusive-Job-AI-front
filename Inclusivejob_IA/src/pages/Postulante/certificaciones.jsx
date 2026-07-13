@@ -33,6 +33,7 @@ const HOY = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
 
 function parseStoredChatPayload(value) {
   if (!value) return null;
+  if (typeof value === 'object') return value;
 
   try {
     const parsed = JSON.parse(value);
@@ -63,6 +64,59 @@ function cleanAiValue(value) {
   return value;
 }
 
+function normalizeCvAnalysisResponse(data) {
+  const parsedPayload =
+    parseStoredChatPayload(data?.respuesta_ia) ??
+    parseStoredChatPayload(data?.respuesta) ??
+    parseStoredChatPayload(data?.data) ??
+    null;
+  const nestedPayload =
+    parseStoredChatPayload(data?.payload) ??
+    parseStoredChatPayload(data?.resultado) ??
+    null;
+  const analysis =
+    data?.analisis ??
+    data?.analysis ??
+    data?.resultado?.analisis ??
+    data?.data?.analisis ??
+    data?.payload?.analisis ??
+    parsedPayload?.analisis ??
+    nestedPayload?.analisis ??
+    null;
+
+  if (analysis) return cleanAiValue(analysis);
+
+  const summary =
+    data?.chat_resumen ??
+    data?.resumen_chat ??
+    data?.resumen ??
+    data?.text ??
+    data?.respuesta ??
+    data?.data?.chat_resumen ??
+    data?.data?.resumen_chat ??
+    data?.payload?.chat_resumen ??
+    data?.payload?.text ??
+    data?.message ??
+    data?.msg ??
+    parsedPayload?.chat_resumen ??
+    parsedPayload?.resumen_chat ??
+    parsedPayload?.text ??
+    nestedPayload?.chat_resumen ??
+    nestedPayload?.resumen_chat ??
+    nestedPayload?.text ??
+    null;
+
+  if (!summary) return null;
+
+  return {
+    resumen_chat: cleanAiText(summary),
+    diagnostico_ats: {
+      puntuacion: '-',
+      comentario: cleanAiText(summary),
+    },
+  };
+}
+
 /* ─── Componentes reutilizables ─────────────────────────── */
 
 function Card({ children, style = {} }) {
@@ -81,7 +135,7 @@ function SectionHead({ title, sub, action, onAction }) {
         {sub && <p style={{ margin:'4px 0 0', fontSize:'12px', color:t.textMuted }}>{sub}</p>}
       </div>
       {action && (
-        <button onClick={onAction} style={{ display:'flex', gap:'4px', alignItems:'center', border:'none', background:'transparent', cursor:'pointer', color:t.accent, fontWeight:600 }}>
+        <button type="button" onClick={onAction} style={{ display:'flex', gap:'4px', alignItems:'center', border:'none', background:'transparent', cursor:'pointer', color:t.accent, fontWeight:600 }}>
           {action}<ArrowRight size={13} />
         </button>
       )}
@@ -92,17 +146,21 @@ function SectionHead({ title, sub, action, onAction }) {
 function ActionBtn({ icon, label, onClick, disabled = false }) {
   return (
     <button
+      type="button"
+      className="ij-action-btn"
       onClick={onClick}
       disabled={disabled}
       style={{
-        display:'flex', alignItems:'center', gap:'6px',
-        padding:'8px 14px', borderRadius:'10px',
-        border:`1px solid ${t.border}`,
-        background: disabled ? '#f3f4f6' : '#fff',
+        display:'flex', alignItems:'center', gap:'7px',
+        padding:'9px 14px', borderRadius:'14px',
+        border: disabled ? '1px solid #e5e7eb' : '1px solid #dbeafe',
+        background: disabled ? '#f3f4f6' : 'linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        fontSize:'12px', fontWeight:600,
+        fontSize:'12px', fontWeight:800,
         opacity: disabled ? 0.6 : 1,
-        transition:'opacity .15s',
+        color:'#1e40af',
+        boxShadow: disabled ? 'none' : '0 8px 18px rgba(37,99,235,.08)',
+        transition:'transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s cubic-bezier(.22,1,.36,1), border-color .28s ease',
       }}
     >
       {icon}{label}
@@ -113,6 +171,8 @@ function ActionBtn({ icon, label, onClick, disabled = false }) {
 function AiGradientBtn({ icon, label, onClick, disabled = false }) {
   return (
     <button
+      type="button"
+      className="ij-ai-btn"
       onClick={onClick}
       disabled={disabled}
       style={{
@@ -133,6 +193,7 @@ function AiGradientBtn({ icon, label, onClick, disabled = false }) {
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.72 : 1,
         boxShadow:'0 14px 32px rgba(37,99,235,0.28), 0 0 18px rgba(124,58,237,0.22)',
+        transition:'transform .32s cubic-bezier(.22,1,.36,1), box-shadow .32s cubic-bezier(.22,1,.36,1), opacity .2s ease',
         whiteSpace:'nowrap',
       }}
     >
@@ -145,12 +206,12 @@ function AiGradientBtn({ icon, label, onClick, disabled = false }) {
 
 export default function PostulanteDashboard() {
   const {
+    obtenerCvBlob,
     verificarCv,
     subirCv,
     listarCertificaciones,
     guardarCertificacion: guardarCertificacionApi,
     eliminarCertificacion: eliminarCertificacionApi,
-    cvUrl: CV_URL,
     certificacionesUrl: CERT_URL,
   } = useDocumentosPostulante();
   const navigate = useNavigate();
@@ -160,6 +221,7 @@ export default function PostulanteDashboard() {
 
   const [subiendo, setSubiendo] = useState(false);
   const [tieneCV, setTieneCV]   = useState(null);
+  const [cvPreviewUrl, setCvPreviewUrl] = useState('');
   const [analisisCV, setAnalisisCV] = useState(null);
   const { analizarCV, loading: analizandoCV } = useAnalisisCvIA();
   const { cargarHistorial } = usePostulanteChatHistorial();
@@ -179,10 +241,39 @@ export default function PostulanteDashboard() {
 
   /* Verifica CV */
   useEffect(() => {
-    verificarCv()
-      .then(setTieneCV)
-      .catch(() => setTieneCV(false));
-  }, [verificarCv]);
+    let active = true;
+    let objectUrl = '';
+
+    async function cargarCvPreview() {
+      try {
+        const existeCv = await verificarCv();
+        if (!active) return;
+
+        setTieneCV(existeCv);
+        if (!existeCv) {
+          setCvPreviewUrl('');
+          return;
+        }
+
+        const blob = await obtenerCvBlob();
+        if (!active) return;
+
+        objectUrl = URL.createObjectURL(blob);
+        setCvPreviewUrl(objectUrl);
+      } catch {
+        if (!active) return;
+        setTieneCV(false);
+        setCvPreviewUrl('');
+      }
+    }
+
+    cargarCvPreview();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [obtenerCvBlob, verificarCv]);
 
   /* Carga certificaciones */
   useEffect(() => {
@@ -232,8 +323,14 @@ export default function PostulanteDashboard() {
           t
         );
         setTieneCV(true);
+        const blob = await obtenerCvBlob();
+        const nextUrl = URL.createObjectURL(blob);
+        setCvPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return nextUrl;
+        });
         if (iframeRef.current) {
-          iframeRef.current.src = `${CV_URL.split('?')[0]}?t=${Date.now()}`;
+          iframeRef.current.src = nextUrl;
         }
       } else {
         await errorAlert(
@@ -272,12 +369,43 @@ export default function PostulanteDashboard() {
 
     try {
       const data = await analizarCV();
-      setAnalisisCV(data.analisis ? cleanAiValue(data.analisis) : null);
+      const normalizedAnalysis = normalizeCvAnalysisResponse(data);
+
+      if (!normalizedAnalysis) {
+        await errorAlert(
+          'Respuesta incompleta',
+          'La IA respondio, pero no envio recomendaciones para mostrar.',
+          t
+        );
+        return;
+      }
+
+      setAnalisisCV(normalizedAnalysis);
     } catch (err) {
       console.error(err);
       await errorAlert(
         'No se pudo analizar',
         err instanceof Error ? err.message : 'No se pudo generar el analisis del CV.',
+        t
+      );
+    }
+  }
+
+  async function abrirCv() {
+    try {
+      if (cvPreviewUrl) {
+        window.open(cvPreviewUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const blob = await obtenerCvBlob();
+      const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch {
+      await errorAlert(
+        'No se pudo abrir el CV',
+        'No fue posible recuperar el archivo PDF en este momento.',
         t
       );
     }
@@ -416,12 +544,30 @@ export default function PostulanteDashboard() {
         .cards-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
         .cert-row   { display:flex; justify-content:space-between; align-items:flex-start; }
         .cert-btns  { display:flex; flex-direction:column; gap:8px; }
+        .ij-action-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          border-color: #bfdbfe;
+          box-shadow: 0 14px 28px rgba(37,99,235,.14);
+        }
+        .ij-ai-btn:hover:not(:disabled) {
+          transform: translateY(-3px) scale(1.015);
+          box-shadow: 0 18px 38px rgba(37,99,235,.34), 0 0 22px rgba(124,58,237,.26);
+        }
+        .ij-float-ai {
+          animation: ij-soft-float 7s ease-in-out infinite;
+          transition: transform .32s cubic-bezier(.22,1,.36,1), box-shadow .32s cubic-bezier(.22,1,.36,1), opacity .2s ease;
+        }
+        .ij-float-ai:hover:not(:disabled) {
+          transform: translateY(-3px) scale(1.015);
+          box-shadow: 0 18px 38px rgba(37,99,235,.34), 0 0 22px rgba(124,58,237,.26);
+        }
         @media(max-width:900px){
           .cards-grid { grid-template-columns:1fr; }
           .cert-row   { flex-direction:column; gap:14px; }
           .cert-btns  { flex-direction:row; }
         }
         @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes ij-soft-float { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-3px); } }
       `}</style>
 
       <div style={{ maxWidth:'1400px', margin:'0 auto' }}>
@@ -460,7 +606,7 @@ export default function PostulanteDashboard() {
                 </div>
               )}
               {tieneCV === true && (
-                <iframe ref={iframeRef} title="Vista previa CV" src={CV_URL}
+                <iframe ref={iframeRef} title="Vista previa CV" src={cvPreviewUrl || 'about:blank'}
                   style={{ width:'100%', height:'420px', border:'none', borderRadius:'12px', background:'#f8f9fb' }}
                 />
               )}
@@ -468,7 +614,7 @@ export default function PostulanteDashboard() {
             <input ref={fileInputRef} type="file" accept="application/pdf" style={{ display:'none' }} onChange={handleFileChange} />
             {tieneCV === true && (
               <div style={{ padding:'18px', display:'flex', justifyContent:'center', gap:'10px', flexWrap:'wrap' }}>
-                <ActionBtn icon={<Eye size={13}/>} label="Ver CV" onClick={() => window.open(CV_URL,'_blank')} />
+                <ActionBtn icon={<Eye size={13}/>} label="Ver CV" onClick={abrirCv} />
                 <ActionBtn
                   icon={subiendo ? <Loader size={13} style={{ animation:'spin 1s linear infinite' }}/> : <Upload size={13}/>}
                   label={subiendo ? 'Subiendo...' : 'Actualizar CV'}
@@ -650,6 +796,8 @@ export default function PostulanteDashboard() {
       </div>
 
       <button
+        type="button"
+        className="ij-float-ai"
         onClick={analizarCvActual}
         disabled={cvActionDisabled}
         aria-label="Mejorar CV con IA"
@@ -779,6 +927,7 @@ export default function PostulanteDashboard() {
             {/* FOOTER */}
             <div style={{ padding:'22px', display:'flex', justifyContent:'end', gap:'12px', borderTop:`1px solid ${t.border}`, background:'#fafafa' }}>
               <button
+                type="button"
                 disabled={guardandoCert}
                 onClick={() => setModalCert(false)}
                 style={{ height:'46px', padding:'0 18px', borderRadius:'14px', border:`1px solid ${t.border}`, background:'#fff', cursor:'pointer', fontWeight:700 }}
@@ -786,6 +935,7 @@ export default function PostulanteDashboard() {
                 Cancelar
               </button>
               <button
+                type="button"
                 disabled={guardandoCert}
                 onClick={guardarCertificacion}
                 style={{ height:'46px', padding:'0 20px', border:'none', borderRadius:'14px', background:'linear-gradient(135deg,#1e40af,#2563eb)', color:'#fff', fontWeight:700, display:'flex', alignItems:'center', gap:'10px', cursor:'pointer' }}
