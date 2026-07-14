@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Briefcase, Building, Camera, CheckCircle, Clock, Mail, Phone, Save, ShieldAlert, User } from "lucide-react";
+import { AlertCircle, Briefcase, Building, Camera, CheckCircle, Clock, Mail, Phone, Save, ShieldAlert, User, XCircle } from "lucide-react";
 import PortalLayout from "../../assets/Componentes/Portal/Portallayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/Navitems";
@@ -19,6 +19,65 @@ const INITIAL_FORM = {
   empresa_validada: 0,
 };
 
+const PAISES_LADA = [
+  { code: "+52", name: "Mexico" },
+  { code: "+1", name: "Estados Unidos" },
+  { code: "+34", name: "Espana" },
+  { code: "+54", name: "Argentina" },
+  { code: "+56", name: "Chile" },
+  { code: "+57", name: "Colombia" },
+  { code: "+51", name: "Peru" },
+  { code: "+58", name: "Venezuela" },
+  { code: "+502", name: "Guatemala" },
+  { code: "+503", name: "El Salvador" },
+  { code: "+504", name: "Honduras" },
+  { code: "+505", name: "Nicaragua" },
+  { code: "+506", name: "Costa Rica" },
+  { code: "+507", name: "Panama" },
+  { code: "+591", name: "Bolivia" },
+  { code: "+593", name: "Ecuador" },
+  { code: "+595", name: "Paraguay" },
+  { code: "+598", name: "Uruguay" },
+  { code: "+55", name: "Brasil" },
+];
+
+function getDefaultLada() {
+  return "+52";
+}
+
+function splitPhoneWithLada(phone = "") {
+  const clean = String(phone).trim().replace(/[^\d+]/g, "");
+  if (!clean) return { lada: getDefaultLada(), number: "" };
+
+  const ladas = [...PAISES_LADA].sort((a, b) => b.code.length - a.code.length);
+
+  if (clean.startsWith("+")) {
+    const lada = ladas.find((pais) => clean.startsWith(pais.code))?.code;
+    if (lada) return { lada, number: clean.slice(lada.length).replace(/\D/g, "") };
+  }
+
+  const digits = clean.replace(/\D/g, "");
+  if (digits.length > 10) {
+    const lada = ladas.find((pais) => {
+      const ladaDigits = pais.code.replace(/\D/g, "");
+      return digits.startsWith(ladaDigits) && digits.length > ladaDigits.length;
+    });
+
+    if (lada) {
+      const ladaDigits = lada.code.replace(/\D/g, "");
+      return { lada: lada.code, number: digits.slice(ladaDigits.length) };
+    }
+  }
+
+  return { lada: getDefaultLada(), number: digits };
+}
+
+function joinPhone(lada, number) {
+  const cleanLada = String(lada || "").replace(/\D/g, "");
+  const cleanNumber = String(number || "").replace(/\D/g, "");
+  return cleanNumber ? `${cleanLada}${cleanNumber}` : "";
+}
+
 export default function PerfilReclutador() {
   const { data, loading, error } = usePerfilReclutador();
   const { actualizarPerfil, loading: isSaving } = useActualizarPerfilReclutador();
@@ -26,10 +85,21 @@ export default function PerfilReclutador() {
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const [fotoFile, setFotoFile] = useState(null);
   const [fotoPreview, setFotoPreview] = useState("");
+  const [selectedLada, setSelectedLada] = useState(getDefaultLada());
+  const [phoneNumber, setPhoneNumber] = useState("");
   const fotoInputRef = useRef(null);
 
   useEffect(() => {
-    if (data?.data) setFormData((prev) => ({ ...prev, ...data.data }));
+    if (data?.data) {
+      const parsedPhone = splitPhoneWithLada(data.data.telefono);
+      setSelectedLada(parsedPhone.lada);
+      setPhoneNumber(parsedPhone.number);
+      setFormData((prev) => ({
+        ...prev,
+        ...data.data,
+        telefono: joinPhone(parsedPhone.lada, parsedPhone.number),
+      }));
+    }
   }, [data]);
 
   useEffect(() => {
@@ -45,6 +115,18 @@ export default function PerfilReclutador() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleLadaChange = (e) => {
+    const lada = e.target.value;
+    setSelectedLada(lada);
+    setFormData((prev) => ({ ...prev, telefono: joinPhone(lada, phoneNumber) }));
+  };
+
+  const handlePhoneNumberChange = (e) => {
+    const numero = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhoneNumber(numero);
+    setFormData((prev) => ({ ...prev, telefono: joinPhone(selectedLada, numero) }));
   };
 
   const handleFotoChange = (e) => {
@@ -71,12 +153,18 @@ export default function PerfilReclutador() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje({ texto: "", tipo: "" });
+    const telefonoCompleto = joinPhone(selectedLada, phoneNumber);
+
+    if (phoneNumber && phoneNumber.length !== 10) {
+      setMensaje({ texto: "El telefono debe tener exactamente 10 digitos, sin contar la LADA.", tipo: "error" });
+      return;
+    }
 
     try {
       const payload = new FormData();
       payload.append("nombres", formData.nombres || "");
       payload.append("apellidos", formData.apellidos || "");
-      payload.append("telefono", formData.telefono || "");
+      payload.append("telefono", telefonoCompleto);
       payload.append("empresa", formData.empresa || "");
       payload.append("puesto", formData.puesto || "");
       payload.append("sector", formData.sector || "No especificado");
@@ -85,6 +173,7 @@ export default function PerfilReclutador() {
       const result = await actualizarPerfil(payload);
       setFormData((prev) => ({
         ...prev,
+        telefono: telefonoCompleto,
         empresa_validada: result.data?.empresa_validada ?? prev.empresa_validada,
         foto_perfil: result.data?.foto_perfil ?? prev.foto_perfil,
       }));
@@ -110,13 +199,67 @@ export default function PerfilReclutador() {
   const fotoActual = fotoPreview || resolveAssetUrl(formData.foto_perfil);
 
   const renderEmpresaBadge = () => {
+    const estadoEmpresa = Number(formData.empresa_validada);
+
     if (!formData.empresa?.trim()) {
       return <StatusBadge color="#f59e0b" icon={AlertCircle} text="Empresa sin registrar" />;
     }
-    if (Number(formData.empresa_validada) === 1) {
+    if (estadoEmpresa === 1) {
       return <StatusBadge color="#10b981" icon={CheckCircle} text="Empresa validada" />;
     }
+    if (estadoEmpresa === 2) {
+      return <StatusBadge color="#ef4444" icon={XCircle} text="Empresa rechazada" />;
+    }
+    if (estadoEmpresa === 3) {
+      return <StatusBadge color="#64748b" icon={AlertCircle} text="Empresa suspendida" />;
+    }
     return <StatusBadge color="#3b82f6" icon={Clock} text="Pendiente de validacion" />;
+  };
+
+  const renderEmpresaAlert = () => {
+    const estadoEmpresa = Number(formData.empresa_validada);
+
+    if (estadoEmpresa === 1) return null;
+
+    if (estadoEmpresa === 2) {
+      return (
+        <div style={{ ...alertStyle, background: "rgba(239,68,68,0.10)", border: "1px dashed #ef4444", color: "#fca5a5", alignItems: "flex-start" }}>
+          <ShieldAlert size={20} />
+          <div>
+            <strong>Empresa rechazada</strong>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#fecaca" }}>
+              El administrador rechazo los datos de tu empresa. Corrige la informacion desde Mi Empresa y reenviala para una nueva revision.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (estadoEmpresa === 3) {
+      return (
+        <div style={{ ...alertStyle, background: "rgba(100,116,139,0.12)", border: "1px dashed #64748b", color: "#cbd5e1", alignItems: "flex-start" }}>
+          <ShieldAlert size={20} />
+          <div>
+            <strong>Empresa suspendida</strong>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: t.textSecondary }}>
+              Tu empresa esta suspendida. Contacta a administracion antes de publicar o modificar vacantes.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ ...alertStyle, background: "rgba(245,158,11,0.08)", border: "1px dashed #f59e0b", color: "#fbbf24", alignItems: "flex-start" }}>
+        <ShieldAlert size={20} />
+        <div>
+          <strong>Empresa pendiente de validacion</strong>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: t.textSecondary }}>
+            Registra tu organizacion y espera la validacion administrativa para publicar vacantes.
+          </p>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -135,17 +278,7 @@ export default function PerfilReclutador() {
       user={{ nombre: nombreCompleto, rol: "Reclutador", avatar: fotoActual, foto_perfil: fotoActual }}
     >
       <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
-        {Number(formData.empresa_validada) !== 1 && (
-          <div style={{ ...alertStyle, background: "rgba(239,68,68,0.08)", border: "1px dashed #ef4444", color: "#f87171", alignItems: "flex-start" }}>
-            <ShieldAlert size={20} />
-            <div>
-              <strong>Empresa no validada</strong>
-              <p style={{ margin: "4px 0 0", fontSize: 13, color: t.textSecondary }}>
-                Registra tu organizacion y espera la validacion administrativa para publicar vacantes.
-              </p>
-            </div>
-          </div>
-        )}
+        {renderEmpresaAlert()}
 
         {mensaje.texto && <Message message={mensaje} />}
 
@@ -214,10 +347,34 @@ export default function PerfilReclutador() {
                 </div>
               </Field>
               <Field label="Telefono de contacto">
-                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <Phone size={14} style={{ position: "absolute", left: 12, color: t.textMuted }} />
-                  <input name="telefono" value={formData.telefono || ""} onChange={handleChange} style={{ ...inputStyle, paddingLeft: 34 }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <select
+                    value={selectedLada}
+                    onChange={handleLadaChange}
+                    style={{ ...inputStyle, width: 118, padding: "10px 8px", flexShrink: 0 }}
+                  >
+                    {PAISES_LADA.map((pais) => (
+                      <option key={pais.code} value={pais.code}>
+                        {pais.code} · {pais.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+                    <Phone size={14} style={{ position: "absolute", left: 12, color: t.textMuted }} />
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      placeholder="10 digitos"
+                      value={phoneNumber}
+                      onChange={handlePhoneNumberChange}
+                      maxLength={10}
+                      style={{ ...inputStyle, paddingLeft: 34 }}
+                    />
+                  </div>
                 </div>
+                <span style={{ fontSize: 11, color: t.textMuted }}>
+                  Se guardara como {joinPhone(selectedLada, phoneNumber) || `${selectedLada} + numero`}.
+                </span>
               </Field>
             </div>
           </section>

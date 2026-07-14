@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Building, CheckCircle, Clock, FileText, Globe, MapPin, Phone, Save } from "lucide-react";
+import { AlertCircle, Building, CheckCircle, Clock, FileText, Globe, MapPin, Phone, Save, Send, XCircle } from "lucide-react";
 import PortalLayout from "../../assets/Componentes/Portal/Portallayout";
 import { reclutadorTheme as t } from "../../assets/Componentes/Portal/portalTheme";
 import { reclutadorNav } from "../../assets/Componentes/Portal/Navitems";
@@ -14,17 +14,68 @@ const INITIAL_COMPANY = {
   descripcion_empresa: "",
   direccion_empresa: "",
   empresa_validada: 0,
+  estado_validacion: 0,
+  empresa_rechazada: false,
+  requiere_reenvio: false,
 };
 
-function validateCompanyPhone(value) {
-  const raw = String(value ?? "").trim();
-  const digits = raw.replace(/\D/g, "");
+const PAISES_LADA = [
+  { code: "+52", name: "Mexico" },
+  { code: "+1", name: "Estados Unidos" },
+  { code: "+34", name: "Espana" },
+  { code: "+54", name: "Argentina" },
+  { code: "+56", name: "Chile" },
+  { code: "+57", name: "Colombia" },
+  { code: "+51", name: "Peru" },
+  { code: "+58", name: "Venezuela" },
+  { code: "+502", name: "Guatemala" },
+  { code: "+503", name: "El Salvador" },
+  { code: "+504", name: "Honduras" },
+  { code: "+505", name: "Nicaragua" },
+  { code: "+506", name: "Costa Rica" },
+  { code: "+507", name: "Panama" },
+  { code: "+591", name: "Bolivia" },
+  { code: "+593", name: "Ecuador" },
+  { code: "+595", name: "Paraguay" },
+  { code: "+598", name: "Uruguay" },
+  { code: "+55", name: "Brasil" },
+];
 
-  if (!raw) return "El numero de telefono es obligatorio.";
-  if (!/^[0-9+\s()-]+$/.test(raw)) return "El numero de telefono solo puede contener numeros, espacios, guiones o parentesis.";
-  if (digits.length < 10 || digits.length > 15) return "El numero de telefono debe tener entre 10 y 15 digitos.";
+function getDefaultLada() {
+  return "+52";
+}
 
-  return "";
+function splitPhoneWithLada(phone = "") {
+  const clean = String(phone).trim().replace(/[^\d+]/g, "");
+  if (!clean) return { lada: getDefaultLada(), number: "" };
+
+  const ladas = [...PAISES_LADA].sort((a, b) => b.code.length - a.code.length);
+
+  if (clean.startsWith("+")) {
+    const lada = ladas.find((pais) => clean.startsWith(pais.code))?.code;
+    if (lada) return { lada, number: clean.slice(lada.length).replace(/\D/g, "") };
+  }
+
+  const digits = clean.replace(/\D/g, "");
+  if (digits.length > 10) {
+    const lada = ladas.find((pais) => {
+      const ladaDigits = pais.code.replace(/\D/g, "");
+      return digits.startsWith(ladaDigits) && digits.length > ladaDigits.length;
+    });
+
+    if (lada) {
+      const ladaDigits = lada.code.replace(/\D/g, "");
+      return { lada: lada.code, number: digits.slice(ladaDigits.length) };
+    }
+  }
+
+  return { lada: getDefaultLada(), number: digits };
+}
+
+function joinPhone(lada, number) {
+  const cleanLada = String(lada || "").replace(/\D/g, "");
+  const cleanNumber = String(number || "").replace(/\D/g, "");
+  return cleanNumber ? `${cleanLada}${cleanNumber}` : "";
 }
 
 export default function MiEmpresa() {
@@ -32,9 +83,20 @@ export default function MiEmpresa() {
   const { actualizarEmpresa, loading: isSaving } = useActualizarEmpresaReclutador();
   const [companyData, setCompanyData] = useState(INITIAL_COMPANY);
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
+  const [selectedLada, setSelectedLada] = useState(getDefaultLada());
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   useEffect(() => {
-    if (data?.data) setCompanyData((prev) => ({ ...prev, ...data.data }));
+    if (data?.data) {
+      const parsedPhone = splitPhoneWithLada(data.data.telefono_empresa);
+      setSelectedLada(parsedPhone.lada);
+      setPhoneNumber(parsedPhone.number);
+      setCompanyData((prev) => ({
+        ...prev,
+        ...data.data,
+        telefono_empresa: joinPhone(parsedPhone.lada, parsedPhone.number),
+      }));
+    }
   }, [data]);
 
   useEffect(() => {
@@ -46,24 +108,51 @@ export default function MiEmpresa() {
     setCompanyData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleLadaChange = (e) => {
+    const lada = e.target.value;
+    setSelectedLada(lada);
+    setCompanyData((prev) => ({ ...prev, telefono_empresa: joinPhone(lada, phoneNumber) }));
+  };
+
+  const handlePhoneNumberChange = (e) => {
+    const numero = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhoneNumber(numero);
+    setCompanyData((prev) => ({ ...prev, telefono_empresa: joinPhone(selectedLada, numero) }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje({ texto: "", tipo: "" });
+    const telefonoCompleto = joinPhone(selectedLada, phoneNumber);
 
-    const telefonoError = validateCompanyPhone(companyData.telefono_empresa);
-    if (telefonoError) {
-      setMensaje({ texto: telefonoError, tipo: "error" });
+    if (!phoneNumber) {
+      setMensaje({ texto: "El numero de telefono es obligatorio.", tipo: "error" });
+      return;
+    }
+
+    if (phoneNumber.length !== 10) {
+      setMensaje({ texto: "El telefono debe tener exactamente 10 digitos, sin contar la LADA.", tipo: "error" });
       return;
     }
 
     try {
-      const result = await actualizarEmpresa(companyData);
-      setCompanyData((prev) => ({ ...prev, empresa_validada: result.data?.empresa_validada ?? prev.empresa_validada }));
+      const payload = { ...companyData, telefono_empresa: telefonoCompleto };
+      const result = await actualizarEmpresa(payload);
+      setCompanyData((prev) => ({
+        ...prev,
+        telefono_empresa: telefonoCompleto,
+        empresa_validada: result.data?.empresa_validada ?? prev.empresa_validada,
+        estado_validacion: result.data?.estado_validacion ?? result.data?.empresa_validada ?? prev.estado_validacion,
+        empresa_rechazada: result.data?.empresa_rechazada ?? false,
+        requiere_reenvio: result.data?.requiere_reenvio ?? false,
+      }));
       setMensaje({
-        texto: result.data?.cambio_nombre
+        texto: result.data?.reenvio_revision
+          ? "Datos reenviados correctamente. Tu empresa queda pendiente de nueva validacion."
+          : result.data?.cambio_nombre
           ? "Informacion guardada. La empresa queda pendiente de validacion."
           : "Datos corporativos actualizados correctamente.",
-        tipo: result.data?.cambio_nombre ? "warning" : "success",
+        tipo: (result.data?.reenvio_revision || result.data?.cambio_nombre) ? "warning" : "success",
       });
       setTimeout(() => setMensaje({ texto: "", tipo: "" }), 5000);
     } catch (err) {
@@ -83,6 +172,9 @@ export default function MiEmpresa() {
     <PortalLayout theme={t} navItems={reclutadorNav} pageTitle="Mi Empresa">
       <div style={{ maxWidth: 850, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
         <StatusCard companyData={companyData} />
+        {Number(companyData.estado_validacion ?? companyData.empresa_validada) === 2 && (
+          <RejectedNotice />
+        )}
         {mensaje.texto && <Message message={mensaje} />}
 
         <form onSubmit={handleSubmit} style={panelStyle}>
@@ -102,9 +194,34 @@ export default function MiEmpresa() {
               </IconInput>
             </Field>
             <Field label="Numero de telefono *">
-              <IconInput icon={Phone}>
-                <input type="tel" name="telefono_empresa" value={companyData.telefono_empresa || ""} onChange={handleChange} required style={{ ...inputStyle, paddingLeft: 34 }} />
-              </IconInput>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  value={selectedLada}
+                  onChange={handleLadaChange}
+                  style={{ ...inputStyle, width: 118, padding: "10px 8px", flexShrink: 0 }}
+                >
+                  {PAISES_LADA.map((pais) => (
+                    <option key={pais.code} value={pais.code}>
+                      {pais.code} · {pais.name}
+                    </option>
+                  ))}
+                </select>
+                <IconInput icon={Phone}>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="10 digitos"
+                    value={phoneNumber}
+                    onChange={handlePhoneNumberChange}
+                    maxLength={10}
+                    required
+                    style={{ ...inputStyle, paddingLeft: 34 }}
+                  />
+                </IconInput>
+              </div>
+              <span style={{ fontSize: 11, color: t.textMuted }}>
+                Se guardara como {joinPhone(selectedLada, phoneNumber) || `${selectedLada} + numero`}.
+              </span>
             </Field>
             <Field label="Direccion corporativa">
               <IconInput icon={MapPin}>
@@ -118,7 +235,12 @@ export default function MiEmpresa() {
 
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
             <button type="submit" disabled={isSaving} style={{ ...btnSaveStyle, opacity: isSaving ? 0.7 : 1 }}>
-              <Save size={16} /> {isSaving ? "Guardando..." : "Actualizar datos"}
+              {Number(companyData.estado_validacion ?? companyData.empresa_validada) === 2 ? <Send size={16} /> : <Save size={16} />}
+              {isSaving
+                ? "Guardando..."
+                : Number(companyData.estado_validacion ?? companyData.empresa_validada) === 2
+                  ? "Reenviar datos para revision"
+                  : "Actualizar datos"}
             </button>
           </div>
         </form>
@@ -129,13 +251,39 @@ export default function MiEmpresa() {
 }
 
 function StatusCard({ companyData }) {
+  const estado = Number(companyData.estado_validacion ?? companyData.empresa_validada);
+
   if (!companyData.nombre_empresa?.trim()) {
     return <CardStatus color="#f59e0b" icon={AlertCircle} title="Empresa sin registrar" text="Ingresa tus datos corporativos para iniciar el alta." />;
   }
-  if (Number(companyData.empresa_validada) === 1) {
+  if (estado === 1) {
     return <CardStatus color="#10b981" icon={CheckCircle} title="Organizacion validada" text="Tu cuenta puede publicar vacantes." />;
   }
+  if (estado === 2) {
+    return <CardStatus color="#ef4444" icon={XCircle} title="Empresa rechazada" text="El administrador rechazo los datos de tu empresa. Corrigelos y reenvialos para una nueva revision." />;
+  }
+  if (estado === 3) {
+    return <CardStatus color="#64748b" icon={AlertCircle} title="Empresa suspendida" text="Tu empresa fue suspendida. Contacta a administracion antes de operar nuevamente." />;
+  }
   return <CardStatus color="#3b82f6" icon={Clock} title="Validacion en curso" text="El equipo administrativo esta revisando tus datos comerciales." />;
+}
+
+function RejectedNotice() {
+  return (
+    <div style={rejectedNoticeStyle}>
+      <div style={rejectedIconStyle}>
+        <XCircle size={22} />
+      </div>
+      <div>
+        <h4 style={{ margin: 0, color: "#991b1b", fontSize: 15, fontWeight: 800 }}>
+          Tu empresa fue rechazada
+        </h4>
+        <p style={{ margin: "4px 0 0", color: "#7f1d1d", fontSize: 13, lineHeight: 1.5 }}>
+          Revisa y corrige los datos de tu empresa. Al guardar, la solicitud se enviara nuevamente al administrador y quedara pendiente de validacion.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function CardStatus({ color, icon: Icon, title, text }) {
@@ -161,7 +309,7 @@ function Field({ label, children, wide = false }) {
 
 function IconInput({ icon: Icon, children }) {
   return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+    <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
       <Icon size={14} style={{ position: "absolute", left: 12, color: t.textMuted }} />
       {children}
     </div>
@@ -188,3 +336,24 @@ const inputStyle = { background: t.bgSurface, border: `1px solid ${t.border}`, c
 const textareaStyle = { ...inputStyle, fontFamily: "inherit", lineHeight: "1.5", resize: "vertical" };
 const btnSaveStyle = { background: t.gradient, color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" };
 const alertBoxStyle = { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderRadius: 10, width: "100%", boxSizing: "border-box" };
+const rejectedNoticeStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 12,
+  padding: 16,
+  borderRadius: 14,
+  background: "linear-gradient(135deg, #fee2e2, #fff1f2)",
+  border: "1px solid #fca5a5",
+  boxShadow: "0 10px 24px rgba(239,68,68,0.12)",
+};
+const rejectedIconStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  background: "#fecaca",
+  color: "#dc2626",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};

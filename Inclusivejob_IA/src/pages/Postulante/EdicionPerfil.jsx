@@ -268,11 +268,18 @@ export default function PerfilPostulante() {
 
     const nombres   = (draft.nombres   || "").trim();
     const apellidos = (draft.apellidos || "").trim();
+    const telefonoCompleto = joinPhone(selectedLada, phoneNumber);
+
+    if (phoneNumber && phoneNumber.length !== 10) {
+      setSaveError("El teléfono debe tener exactamente 10 dígitos, sin contar la LADA.");
+      setSaving(false);
+      return;
+    }
 
     const fd = new FormData();
     fd.append("nombres",                nombres);
     fd.append("apellidos",              apellidos);
-    fd.append("telefono",               draft.tel);
+    fd.append("telefono",               telefonoCompleto);
     fd.append("experiencia",            draft.experiencia);
     fd.append("skills",                 JSON.stringify(draft.skills));
     fd.append("discapacidad",           JSON.stringify(draft.discapacidad));
@@ -294,6 +301,7 @@ export default function PerfilPostulante() {
       // Actualizar perfil con los nuevos datos
       setPerfil(prev => ({
         ...draft,
+        tel:         telefonoCompleto,
         nombre:      (nombres + " " + apellidos).trim(),
         nombres,
         apellidos,
@@ -587,6 +595,7 @@ export default function PerfilPostulante() {
                       <input
                         id="f-telefono"
                         type="tel"
+                        inputMode="numeric"
                         placeholder="10 dígitos"
                         style={{
                           flex:1,
@@ -602,7 +611,7 @@ export default function PerfilPostulante() {
                         }}
                         value={phoneNumber}
                         onChange={handlePhoneNumberChange}
-                        maxLength="15"
+                        maxLength="10"
                       />
                     </div>
                     <p style={{ fontSize:"11px", color:t.textMuted, marginTop:"4px" }}>

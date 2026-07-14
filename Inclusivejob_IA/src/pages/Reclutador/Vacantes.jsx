@@ -37,7 +37,9 @@ export default function VacantesReclutador() {
 
   const empresa = empresaData?.data ?? {};
   const empresaCargada = Boolean(empresaData);
-  const empresaAprobada = Number(empresa.empresa_validada ?? 0) === 1;
+  const empresaEstado = Number(empresa.estado_validacion ?? empresa.empresa_validada ?? 0);
+  const empresaAprobada = empresaEstado === 1;
+  const empresaRechazada = empresaEstado === 2 || empresa.empresa_rechazada === true || empresa.requiere_reenvio === true;
 
   const handleOpenModal = async (vacante = null) => {
     if (!vacante && !empresaCargada) {
@@ -47,8 +49,10 @@ export default function VacantesReclutador() {
 
     if (!vacante && !empresaAprobada) {
       await errorAlert(
-        'Empresa pendiente',
-        'No puedes publicar vacantes hasta que tu empresa sea aprobada por el administrador.',
+        empresaRechazada ? 'Empresa rechazada' : 'Empresa pendiente',
+        empresaRechazada
+          ? 'Tu empresa fue rechazada. Corrige y reenvia los datos corporativos para una nueva validacion.'
+          : 'No puedes publicar vacantes hasta que tu empresa sea aprobada por el administrador.',
         t
       );
       return;
@@ -196,7 +200,7 @@ export default function VacantesReclutador() {
             <button
               onClick={() => handleOpenModal()}
               disabled={!empresaCargada || !empresaAprobada}
-              title={!empresaCargada ? 'Validando empresa...' : !empresaAprobada ? 'Tu empresa debe estar aprobada para publicar vacantes' : 'Publicar vacante'}
+              title={!empresaCargada ? 'Validando empresa...' : !empresaAprobada ? empresaRechazada ? 'Tu empresa fue rechazada; reenvia sus datos para revision' : 'Tu empresa debe estar aprobada para publicar vacantes' : 'Publicar vacante'}
               className={`inline-flex items-center gap-2 text-white font-medium px-4 py-2 rounded-lg transition ${
                 empresaCargada && empresaAprobada
                   ? 'bg-purple-600 hover:bg-purple-700'
@@ -213,8 +217,10 @@ export default function VacantesReclutador() {
 
         {error && <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
         {empresaCargada && !empresaAprobada && (
-          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Tu empresa aún no está aprobada. Puedes revisar tus vacantes existentes, pero no publicar nuevas hasta que el administrador la valide.
+          <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${empresaRechazada ? 'border border-red-500/30 bg-red-500/10 text-red-100' : 'border border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
+            {empresaRechazada
+              ? 'Tu empresa fue rechazada. Corrige y reenvia sus datos desde Mi Empresa para poder publicar vacantes.'
+              : 'Tu empresa aún no está aprobada. Puedes revisar tus vacantes existentes, pero no publicar nuevas hasta que el administrador la valide.'}
           </div>
         )}
         {errorDiscapacidades && <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">No se pudo cargar el catalogo de discapacidades: {errorDiscapacidades}</div>}

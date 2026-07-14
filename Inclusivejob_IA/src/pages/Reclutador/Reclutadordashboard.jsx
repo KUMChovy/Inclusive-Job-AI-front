@@ -197,6 +197,9 @@ export default function ReclutadorDashboard() {
   const currentUser = dashboard?.user ?? {};
   const currentEmpresa = dashboard?.empresa ?? {};
   const currentUserAvatar = resolveAssetUrl(currentUser.avatar || currentUser.foto_perfil);
+  const empresaEstado = String(currentEmpresa.estado || '').toLowerCase();
+  const empresaEstadoValidacion = Number(currentEmpresa.estado_validacion ?? (currentEmpresa.aprobada ? 1 : 0));
+  const empresaRechazada = empresaEstado === 'rechazada' || empresaEstadoValidacion === 2 || currentEmpresa.requiere_reenvio === true;
   const empresaAprobada = Boolean(
     currentEmpresa && (currentEmpresa.aprobada ?? currentEmpresa.estado === 'aprobada')
   );
@@ -234,8 +237,10 @@ export default function ReclutadorDashboard() {
 
     if (!empresaAprobada) {
       await errorAlert(
-        'Empresa pendiente',
-        'No puedes publicar vacantes hasta que tu empresa sea validada.',
+        empresaRechazada ? 'Empresa rechazada' : 'Empresa pendiente',
+        empresaRechazada
+          ? 'Tu empresa fue rechazada. Corrige y reenvia los datos de tu empresa para una nueva validacion.'
+          : 'No puedes publicar vacantes hasta que tu empresa sea validada.',
         t
       );
       return;
@@ -343,19 +348,25 @@ export default function ReclutadorDashboard() {
         )}
 
         {!empresaAprobada && (
-          <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '14px', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ background: empresaRechazada ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.08)', border: `1px solid ${empresaRechazada ? 'rgba(239,68,68,0.30)' : 'rgba(245,158,11,0.25)'}`, borderRadius: '14px', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0 }} />
+              <AlertTriangle size={20} style={{ color: empresaRechazada ? '#ef4444' : '#f59e0b', flexShrink: 0 }} />
               <div>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#fbbf24' }}>Empresa pendiente de validacion</p>
-                <p style={{ margin: 0, fontSize: '12px', color: '#92400e' }}>Registra y espera que el administrador valide tu empresa para publicar vacantes.</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: empresaRechazada ? '#fca5a5' : '#fbbf24' }}>
+                  {empresaRechazada ? 'Empresa rechazada' : 'Empresa pendiente de validacion'}
+                </p>
+                <p style={{ margin: 0, fontSize: '12px', color: empresaRechazada ? '#fecaca' : '#92400e' }}>
+                  {empresaRechazada
+                    ? 'Corrige y reenvia los datos de tu empresa para que administracion pueda revisarla de nuevo.'
+                    : 'Registra y espera que el administrador valide tu empresa para publicar vacantes.'}
+                </p>
               </div>
             </div>
             <button
               onClick={() => navigate('/reclutador/empresa')}
-              style={{ background: '#f59e0b', border: 'none', borderRadius: '8px', padding: '8px 16px', color: '#1c1917', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+              style={{ background: empresaRechazada ? '#ef4444' : '#f59e0b', border: 'none', borderRadius: '8px', padding: '8px 16px', color: empresaRechazada ? '#fff' : '#1c1917', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
             >
-              Ver empresa
+              {empresaRechazada ? 'Reenviar datos' : 'Ver empresa'}
             </button>
           </div>
         )}
