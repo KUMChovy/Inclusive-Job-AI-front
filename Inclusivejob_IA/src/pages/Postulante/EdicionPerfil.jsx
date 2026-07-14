@@ -37,17 +37,34 @@ function splitPhoneWithLada(phone = "") {
   const clean = String(phone).trim().replace(/[^\d+]/g, "");
   if (!clean) return { lada: getDefaultLada(), number: "" };
 
-  const lada = [...PAISES_LADA]
-    .sort((a, b) => b.code.length - a.code.length)
-    .find(pais => clean.startsWith(pais.code))?.code;
+  const ladas = [...PAISES_LADA].sort((a, b) => b.code.length - a.code.length);
 
-  if (!lada) return { lada: getDefaultLada(), number: clean.replace(/\D/g, "") };
-  return { lada, number: clean.slice(lada.length).replace(/\D/g, "") };
+  if (clean.startsWith("+")) {
+    const lada = ladas.find(pais => clean.startsWith(pais.code))?.code;
+    if (lada) return { lada, number: clean.slice(lada.length).replace(/\D/g, "") };
+  }
+
+  const digits = clean.replace(/\D/g, "");
+
+  if (digits.length > 10) {
+    const lada = ladas.find((pais) => {
+      const ladaDigits = pais.code.replace(/\D/g, "");
+      return digits.startsWith(ladaDigits) && digits.length > ladaDigits.length;
+    });
+
+    if (lada) {
+      const ladaDigits = lada.code.replace(/\D/g, "");
+      return { lada: lada.code, number: digits.slice(ladaDigits.length) };
+    }
+  }
+
+  return { lada: getDefaultLada(), number: digits };
 }
 
 function joinPhone(lada, number) {
+  const cleanLada = String(lada || "").replace(/\D/g, "");
   const cleanNumber = String(number || "").replace(/\D/g, "");
-  return cleanNumber ? `${lada}${cleanNumber}` : "";
+  return cleanNumber ? `${cleanLada}${cleanNumber}` : "";
 }
 
 function getInitials(name) {

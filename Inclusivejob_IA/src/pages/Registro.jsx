@@ -34,6 +34,26 @@ const StrengthBar = ({ password }) => {
   );
 };
 
+const getPasswordIssues = (password = "") => {
+  const issues = [];
+
+  if (password.length < 8) issues.push("mínimo 8 caracteres");
+  if (password.length > 64) issues.push("máximo 64 caracteres");
+  if (!/[A-Z]/.test(password)) issues.push("una letra mayúscula");
+  if (!/[a-z]/.test(password)) issues.push("una letra minúscula");
+  if (!/\d/.test(password)) issues.push("un número");
+  if (!/[\W_]/.test(password)) issues.push("un carácter especial");
+
+  return issues;
+};
+
+const formatPasswordIssues = (issues) => {
+  if (issues.length === 0) return "";
+  if (issues.length === 1) return issues[0];
+  if (issues.length === 2) return `${issues[0]} y ${issues[1]}`;
+  return `${issues.slice(0, -1).join(", ")} y ${issues.at(-1)}`;
+};
+
 /* ================= MODAL CONTRASEÑA ================= */
 
 const PasswordModal = ({ isPostulante, onConfirm, userId, onClose }) => {
@@ -52,8 +72,10 @@ const PasswordModal = ({ isPostulante, onConfirm, userId, onClose }) => {
 const handleConfirm = async () => {
   if (loading) return;
 
+  const missingRequirements = getPasswordIssues(password);
+
   if (!passwordRegex.test(password)) {
-    setError("Mínimo 8 caracteres...");
+    setError(`A tu contraseña le falta: ${formatPasswordIssues(missingRequirements)}.`);
     return;
   }
 
