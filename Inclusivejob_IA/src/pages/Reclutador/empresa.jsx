@@ -8,7 +8,8 @@ import { useActualizarEmpresaReclutador, useEmpresaReclutador } from "../../asse
 
 const INITIAL_COMPANY = {
   nombre_empresa: "",
-  rfc_empresa: "",
+  rfc: "",
+  correo_empresa: "",
   sitio_web: "",
   telefono_empresa: "",
   descripcion_empresa: "",
@@ -78,6 +79,46 @@ function joinPhone(lada, number) {
   return cleanNumber ? `${cleanLada}${cleanNumber}` : "";
 }
 
+function validateCompanyEmail(value) {
+  const email = String(value ?? "").trim();
+  if (!email) return "El correo de la empresa es obligatorio.";
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!emailRegex.test(email)) return "Ingresa un correo de empresa valido.";
+  if (email.length > 150) return "El correo de empresa no debe superar 150 caracteres.";
+
+  return "";
+}
+
+function normalizeRfc(value) {
+  return String(value ?? "").toUpperCase().replace(/[\s-]/g, "");
+}
+
+function validateMexicanRfc(value) {
+  const rfc = normalizeRfc(value);
+  if (!rfc) return "El RFC de la empresa es obligatorio.";
+
+  const rfcRegex = /^([A-ZÑ&]{3,4})(\d{2})(\d{2})(\d{2})([A-Z0-9]{3})$/;
+  const match = rfc.match(rfcRegex);
+  if (!match) return "Ingresa un RFC mexicano valido. Ejemplo: ABC123456T12.";
+
+  const [, , yy, mm, dd] = match;
+  const month = Number(mm);
+  const day = Number(dd);
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return "La fecha del RFC no es valida.";
+  }
+
+  const fullYear = Number(yy) <= 30 ? 2000 + Number(yy) : 1900 + Number(yy);
+  const date = new Date(fullYear, month - 1, day);
+  const isValidDate = date.getFullYear() === fullYear
+    && date.getMonth() === month - 1
+    && date.getDate() === day;
+
+  return isValidDate ? "" : "La fecha del RFC no es valida.";
+}
+
 export default function MiEmpresa() {
   const { data, loading, error } = useEmpresaReclutador();
   const { actualizarEmpresa, loading: isSaving } = useActualizarEmpresaReclutador();
@@ -94,6 +135,7 @@ export default function MiEmpresa() {
       setCompanyData((prev) => ({
         ...prev,
         ...data.data,
+        rfc: data.data.rfc ?? data.data.rfc_empresa ?? "",
         telefono_empresa: joinPhone(parsedPhone.lada, parsedPhone.number),
       }));
     }
@@ -105,7 +147,7 @@ export default function MiEmpresa() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setCompanyData((prev) => ({ ...prev, [name]: value }));
+    setCompanyData((prev) => ({ ...prev, [name]: name === "rfc" ? normalizeRfc(value) : value }));
   };
 
   const handleLadaChange = (e) => {
@@ -124,6 +166,18 @@ export default function MiEmpresa() {
     e.preventDefault();
     setMensaje({ texto: "", tipo: "" });
     const telefonoCompleto = joinPhone(selectedLada, phoneNumber);
+    const rfcError = validateMexicanRfc(companyData.rfc);
+    const correoError = validateCompanyEmail(companyData.correo_empresa);
+
+    if (rfcError) {
+      setMensaje({ texto: rfcError, tipo: "error" });
+      return;
+    }
+
+    if (correoError) {
+      setMensaje({ texto: correoError, tipo: "error" });
+      return;
+    }
 
     if (!phoneNumber) {
       setMensaje({ texto: "El numero de telefono es obligatorio.", tipo: "error" });
@@ -136,7 +190,12 @@ export default function MiEmpresa() {
     }
 
     try {
-      const payload = { ...companyData, telefono_empresa: telefonoCompleto };
+      const payload = {
+        ...companyData,
+        rfc: normalizeRfc(companyData.rfc),
+        rfc_empresa: normalizeRfc(companyData.rfc),
+        telefono_empresa: telefonoCompleto,
+      };
       const result = await actualizarEmpresa(payload);
       setCompanyData((prev) => ({
         ...prev,
@@ -185,8 +244,31 @@ export default function MiEmpresa() {
             </Field>
             <Field label="RFC">
               <IconInput icon={FileText}>
-                <input name="rfc_empresa" value={companyData.rfc_empresa || ""} onChange={handleChange} style={{ ...inputStyle, paddingLeft: 34 }} />
+                <input
+                  name="rfc"
+                  value={companyData.rfc || ""}
+                  onChange={handleChange}
+                  required
+                  maxLength={13}
+                  placeholder="ABC123456T12"
+                  style={{ ...inputStyle, paddingLeft: 34, textTransform: "uppercase" }}
+                />
               </IconInput>
+              <span style={{ fontSize: 11, color: t.textMuted }}>
+                12 o 13 caracteres, sin espacios ni guiones.
+              </span>
+            </Field>
+            <Field label="Correo de empresa *">
+              <input
+                type="email"
+                name="correo_empresa"
+                value={companyData.correo_empresa || ""}
+                onChange={handleChange}
+                required
+                maxLength={150}
+                placeholder="contacto@empresa.com"
+                style={inputStyle}
+              />
             </Field>
             <Field label="Sitio web">
               <IconInput icon={Globe}>
