@@ -3,7 +3,7 @@ import { useRef, useState, useEffect } from 'react';
 import {
   ArrowRight, FileText, Eye, Pencil,
   Award, Upload, Loader, Trash2,
-  Sparkles,
+  Sparkles, Calendar,
 } from 'lucide-react';
 
 import PortalLayout from '../../assets/Componentes/Portal/Portallayout';
@@ -219,6 +219,7 @@ export default function PostulanteDashboard() {
 
   const fileInputRef = useRef(null);
   const iframeRef    = useRef(null);
+  const dateInputRef = useRef(null);
 
   const [subiendo, setSubiendo] = useState(false);
   const [tieneCV, setTieneCV]   = useState(null);
@@ -240,6 +241,19 @@ export default function PostulanteDashboard() {
     fecha: '',
     pdf: null,
   });
+
+  const abrirCalendarioCertificacion = () => {
+    const input = dateInputRef.current;
+    if (!input) return;
+
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+      return;
+    }
+
+    input.focus();
+    input.click();
+  };
 
   /* Verifica CV */
   useEffect(() => {
@@ -907,13 +921,41 @@ export default function PostulanteDashboard() {
                 <label style={{ display:'block', marginBottom:'8px', fontSize:'13px', fontWeight:700 }}>
                   Fecha de emisión
                 </label>
-                <input
-                  type="date"
-                  value={formCert.fecha}
-                  max={HOY}
-                  onChange={(e) => setFormCert({ ...formCert, fecha:e.target.value })}
-                  style={{ width:'100%', padding:'14px 16px', border:`1px solid ${t.border}`, borderRadius:'14px', background:'#f8fafc', outline:'none', fontSize:'14px' }}
-                />
+                <div style={{ position:'relative' }}>
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={formCert.fecha}
+                    max={HOY}
+                    onClick={abrirCalendarioCertificacion}
+                    onChange={(e) => setFormCert({ ...formCert, fecha:e.target.value })}
+                    style={{ width:'100%', padding:'14px 48px 14px 16px', border:`1px solid ${t.border}`, borderRadius:'14px', background:'#f8fafc', outline:'none', fontSize:'14px', cursor:'pointer' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={abrirCalendarioCertificacion}
+                    aria-label="Abrir calendario"
+                    title="Abrir calendario"
+                    style={{
+                      position:'absolute',
+                      right:'10px',
+                      top:'50%',
+                      transform:'translateY(-50%)',
+                      width:'32px',
+                      height:'32px',
+                      border:'none',
+                      borderRadius:'10px',
+                      background:'#e0f2fe',
+                      color:t.accent,
+                      display:'inline-flex',
+                      alignItems:'center',
+                      justifyContent:'center',
+                      cursor:'pointer',
+                    }}
+                  >
+                    <Calendar size={16} />
+                  </button>
+                </div>
               </div>
 
               {/* PDF */}

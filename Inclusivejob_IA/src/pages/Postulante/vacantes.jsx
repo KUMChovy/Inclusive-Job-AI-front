@@ -56,6 +56,18 @@ function getInitials(name) {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
+function normalizeModalidad(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function modalidadMatches(value, expected) {
+  return normalizeModalidad(value) === normalizeModalidad(expected);
+}
+
 // ── Sub-componentes ────────────────────────────────────────
 function Card({ children, style = {} }) {
   return (
@@ -885,7 +897,12 @@ export default function Vacantes() {
     }
   }, [recomendarVacantes]);
 
-  const modalidades = ['Todas', 'Remota', 'Híbrida', 'Presencial'];
+  const modalidades = [
+    { value: 'Todas', label: 'Todas' },
+    { value: 'Remoto', label: 'Remoto' },
+    { value: 'Hibrido', label: 'Híbrido' },
+    { value: 'Presencial', label: 'Presencial' },
+  ];
 
   useEffect(() => {
     const cargarVacantes = async () => {
@@ -912,7 +929,7 @@ export default function Vacantes() {
     let data = [...vacantes];
 
     if (modalidad !== 'Todas') {
-      data = data.filter((v) => v.modalidad === modalidad);
+      data = data.filter((v) => modalidadMatches(v.modalidad, modalidad));
     }
 
     if (search.trim()) {
@@ -921,7 +938,7 @@ export default function Vacantes() {
         (v) =>
           v.titulo_puesto.toLowerCase().includes(q) ||
           (v.empresa ?? '').toLowerCase().includes(q) ||
-          v.modalidad.toLowerCase().includes(q)
+          normalizeModalidad(v.modalidad).includes(normalizeModalidad(q))
       );
     }
 
@@ -1133,9 +1150,9 @@ export default function Vacantes() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
           {[
             { label: 'Vacantes encontradas',  value: vacantesFiltradas.length,                                             icon: Briefcase, color: '#2563eb' },
-            { label: 'Vacantes remotas',      value: vacantesFiltradas.filter((v) => v.modalidad === 'Remota').length,     icon: Sparkles,  color: '#0ea5e9' },
-            { label: 'Vacantes híbridas',     value: vacantesFiltradas.filter((v) => v.modalidad === 'Híbrida').length,    icon: Clock,     color: '#7c3aed' },
-            { label: 'Vacantes presenciales', value: vacantesFiltradas.filter((v) => v.modalidad === 'Presencial').length, icon: MapPin,    color: '#059669' },
+            { label: 'Vacantes remotas',      value: vacantesFiltradas.filter((v) => modalidadMatches(v.modalidad, 'Remoto')).length,     icon: Sparkles,  color: '#0ea5e9' },
+            { label: 'Vacantes híbridas',     value: vacantesFiltradas.filter((v) => modalidadMatches(v.modalidad, 'Hibrido')).length,    icon: Clock,     color: '#7c3aed' },
+            { label: 'Vacantes presenciales', value: vacantesFiltradas.filter((v) => modalidadMatches(v.modalidad, 'Presencial')).length, icon: MapPin,    color: '#059669' },
           ].map((s) => (
             <div
               key={s.label}
@@ -1240,8 +1257,8 @@ export default function Vacantes() {
           <SectionHead title="Filtrar vacantes" sub="Filtra por modalidad u ordena los resultados" />
           <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {modalidades.map((m) => (
-              <FilterButton key={m} active={modalidad === m} onClick={() => setModalidad(m)}>
-                {m}
+              <FilterButton key={m.value} active={modalidad === m.value} onClick={() => setModalidad(m.value)}>
+                {m.label}
               </FilterButton>
             ))}
             <div style={{ width: '1px', height: '20px', background: t.border, margin: '0 4px' }} />
