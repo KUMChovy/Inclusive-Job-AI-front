@@ -267,11 +267,15 @@ export default function VacantesReclutador() {
                     <td className="px-6 py-4 text-slate-400">{safeDate(vacante.fecha_cierre)}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => toggleEstado(vacante.id_vacante, vacante.estado)} className="text-slate-500 hover:text-purple-400 p-1.5">
-                          {vacante.estado === 'activa' ? <ToggleRight className="h-6 w-6 text-purple-500" /> : <ToggleLeft className="h-6 w-6" />}
-                        </button>
-                        <button onClick={() => handleOpenModal(vacante)} className="text-slate-500 hover:text-amber-400 p-1.5" title="Editar"><Edit className="h-4 w-4" /></button>
-                        <button onClick={() => handleEliminar(vacante.id_vacante)} className="text-slate-500 hover:text-red-400 p-1.5" title="Eliminar"><Trash2 className="h-4 w-4" /></button>
+                        {vacante.estado !== 'eliminada' && (
+                          <>
+                            <button onClick={() => toggleEstado(vacante.id_vacante, vacante.estado)} className="text-slate-500 hover:text-purple-400 p-1.5">
+                              {vacante.estado === 'activa' ? <ToggleRight className="h-6 w-6 text-purple-500" /> : <ToggleLeft className="h-6 w-6" />}
+                            </button>
+                            <button onClick={() => handleOpenModal(vacante)} className="text-slate-500 hover:text-amber-400 p-1.5" title="Editar"><Edit className="h-4 w-4" /></button>
+                            <button onClick={() => handleEliminar(vacante.id_vacante)} className="text-slate-500 hover:text-red-400 p-1.5" title="Eliminar"><Trash2 className="h-4 w-4" /></button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -306,7 +310,19 @@ export default function VacantesReclutador() {
 
 function Estado({ estado }) {
   const active = estado === 'activa';
-  return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase border ${active ? 'bg-emerald-950/50 text-emerald-400 border-emerald-900/50' : 'bg-amber-950/50 text-amber-400 border-amber-900/50'}`}>{estado}</span>;
+  const suspended = estado === 'eliminada';
+  const label = suspended ? 'suspendida' : estado;
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase border ${
+      active
+        ? 'bg-emerald-950/50 text-emerald-400 border-emerald-900/50'
+        : suspended
+          ? 'bg-red-950/50 text-red-300 border-red-900/50'
+          : 'bg-amber-950/50 text-amber-400 border-amber-900/50'
+    }`}>
+      {label}
+    </span>
+  );
 }
 
 function formatPrecio(num) {

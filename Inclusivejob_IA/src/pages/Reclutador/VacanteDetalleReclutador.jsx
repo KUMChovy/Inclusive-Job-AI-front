@@ -23,6 +23,10 @@ const POSTULACION_BADGE = {
   rechazada: 'danger',
 };
 
+function estadoVacanteLabel(value) {
+  return value === 'eliminada' ? 'suspendida' : (value || '-');
+}
+
 const postulacionesColumns = [
   {
     key: 'postulante',
@@ -130,7 +134,7 @@ export default function VacanteDetalleReclutador() {
             <div>
               <h1 className="text-xl font-bold text-white">{vacante.titulo_puesto}</h1>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge variant={VACANTE_BADGE[vacante.estado] ?? 'default'}>{vacante.estado || '-'}</Badge>
+                <Badge variant={VACANTE_BADGE[vacante.estado] ?? 'default'}>{estadoVacanteLabel(vacante.estado)}</Badge>
                 <Badge variant="info">{vacante.modalidad || '-'}</Badge>
                 <span className="text-slate-500 text-xs">Publicada: {safeDate(vacante.fecha_publicacion)}</span>
                 <span className="text-slate-500 text-xs">Cierre: {safeDate(vacante.fecha_cierre)}</span>
@@ -161,7 +165,7 @@ export default function VacanteDetalleReclutador() {
                 </>
               ) : (
                 <span className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-                  Esta vacante fue eliminada y no admite acciones.
+                  Esta vacante fue suspendida por administración y no admite acciones.
                 </span>
               )}
             </div>

@@ -1,17 +1,33 @@
-// src/pages/Admin/EmpresaDetalle.jsx
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Globe, Mail, Phone, MapPin, CheckCircle, XCircle,
-  PauseCircle, PlayCircle, User, Briefcase, RefreshCw, AlertTriangle,
+  AlertTriangle,
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  CalendarDays,
+  CheckCircle,
+  FileText,
+  Globe,
+  Mail,
+  MapPin,
+  PauseCircle,
+  Phone,
+  PlayCircle,
+  RefreshCw,
+  User,
+  XCircle,
 } from 'lucide-react';
 
 import { Badge, Button, ErrorBanner } from '../../assets/Componentes/Admin/UI';
 import Modal, { ModalFooter } from '../../assets/Componentes/Admin/Modal';
 import { useEmpresaAcciones, useEmpresaDetalle } from '../../assets/Hook/Admin/useDomain';
 import {
-  confirmApprove, confirmSuspend, confirmAction,
-  successAlert, errorAlert,
+  confirmAction,
+  confirmApprove,
+  confirmSuspend,
+  errorAlert,
+  successAlert,
 } from '../../assets/Componentes/Admin/alerts';
 
 const ESTADO_MAP = {
@@ -37,15 +53,37 @@ function withProtocol(url) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
+function getRfc(empresa) {
+  return empresa?.rfc || empresa?.rfc_empresa || '-';
+}
+
+function vacanteEstadoLabel(value) {
+  return value === 'eliminada' ? 'suspendida' : (value || '-');
+}
+
+function vacanteEstadoBadge(value) {
+  if (value === 'activa') return 'success';
+  if (value === 'eliminada') return 'danger';
+  return 'default';
+}
+
 function InfoRow({ icon: Icon, label, value, link }) {
   const display = value || '-';
+
   return (
     <div className="flex items-start gap-3 py-3 border-b border-slate-700/40 last:border-0">
-      <div className="text-slate-400 mt-0.5"><Icon size={16} /></div>
+      <div className="text-slate-400 mt-0.5">
+        <Icon size={16} />
+      </div>
       <div className="min-w-0">
         <p className="text-slate-400 text-xs mb-0.5">{label}</p>
         {link && value ? (
-          <a href={link} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline text-sm break-all">
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-violet-400 hover:underline text-sm break-all"
+          >
             {display}
           </a>
         ) : (
@@ -59,7 +97,6 @@ function InfoRow({ icon: Icon, label, value, link }) {
 export default function EmpresaDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const { data, loading, error, refetch } = useEmpresaDetalle(id);
   const { aprobar, rechazar, suspender, reactivar } = useEmpresaAcciones();
 
@@ -93,7 +130,7 @@ export default function EmpresaDetalle() {
     runAction({
       name: 'aprobar',
       request: () => aprobar(empresa.id_empresas),
-      successTitle: '¡Aprobada!',
+      successTitle: 'Aprobada',
       successText: `${empresa.nombre_empresas} ya puede operar en la plataforma.`,
     });
   };
@@ -121,20 +158,21 @@ export default function EmpresaDetalle() {
     runAction({
       name: 'reactivar',
       request: () => reactivar(empresa.id_empresas),
-      successTitle: '¡Reactivada!',
+      successTitle: 'Reactivada',
       successText: `${empresa.nombre_empresas} puede operar nuevamente.`,
     });
   };
 
   const handleRechazar = async () => {
     if (!motivoRechazo.trim()) return;
+
     setAccionLoading('rechazar');
     try {
       await rechazar(empresa.id_empresas, motivoRechazo);
-      setRejectModal(false);
-      setMotivoRechazo('');
       await refetch();
       await successAlert('Rechazada', `${empresa.nombre_empresas} ha sido rechazada.`);
+      setRejectModal(false);
+      setMotivoRechazo('');
     } catch {
       errorAlert('Error', 'No se pudo rechazar la empresa.');
     } finally {
@@ -154,7 +192,8 @@ export default function EmpresaDetalle() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => navigate('/admin/empresas')}>
-          <ArrowLeft size={16} /> Volver
+          <ArrowLeft size={16} />
+          Volver
         </Button>
         <ErrorBanner message={error || 'No se encontró la empresa solicitada.'} />
       </div>
@@ -169,7 +208,8 @@ export default function EmpresaDetalle() {
           className="flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-4 transition-colors"
           aria-label="Volver a empresas"
         >
-          <ArrowLeft size={16} /> Volver a Empresas
+          <ArrowLeft size={16} />
+          Volver a Empresas
         </button>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -182,30 +222,35 @@ export default function EmpresaDetalle() {
 
           <div className="flex gap-2 flex-wrap">
             <Button variant="ghost" size="sm" onClick={refetch} disabled={loading}>
-              <RefreshCw size={14} /> Actualizar
+              <RefreshCw size={14} />
+              Actualizar
             </Button>
 
             {estado === 0 && (
               <Button variant="success" size="sm" loading={accionLoading === 'aprobar'} onClick={handleAprobar}>
-                <CheckCircle size={14} /> Aprobar
+                <CheckCircle size={14} />
+                Aprobar
               </Button>
             )}
 
             {(estado === 0 || estado === 1) && (
               <Button variant="danger" size="sm" loading={accionLoading === 'rechazar'} onClick={() => setRejectModal(true)}>
-                <XCircle size={14} /> Rechazar
+                <XCircle size={14} />
+                Rechazar
               </Button>
             )}
 
             {estado === 1 && (
               <Button variant="secondary" size="sm" loading={accionLoading === 'suspender'} onClick={handleSuspender}>
-                <PauseCircle size={14} /> Suspender
+                <PauseCircle size={14} />
+                Suspender
               </Button>
             )}
 
             {(estado === 2 || estado === 3) && (
               <Button variant="success" size="sm" loading={accionLoading === 'reactivar'} onClick={handleReactivar}>
-                <PlayCircle size={14} /> Reactivar
+                <PlayCircle size={14} />
+                Reactivar
               </Button>
             )}
           </div>
@@ -215,12 +260,14 @@ export default function EmpresaDetalle() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <section className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-5">
-            <h2 className="text-white font-semibold mb-4">Datos generales</h2>
+            <h2 className="text-white font-semibold mb-4">Datos de la empresa</h2>
             <p className="text-slate-300 text-sm leading-relaxed mb-4">
               {empresa.descripcion || 'Sin descripción registrada.'}
             </p>
+            <InfoRow icon={Building2} label="Nombre comercial" value={empresa.nombre_empresas} />
+            <InfoRow icon={FileText} label="RFC" value={getRfc(empresa)} />
             <InfoRow icon={MapPin} label="Dirección" value={empresa.direccion} />
-            <InfoRow icon={Mail} label="Correo" value={empresa.correo_empresa} link={`mailto:${empresa.correo_empresa}`} />
+            <InfoRow icon={Mail} label="Correo" value={empresa.correo_empresa} link={empresa.correo_empresa ? `mailto:${empresa.correo_empresa}` : ''} />
             <InfoRow icon={Phone} label="Teléfono" value={empresa.telefono_empresa} />
             <InfoRow icon={Globe} label="Sitio web" value={empresa.sitio_web} link={withProtocol(empresa.sitio_web)} />
           </section>
@@ -235,17 +282,18 @@ export default function EmpresaDetalle() {
               <p className="text-slate-500 text-sm">No hay reclutadores registrados para esta empresa.</p>
             ) : (
               <ul className="space-y-3" role="list">
-                {reclutadores.map((r) => {
-                  const nombre = `${r.nombres ?? ''} ${r.apellidos ?? ''}`.trim() || 'Sin nombre';
+                {reclutadores.map((reclutador) => {
+                  const nombre = `${reclutador.nombres ?? ''} ${reclutador.apellidos ?? ''}`.trim() || 'Sin nombre';
                   return (
-                    <li key={r.id_reclutador} className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3">
+                    <li key={reclutador.id_reclutador} className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3">
                       <div className="w-9 h-9 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300 font-bold text-sm flex-shrink-0">
                         {nombre.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <p className="text-white text-sm font-medium truncate">{nombre}</p>
-                        <p className="text-slate-400 text-xs truncate">{r.puesto || 'Sin puesto'}</p>
-                        <p className="text-slate-500 text-xs truncate">{r.correo || '-'}</p>
+                        <p className="text-slate-400 text-xs truncate">{reclutador.puesto || 'Sin puesto'}</p>
+                        <p className="text-slate-500 text-xs truncate">{reclutador.correo || '-'}</p>
+                        <p className="text-slate-500 text-xs truncate">{reclutador.telefono || '-'}</p>
                       </div>
                     </li>
                   );
@@ -263,13 +311,20 @@ export default function EmpresaDetalle() {
             </h2>
             <div className="space-y-3">
               <div>
+                <p className="text-slate-400 text-xs mb-1">ID empresa</p>
+                <p className="text-white text-sm">{empresa.id_empresas}</p>
+              </div>
+              <div>
                 <p className="text-slate-400 text-xs mb-1">Estado de validación</p>
                 <Badge variant={estadoActual.variant}>{estadoActual.label}</Badge>
               </div>
               <div>
-                <p className="text-slate-400 text-xs">Fecha de registro</p>
+                <p className="text-slate-400 text-xs flex items-center gap-1">
+                  <CalendarDays size={13} />
+                  Fecha de registro
+                </p>
                 <p className="text-white text-sm">
-                  {safeDate(empresa.fecha_registro_empres, { dateStyle: 'long' })}
+                  {safeDate(empresa.fecha_registro_empres || empresa.fecha_registro, { dateStyle: 'long' })}
                 </p>
               </div>
             </div>
@@ -285,22 +340,24 @@ export default function EmpresaDetalle() {
               <p className="text-slate-500 text-sm">No hay vacantes recientes para esta empresa.</p>
             ) : (
               <ul className="space-y-2" role="list">
-                {vacantes.map((v) => (
+                {vacantes.map((vacante) => (
                   <li
-                    key={v.id_vacante}
+                    key={vacante.id_vacante}
                     className="flex items-center justify-between gap-3 bg-slate-700/30 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-slate-700/50 transition-colors"
-                    onClick={() => navigate(`/admin/vacantes/${v.id_vacante}`)}
+                    onClick={() => navigate(`/admin/vacantes/${vacante.id_vacante}`)}
                   >
                     <div className="min-w-0">
-                      <p className="text-white text-sm font-medium truncate">{v.titulo_puesto}</p>
+                      <p className="text-white text-sm font-medium truncate">{vacante.titulo_puesto}</p>
                       <p className="text-slate-400 text-xs truncate">
-                        {v.modalidad || '-'} · {safeDate(v.fecha_publicacion)}
+                        {vacante.modalidad || '-'} · {safeDate(vacante.fecha_publicacion)}
                       </p>
                       <p className="text-slate-500 text-xs">
-                        {Number(v.total_postulaciones ?? 0)} postulaciones
+                        {Number(vacante.total_postulaciones ?? 0)} postulaciones
                       </p>
                     </div>
-                    <Badge variant={v.estado === 'activa' ? 'success' : 'default'}>{v.estado}</Badge>
+                    <Badge variant={vacanteEstadoBadge(vacante.estado)}>
+                      {vacanteEstadoLabel(vacante.estado)}
+                    </Badge>
                   </li>
                 ))}
               </ul>
@@ -322,7 +379,7 @@ export default function EmpresaDetalle() {
 
         <textarea
           value={motivoRechazo}
-          onChange={(e) => setMotivoRechazo(e.target.value)}
+          onChange={(event) => setMotivoRechazo(event.target.value)}
           rows={3}
           placeholder="Ej: La información proporcionada es incompleta o inválida..."
           className="w-full bg-slate-700 border border-slate-600 text-white text-sm
@@ -340,7 +397,8 @@ export default function EmpresaDetalle() {
             disabled={!motivoRechazo.trim()}
             onClick={handleRechazar}
           >
-            <XCircle size={14} /> Confirmar rechazo
+            <XCircle size={14} />
+            Confirmar rechazo
           </Button>
         </ModalFooter>
       </Modal>

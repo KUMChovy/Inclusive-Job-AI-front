@@ -1,88 +1,96 @@
-// src/pages/Admin/Empresas.jsx
-// Conectado al backend PHP real — empresas.php
-
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Building2, Eye, CheckCircle, XCircle,
-  PauseCircle, PlayCircle, RefreshCw,
+  Building2,
+  CheckCircle,
+  Eye,
+  FileText,
+  PauseCircle,
+  PlayCircle,
+  RefreshCw,
+  XCircle,
 } from 'lucide-react';
 
 import {
-  PageHeader, Badge, Button,
-  SearchBar, FilterTabs, ErrorBanner,
+  Badge,
+  Button,
+  ErrorBanner,
+  FilterTabs,
+  PageHeader,
+  SearchBar,
 } from '../../assets/Componentes/Admin/UI';
-import Table      from '../../assets/Componentes/Admin/Table';
+import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
 import Modal, { ModalFooter } from '../../assets/Componentes/Admin/Modal';
-
-import { useSearch, usePagination } from '../../assets/Hook/Admin/useApi';
-import { useEmpresas, useEmpresaAcciones } from '../../assets/Hook/Admin/useDomain';
+import { usePagination, useSearch } from '../../assets/Hook/Admin/useApi';
+import { useEmpresaAcciones, useEmpresas } from '../../assets/Hook/Admin/useDomain';
 import {
-  confirmApprove, confirmSuspend, confirmAction,
-  successAlert, errorAlert,
+  confirmAction,
+  confirmApprove,
+  confirmSuspend,
+  errorAlert,
+  successAlert,
 } from '../../assets/Componentes/Admin/alerts';
 
-// ── Mapeo estado_validacion (int) → label + badge ────────────
 const ESTADO_MAP = {
-  0: { label: 'Pendiente',  variant: 'warning'  },
-  1: { label: 'Aprobada',   variant: 'success'  },
-  2: { label: 'Rechazada',  variant: 'danger'   },
-  3: { label: 'Suspendida', variant: 'default'  },
+  0: { label: 'Pendiente', variant: 'warning' },
+  1: { label: 'Aprobada', variant: 'success' },
+  2: { label: 'Rechazada', variant: 'danger' },
+  3: { label: 'Suspendida', variant: 'default' },
 };
 
 const FILTROS = [
-  { value: 'todas',  label: 'Todas'      },
-  { value: '0',      label: 'Pendientes' },
-  { value: '1',      label: 'Aprobadas'  },
-  { value: '2',      label: 'Rechazadas' },
-  { value: '3',      label: 'Suspendidas'},
+  { value: 'todas', label: 'Todas' },
+  { value: '0', label: 'Pendientes' },
+  { value: '1', label: 'Aprobadas' },
+  { value: '2', label: 'Rechazadas' },
+  { value: '3', label: 'Suspendidas' },
 ];
 
 const LIMITE = 15;
 
+function getEstado(value) {
+  return ESTADO_MAP[Number(value)] ?? ESTADO_MAP[0];
+}
+
+function getRfc(row) {
+  return row.rfc || row.rfc_empresa || '—';
+}
+
 export default function Empresas() {
   const navigate = useNavigate();
-
-  // ── Filtros / búsqueda / paginación ──────────────────────
   const { query, setQuery, debouncedQuery } = useSearch(400);
-  const { page, goToPage, reset }           = usePagination(1, LIMITE);
-  const [filtro, setFiltro]                 = useState('todas');
-
-  // ── Modal rechazo ──────────────────────────────────────
-  const [rejectModal, setRejectModal] = useState({ open: false, empresa: null });
-  const [motivoRechazo, setMotivoRechazo] = useState('');
+  const { page, goToPage, reset } = usePagination(1, LIMITE);
+  const [filtro, setFiltro] = useState('todas');
+  const [accionId, setAccionId] = useState(null);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [motivoRechazo, setMotivoRechazo] = useState('');
+  const [rejectModal, setRejectModal] = useState({ open: false, empresa: null });
 
-  // ── Construir query string para el hook ──────────────────
   const buildParams = useCallback(() => {
-    const p = new URLSearchParams();
-    if (filtro !== 'todas') p.set('estado', filtro);
-    if (debouncedQuery)     p.set('buscar', debouncedQuery);
-    p.set('pagina', String(page));
-    p.set('limite', String(LIMITE));
-    return '&' + p.toString();
-  }, [filtro, debouncedQuery, page]);
+    const params = new URLSearchParams();
+    if (filtro !== 'todas') params.set('estado', filtro);
+    if (debouncedQuery) params.set('buscar', debouncedQuery);
+    params.set('pagina', String(page));
+    params.set('limite', String(LIMITE));
+    return `&${params.toString()}`;
+  }, [debouncedQuery, filtro, page]);
 
-  // ── Datos del backend ─────────────────────────────────────
   const { data, loading, error, refetch } = useEmpresas(buildParams());
+  const { aprobar, rechazar, suspender, reactivar } = useEmpresaAcciones();
 
   const empresas = data?.data?.empresas ?? [];
-  const total    = data?.data?.total ?? 0;
+  const total = data?.data?.total ?? 0;
 
-  // ── Acciones ──────────────────────────────────────────────
-  const { aprobar, rechazar, suspender, reactivar } = useEmpresaAcciones();
-  const [accionId, setAccionId] = useState(null); // para spinner por fila
-
-  // ── Aprobar ───────────────────────────────────────────────
   const handleAprobar = async (row) => {
     const ok = await confirmApprove(row.nombre_empresas);
     if (!ok) return;
+
     setAccionId(row.id_empresas);
     try {
       await aprobar(row.id_empresas);
       await refetch();
-      successAlert('¡Aprobada!', `${row.nombre_empresas} ya puede operar en la plataforma.`);
+      successAlert('Aprobada', `${row.nombre_empresas} ya puede operar en la plataforma.`);
     } catch {
       errorAlert('Error', 'No se pudo aprobar la empresa. Intenta de nuevo.');
     } finally {
@@ -90,20 +98,20 @@ export default function Empresas() {
     }
   };
 
-  // ── Rechazar (con modal y motivo) ─────────────────────────
   const openRejectModal = (row) => {
     setMotivoRechazo('');
     setRejectModal({ open: true, empresa: row });
   };
 
   const handleRechazar = async () => {
-    if (!motivoRechazo.trim()) return;
+    if (!motivoRechazo.trim() || !rejectModal.empresa) return;
+
     setRejectLoading(true);
     try {
       await rechazar(rejectModal.empresa.id_empresas, motivoRechazo);
       await refetch();
-      setRejectModal({ open: false, empresa: null });
       successAlert('Rechazada', `${rejectModal.empresa.nombre_empresas} ha sido rechazada.`);
+      setRejectModal({ open: false, empresa: null });
     } catch {
       errorAlert('Error', 'No se pudo rechazar la empresa.');
     } finally {
@@ -111,10 +119,10 @@ export default function Empresas() {
     }
   };
 
-  // ── Suspender ──────────────────────────────────────────────
   const handleSuspender = async (row) => {
     const ok = await confirmSuspend(row.nombre_empresas);
     if (!ok) return;
+
     setAccionId(row.id_empresas);
     try {
       await suspender(row.id_empresas);
@@ -127,7 +135,6 @@ export default function Empresas() {
     }
   };
 
-  // ── Reactivar (reutiliza endpoint aprobar) ─────────────────
   const handleReactivar = async (row) => {
     const ok = await confirmAction({
       title: '¿Reactivar empresa?',
@@ -137,11 +144,12 @@ export default function Empresas() {
       icon: 'question',
     });
     if (!ok) return;
+
     setAccionId(row.id_empresas);
     try {
       await reactivar(row.id_empresas);
       await refetch();
-      successAlert('¡Reactivada!', `${row.nombre_empresas} puede operar nuevamente.`);
+      successAlert('Reactivada', `${row.nombre_empresas} puede operar nuevamente.`);
     } catch {
       errorAlert('Error', 'No se pudo reactivar la empresa.');
     } finally {
@@ -149,97 +157,114 @@ export default function Empresas() {
     }
   };
 
-  // ── Columnas ──────────────────────────────────────────────
-  const COLS = [
+  const columns = [
     {
-      key: 'nombre_empresas', label: 'Empresa', sortable: true,
-      render: (v) => <span className="font-semibold text-white">{v}</span>,
-    },
-    { key: 'correo_empresa', label: 'Correo' },
-    { key: 'telefono_empresa', label: 'Teléfono' },
-    {
-      key: 'sitio_web', label: 'Sitio web',
-      render: (v) => v
-        ? <a href={`https://${v}`} target="_blank" rel="noopener noreferrer"
-             className="text-violet-400 hover:underline text-xs">{v}</a>
-        : '—',
+      key: 'nombre_empresas',
+      label: 'Empresa',
+      sortable: true,
+      render: (value) => <span className="font-semibold text-white">{value || '—'}</span>,
     },
     {
-      key: 'total_reclutadores', label: 'Reclutadores',
-      render: (v) => <span className="text-slate-300">{v}</span>,
+      key: 'rfc',
+      label: 'RFC',
+      render: (_, row) => (
+        <span className="inline-flex items-center gap-1 text-slate-300 font-mono text-xs">
+          <FileText size={13} className="text-slate-500" />
+          {getRfc(row)}
+        </span>
+      ),
     },
     {
-      key: 'total_vacantes', label: 'Vacantes',
-      render: (v) => <span className="text-slate-300">{v}</span>,
+      key: 'total_reclutadores',
+      label: 'Reclutadores',
+      render: (value) => <span className="text-slate-300">{Number(value ?? 0)}</span>,
     },
     {
-      key: 'estado_validacion', label: 'Estado',
-      render: (v) => {
-        const e = ESTADO_MAP[v] ?? ESTADO_MAP[0];
-        return <Badge variant={e.variant}>{e.label}</Badge>;
+      key: 'estado_validacion',
+      label: 'Estado',
+      render: (value) => {
+        const estado = getEstado(value);
+        return <Badge variant={estado.variant}>{estado.label}</Badge>;
       },
     },
     {
-      key: 'fecha_registro', label: 'Registro',
-      render: (v) => v ? new Date(v).toLocaleDateString('es-MX') : '—',
-    },
-    {
-      key: 'acciones', label: 'Acciones',
+      key: 'acciones',
+      label: 'Acciones',
       render: (_, row) => {
+        const estado = Number(row.estado_validacion);
         const isLoading = accionId === row.id_empresas;
-        const estado    = row.estado_validacion;
+
         return (
-          <div className="flex items-center gap-1 flex-wrap">
-            {/* Ver detalle */}
+          <div className="flex flex-wrap items-center gap-2 min-w-[270px]">
             <Button
-              variant="ghost" size="sm"
-              onClick={() => navigate(`/admin/empresas/${row.id_empresas}`)}
+              variant="ghost"
+              size="sm"
+              title="Ver detalle"
               aria-label="Ver detalle"
+              className="whitespace-nowrap"
+              onClick={() => navigate(`/admin/empresas/${row.id_empresas}`)}
             >
               <Eye size={14} />
+              Ver
             </Button>
 
-            {/* Aprobar — solo pendientes */}
             {estado === 0 && (
               <Button
-                variant="success" size="sm"
-                loading={isLoading} onClick={() => handleAprobar(row)}
-                aria-label="Aprobar"
+                variant="success"
+                size="sm"
+                title="Aprobar empresa"
+                aria-label="Aprobar empresa"
+                className="whitespace-nowrap"
+                loading={isLoading}
+                onClick={() => handleAprobar(row)}
               >
                 <CheckCircle size={14} />
+                Aprobar
               </Button>
             )}
 
-            {/* Rechazar — pendientes y aprobadas */}
             {(estado === 0 || estado === 1) && (
               <Button
-                variant="danger" size="sm"
-                loading={isLoading} onClick={() => openRejectModal(row)}
-                aria-label="Rechazar"
+                variant="danger"
+                size="sm"
+                title="Rechazar empresa"
+                aria-label="Rechazar empresa"
+                className="whitespace-nowrap"
+                loading={isLoading}
+                onClick={() => openRejectModal(row)}
               >
                 <XCircle size={14} />
+                Rechazar
               </Button>
             )}
 
-            {/* Suspender — solo aprobadas */}
             {estado === 1 && (
               <Button
-                variant="secondary" size="sm"
-                loading={isLoading} onClick={() => handleSuspender(row)}
-                aria-label="Suspender"
+                variant="secondary"
+                size="sm"
+                title="Suspender empresa"
+                aria-label="Suspender empresa"
+                className="whitespace-nowrap"
+                loading={isLoading}
+                onClick={() => handleSuspender(row)}
               >
                 <PauseCircle size={14} />
+                Suspender
               </Button>
             )}
 
-            {/* Reactivar — rechazadas o suspendidas */}
             {(estado === 2 || estado === 3) && (
               <Button
-                variant="success" size="sm"
-                loading={isLoading} onClick={() => handleReactivar(row)}
-                aria-label="Reactivar"
+                variant="success"
+                size="sm"
+                title="Reactivar empresa"
+                aria-label="Reactivar empresa"
+                className="whitespace-nowrap"
+                loading={isLoading}
+                onClick={() => handleReactivar(row)}
               >
                 <PlayCircle size={14} />
+                Reactivar
               </Button>
             )}
           </div>
@@ -248,82 +273,74 @@ export default function Empresas() {
     },
   ];
 
-  // ── Render ─────────────────────────────────────────────────
   return (
     <div className="space-y-5 w-full">
-
       <PageHeader
         title="Gestión de Empresas"
         description="Administra y valida las empresas registradas en la plataforma"
-        action={
+        action={(
           <div className="flex items-center gap-3">
             <span className="text-slate-400 text-sm flex items-center gap-1">
-              <Building2 size={15} /> {total} empresas
+              <Building2 size={15} />
+              {total} empresas
             </span>
-            <Button
-              variant="ghost" size="sm"
-              onClick={refetch} disabled={loading}
-            >
+            <Button variant="ghost" size="sm" onClick={refetch} disabled={loading}>
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              {loading ? 'Cargando…' : 'Actualizar'}
+              {loading ? 'Cargando...' : 'Actualizar'}
             </Button>
           </div>
-        }
+        )}
       />
 
-      {/* Error banner */}
       <ErrorBanner message={error} />
 
-      {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <SearchBar
           value={query}
-          onChange={(v) => { setQuery(v); reset(); }}
-          placeholder="Buscar por nombre, correo o dirección…"
-          className="sm:w-80"
+          onChange={(value) => {
+            setQuery(value);
+            reset();
+          }}
+          placeholder="Buscar por nombre, RFC, correo o dirección..."
+          className="sm:w-96"
         />
         <FilterTabs
           options={FILTROS}
           value={filtro}
-          onChange={(v) => { setFiltro(v); reset(); }}
+          onChange={(value) => {
+            setFiltro(value);
+            reset();
+          }}
         />
       </div>
 
-      {/* Tabla */}
       <Table
-        columns={COLS}
+        columns={columns}
         data={empresas}
         loading={loading}
         emptyMessage="No se encontraron empresas con los filtros aplicados."
         caption="Lista de empresas"
       />
 
-      {/* Paginación */}
-      <Pagination
-        total={total}
-        page={page}
-        limit={LIMITE}
-        onPageChange={goToPage}
-      />
+      <Pagination total={total} page={page} limit={LIMITE} onPageChange={goToPage} />
 
-      {/* ── Modal: motivo de rechazo ── */}
       <Modal
         open={rejectModal.open}
         onClose={() => setRejectModal({ open: false, empresa: null })}
-        title={`Rechazar empresa`}
+        title="Rechazar empresa"
         size="sm"
       >
         <p className="text-slate-300 text-sm mb-4">
           Estás rechazando a{' '}
           <strong className="text-white">{rejectModal.empresa?.nombre_empresas}</strong>.
-          Ingresa el motivo (opcional pero recomendado):
+          Ingresa el motivo:
         </p>
 
         <textarea
           value={motivoRechazo}
-          onChange={(e) => setMotivoRechazo(e.target.value)}
+          onChange={(event) => setMotivoRechazo(event.target.value)}
           rows={3}
-          placeholder="Ej: La información proporcionada es incompleta o inválida…"
+          placeholder="Ej: La información proporcionada es incompleta o inválida..."
           className="w-full bg-slate-700 border border-slate-600 text-white text-sm
                      rounded-lg px-3 py-2 outline-none focus:border-violet-500
                      transition-colors placeholder-slate-500 resize-none"
@@ -339,13 +356,14 @@ export default function Empresas() {
           <Button
             variant="danger"
             loading={rejectLoading}
+            disabled={!motivoRechazo.trim()}
             onClick={handleRechazar}
           >
-            <XCircle size={14} /> Confirmar rechazo
+            <XCircle size={14} />
+            Confirmar rechazo
           </Button>
         </ModalFooter>
       </Modal>
-
     </div>
   );
 }

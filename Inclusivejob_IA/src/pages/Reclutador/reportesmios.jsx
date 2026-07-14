@@ -144,7 +144,7 @@ export default function ReportesMios() {
         />
         <ErrorBanner message={error} />
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          Estos son reportes aun pendientes de revision. Si el administrador descarta un reporte o elimina una vacante reportada, el reporte desaparecera de esta lista y te llegara una notificacion en el chat bot o aqui mismo.
+          Estos son reportes aun pendientes de revision. Si el administrador descarta un reporte o suspende una vacante reportada, el reporte desaparecera de esta lista y te llegara una notificacion en el chat bot o aqui mismo.
         </div>
 
         <AvisosReportes
@@ -247,6 +247,7 @@ function AvisosReportes({
         <div className="mt-4 grid gap-3">
           {recientes.map((aviso) => {
             const esSancion = aviso.accion === 'vacante_eliminada'
+              || aviso.accion === 'vacante_suspendida'
               || aviso.resultado === 'reporte_vacante_eliminada_admin';
             const Icon = esSancion ? AlertTriangle : CheckCircle2;
 

@@ -1,10 +1,10 @@
 // src/pages/Admin/Reportes.jsx
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Flag, RefreshCw, Trash2, X } from 'lucide-react';
+import { Eye, Flag, PauseCircle, RefreshCw, X } from 'lucide-react';
 
 import {
-  PageHeader, Badge, Button, SearchBar, FilterTabs, ErrorBanner,
+  PageHeader, Badge, Button, SearchBar, ErrorBanner,
 } from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
@@ -21,13 +21,6 @@ const ESTADO_BADGE = {
   cerrada: 'default',
   eliminada: 'danger',
 };
-
-const FILTROS = [
-  { value: 'pendientes', label: 'Por revisar' },
-  { value: 'activa', label: 'Vacante activa' },
-  { value: 'cerrada', label: 'Vacante cerrada' },
-  { value: 'eliminada', label: 'Vacante eliminada' },
-];
 
 function safeDate(value) {
   if (!value) return '-';
@@ -56,21 +49,24 @@ function getUsuario(row) {
   return row.usuario ?? row.correo ?? '-';
 }
 
+function estadoVacanteLabel(value) {
+  if (value === 'eliminada') return 'suspendida';
+  return value || '-';
+}
+
 export default function Reportes() {
   const navigate = useNavigate();
   const { query, setQuery, debouncedQuery } = useSearch(400);
   const { page, goToPage, reset } = usePagination(1, LIMITE);
-  const [filtro, setFiltro] = useState('pendientes');
   const [actionLoading, setActionLoading] = useState(null);
 
   const buildParams = useCallback(() => {
     const params = new URLSearchParams();
-    if (filtro !== 'pendientes') params.set('estado', filtro);
     if (debouncedQuery) params.set('buscar', debouncedQuery);
     params.set('pagina', String(page));
     params.set('limite', String(LIMITE));
     return `&${params.toString()}`;
-  }, [debouncedQuery, filtro, page]);
+  }, [debouncedQuery, page]);
 
   const { data, loading, error, refetch } = useReportes(buildParams());
   const { ignorar, eliminarVacante } = useReporteAcciones();
@@ -104,16 +100,16 @@ export default function Reportes() {
     }
   };
 
-  const handleEliminarVacante = async (row) => {
+  const handleSuspenderVacante = async (row) => {
     const id = getReporteId(row);
     const vacante = getVacante(row);
 
     const explicacion = await confirmTextareaAction({
-      title: 'Eliminar vacante reportada',
-      html: `<span>La vacante <strong style="color:#fff">"${vacante}"</strong> se marcara como eliminada y se cerraran sus reportes asociados. Esta explicacion se enviara al reclutador como aviso formal.</span>`,
+      title: 'Suspender vacante reportada',
+      html: `<span>La vacante <strong style="color:#fff">"${vacante}"</strong> se marcará como suspendida y se cerrarán sus reportes asociados. Esta explicación se enviará al reclutador como aviso formal.</span>`,
       inputLabel: 'Explicacion para el reclutador',
       inputPlaceholder: 'Ejemplo: La vacante incumple las politicas porque...',
-      confirmText: 'Eliminar vacante',
+      confirmText: 'Suspender vacante',
       confirmColor: '#dc2626',
       icon: 'warning',
     });
@@ -123,9 +119,9 @@ export default function Reportes() {
     try {
       await eliminarVacante(id, { explicacion });
       await refetch();
-      successAlert('Vacante eliminada', `"${vacante}" fue eliminada y se aviso al reclutador.`);
+      successAlert('Vacante suspendida', `"${vacante}" fue suspendida y se avisó al reclutador.`);
     } catch {
-      errorAlert('Error', 'No se pudo eliminar la vacante.');
+      errorAlert('Error', 'No se pudo suspender la vacante.');
     } finally {
       setActionLoading(null);
     }
@@ -164,7 +160,7 @@ export default function Reportes() {
     {
       key: 'estado_vacante',
       label: 'Estado vacante',
-      render: (value) => <Badge variant={ESTADO_BADGE[value] ?? 'default'}>{value || '-'}</Badge>,
+      render: (value) => <Badge variant={ESTADO_BADGE[value] ?? 'default'}>{estadoVacanteLabel(value)}</Badge>,
     },
     {
       key: 'fecha_reporte',
@@ -177,7 +173,7 @@ export default function Reportes() {
       render: (_, row) => {
         const id = getReporteId(row);
         const isLoading = actionLoading === id;
-        const vacanteEliminada = row.estado_vacante === 'eliminada';
+        const vacanteSuspendida = row.estado_vacante === 'eliminada';
 
         return (
           <div className="flex flex-wrap items-center gap-2 min-w-[260px]">
@@ -195,27 +191,27 @@ export default function Reportes() {
             <Button
               variant="ghost"
               size="sm"
-              title={vacanteEliminada ? 'Cerrar reporte pendiente' : 'Ignorar reporte'}
+              title={vacanteSuspendida ? 'Cerrar reporte pendiente' : 'Ignorar reporte'}
               loading={isLoading}
               onClick={() => handleIgnorar(row)}
-              aria-label={vacanteEliminada ? 'Cerrar reporte pendiente' : 'Ignorar reporte'}
+              aria-label={vacanteSuspendida ? 'Cerrar reporte pendiente' : 'Ignorar reporte'}
               className="whitespace-nowrap"
             >
               <X size={14} />
-              {vacanteEliminada ? 'Cerrar reporte' : 'Descartar reporte'}
+              {vacanteSuspendida ? 'Cerrar reporte' : 'Descartar reporte'}
             </Button>
-            {!vacanteEliminada && (
+            {!vacanteSuspendida && (
               <Button
                 variant="danger"
                 size="sm"
-                title="Eliminar vacante"
+                title="Suspender vacante"
                 loading={isLoading}
-                onClick={() => handleEliminarVacante(row)}
-                aria-label="Eliminar vacante"
+                onClick={() => handleSuspenderVacante(row)}
+                aria-label="Suspender vacante"
                 className="whitespace-nowrap"
               >
-                <Trash2 size={14} />
-                Eliminar vacante
+                <PauseCircle size={14} />
+                Suspender vacante
               </Button>
             )}
           </div>
@@ -251,18 +247,13 @@ export default function Reportes() {
           placeholder="Buscar por vacante, empresa, usuario o motivo..."
           className="sm:w-96"
         />
-        <FilterTabs
-          options={FILTROS}
-          value={filtro}
-          onChange={(value) => { setFiltro(value); reset(); }}
-        />
       </div>
 
       <Table
         columns={columns}
         data={reportes}
         loading={loading}
-        emptyMessage="No hay reportes de vacantes con los filtros aplicados."
+        emptyMessage="No hay reportes de vacantes para mostrar."
         caption="Reportes de vacantes"
       />
 

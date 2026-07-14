@@ -1,7 +1,7 @@
 // src/pages/Admin/Vacantes.jsx
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Eye, RefreshCw, Trash2, XCircle } from 'lucide-react';
+import { Briefcase, Eye, PauseCircle, RefreshCw, XCircle } from 'lucide-react';
 
 import {
   PageHeader, Badge, Button, SearchBar, FilterTabs, Select, ErrorBanner,
@@ -10,7 +10,7 @@ import Table from '../../assets/Componentes/Admin/Table';
 import Pagination from '../../assets/Componentes/Admin/Pagination';
 import { useSearch, usePagination } from '../../assets/Hook/Admin/useApi';
 import { useVacanteAcciones, useVacantes } from '../../assets/Hook/Admin/useDomain';
-import { confirmDelete, confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
+import { confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
 
 const ESTADO_BADGE = {
   activa: 'success',
@@ -22,7 +22,7 @@ const FILTROS = [
   { value: 'todas', label: 'Todas' },
   { value: 'activa', label: 'Activas' },
   { value: 'cerrada', label: 'Cerradas' },
-  { value: 'eliminada', label: 'Eliminadas' },
+  { value: 'eliminada', label: 'Suspendidas' },
 ];
 
 const MODALIDADES = [
@@ -65,6 +65,11 @@ function getTitulo(row) {
 
 function getEmpresa(row) {
   return row.empresa ?? row.nombre_empresas ?? row.nombre_empresa ?? '-';
+}
+
+function estadoVacanteLabel(value) {
+  if (value === 'eliminada') return 'suspendida';
+  return value || '-';
 }
 
 export default function Vacantes() {
@@ -118,20 +123,26 @@ export default function Vacantes() {
     }
   };
 
-  const handleEliminar = async (row) => {
+  const handleSuspender = async (row) => {
     const id = getVacanteId(row);
     const titulo = getTitulo(row);
 
-    const ok = await confirmDelete(`"${titulo}"`);
+    const ok = await confirmAction({
+      title: 'Suspender vacante',
+      html: `<span>La vacante <strong style="color:#fff">"${titulo}"</strong> se marcará como suspendida y dejará de mostrarse como activa.</span>`,
+      confirmText: 'Suspender vacante',
+      confirmColor: '#dc2626',
+      icon: 'warning',
+    });
     if (!ok) return;
 
     setActionLoading(id);
     try {
       await eliminar(id);
       await refetch();
-      successAlert('Eliminada', 'La vacante ha sido eliminada.');
+      successAlert('Vacante suspendida', 'La vacante ha sido suspendida.');
     } catch {
-      errorAlert('Error', 'No se pudo eliminar la vacante.');
+      errorAlert('Error', 'No se pudo suspender la vacante.');
     } finally {
       setActionLoading(null);
     }
@@ -162,7 +173,7 @@ export default function Vacantes() {
     {
       key: 'estado',
       label: 'Estado',
-      render: (value) => <Badge variant={ESTADO_BADGE[value] ?? 'default'}>{value || '-'}</Badge>,
+      render: (value) => <Badge variant={ESTADO_BADGE[value] ?? 'default'}>{estadoVacanteLabel(value)}</Badge>,
     },
     {
       key: 'fecha_publicacion',
@@ -177,14 +188,17 @@ export default function Vacantes() {
         const isLoading = actionLoading === id;
 
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-2 min-w-[230px]">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate(`/admin/vacantes/${id}`)}
               aria-label="Ver detalle"
+              title="Ver detalle"
+              className="whitespace-nowrap"
             >
               <Eye size={14} />
+              Ver
             </Button>
 
             {row.estado === 'activa' && (
@@ -194,20 +208,28 @@ export default function Vacantes() {
                 loading={isLoading}
                 onClick={() => handleCerrar(row)}
                 aria-label="Cerrar vacante"
+                title="Cerrar vacante"
+                className="whitespace-nowrap"
               >
                 <XCircle size={14} />
+                Cerrar
               </Button>
             )}
 
-            <Button
-              variant="danger"
-              size="sm"
-              loading={isLoading}
-              onClick={() => handleEliminar(row)}
-              aria-label="Eliminar vacante"
-            >
-              <Trash2 size={14} />
-            </Button>
+            {row.estado !== 'eliminada' && (
+              <Button
+                variant="danger"
+                size="sm"
+                loading={isLoading}
+                onClick={() => handleSuspender(row)}
+                aria-label="Suspender vacante"
+                title="Suspender vacante"
+                className="whitespace-nowrap"
+              >
+                <PauseCircle size={14} />
+                Suspender
+              </Button>
+            )}
           </div>
         );
       },

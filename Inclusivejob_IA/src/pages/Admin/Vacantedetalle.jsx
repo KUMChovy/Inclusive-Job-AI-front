@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, DollarSign, Monitor, Building2, User, Accessibility,
-  XCircle, Trash2, RefreshCw,
+  XCircle, PauseCircle, RefreshCw,
 } from 'lucide-react';
 
 import { Badge, Button, ErrorBanner } from '../../assets/Componentes/Admin/UI';
 import Table from '../../assets/Componentes/Admin/Table';
 import { useVacanteAcciones, useVacanteDetalle } from '../../assets/Hook/Admin/useDomain';
-import { confirmDelete, confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
+import { confirmAction, successAlert, errorAlert } from '../../assets/Componentes/Admin/alerts';
 
 const VACANTE_BADGE = {
   activa: 'success',
@@ -61,6 +61,11 @@ function getEmpresa(vacante) {
 function getReclutador(vacante) {
   const fullName = `${vacante?.nombres ?? ''} ${vacante?.apellidos ?? ''}`.trim();
   return vacante?.reclutador ?? vacante?.nombre_reclutador ?? (fullName || '-');
+}
+
+function estadoVacanteLabel(value) {
+  if (value === 'eliminada') return 'suspendida';
+  return value || '-';
 }
 
 function normalizeDiscapacidad(item) {
@@ -138,16 +143,22 @@ export default function VacanteDetalle() {
     });
   };
 
-  const handleEliminar = async () => {
+  const handleSuspender = async () => {
     const titulo = getTitulo(vacante);
-    const ok = await confirmDelete(`"${titulo}"`);
+    const ok = await confirmAction({
+      title: 'Suspender vacante',
+      html: `<span>La vacante <strong style="color:#fff">"${titulo}"</strong> se marcará como suspendida y dejará de mostrarse como activa.</span>`,
+      confirmText: 'Suspender vacante',
+      confirmColor: '#dc2626',
+      icon: 'warning',
+    });
     if (!ok) return;
 
     runAction({
       name: 'eliminar',
       request: () => eliminar(getVacanteId(vacante)),
-      successTitle: 'Eliminada',
-      successText: 'La vacante ha sido eliminada.',
+      successTitle: 'Vacante suspendida',
+      successText: 'La vacante ha sido suspendida.',
       afterSuccess: () => navigate('/admin/vacantes'),
     });
   };
@@ -185,7 +196,7 @@ export default function VacanteDetalle() {
         <div>
           <h1 className="text-xl font-bold text-white">{getTitulo(vacante)}</h1>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Badge variant={VACANTE_BADGE[vacante.estado] ?? 'default'}>{vacante.estado || '-'}</Badge>
+            <Badge variant={VACANTE_BADGE[vacante.estado] ?? 'default'}>{estadoVacanteLabel(vacante.estado)}</Badge>
             <Badge variant="info">{vacante.modalidad || '-'}</Badge>
             <span className="text-slate-500 text-xs">Publicada: {safeDate(vacante.fecha_publicacion)}</span>
             <span className="text-slate-500 text-xs">Cierre: {safeDate(vacante.fecha_cierre)}</span>
@@ -208,14 +219,16 @@ export default function VacanteDetalle() {
             </Button>
           )}
 
-          <Button
-            variant="danger"
-            size="sm"
-            loading={actionLoading === 'eliminar'}
-            onClick={handleEliminar}
-          >
-            <Trash2 size={14} /> Eliminar
-          </Button>
+          {vacante.estado !== 'eliminada' && (
+            <Button
+              variant="danger"
+              size="sm"
+              loading={actionLoading === 'eliminar'}
+              onClick={handleSuspender}
+            >
+              <PauseCircle size={14} /> Suspender vacante
+            </Button>
+          )}
         </div>
       </div>
 
