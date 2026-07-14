@@ -8,38 +8,47 @@ const t = postulantTheme;
 const TABS       = ["info", "skills", "accesibilidad"];
 const TAB_LABELS = { info: "Yo", skills: "Skills", accesibilidad: "Accesibilidad" };
 
-// ── Datos de países con LADA (SOLO PARA VISUALIZACIÓN EN FRONTEND) ──
 const PAISES_LADA = [
-  { code: "+52", name: "México", flag: "🇲🇽" },
-  { code: "+1", name: "Estados Unidos", flag: "🇺🇸" },
-  { code: "+34", name: "España", flag: "🇪🇸" },
-  { code: "+54", name: "Argentina", flag: "🇦🇷" },
-  { code: "+56", name: "Chile", flag: "🇨🇱" },
-  { code: "+57", name: "Colombia", flag: "🇨🇴" },
-  { code: "+51", name: "Perú", flag: "🇵🇪" },
-  { code: "+58", name: "Venezuela", flag: "🇻🇪" },
-  { code: "+53", name: "Cuba", flag: "🇨🇺" },
-  { code: "+502", name: "Guatemala", flag: "🇬🇹" },
-  { code: "+503", name: "El Salvador", flag: "🇸🇻" },
-  { code: "+504", name: "Honduras", flag: "🇭🇳" },
-  { code: "+505", name: "Nicaragua", flag: "🇳🇮" },
-  { code: "+506", name: "Costa Rica", flag: "🇨🇷" },
-  { code: "+507", name: "Panamá", flag: "🇵🇦" },
-  { code: "+591", name: "Bolivia", flag: "🇧🇴" },
-  { code: "+593", name: "Ecuador", flag: "🇪🇨" },
-  { code: "+595", name: "Paraguay", flag: "🇵🇾" },
-  { code: "+598", name: "Uruguay", flag: "🇺🇾" },
-  { code: "+44", name: "Reino Unido", flag: "🇬🇧" },
-  { code: "+33", name: "Francia", flag: "🇫🇷" },
-  { code: "+49", name: "Alemania", flag: "🇩🇪" },
-  { code: "+39", name: "Italia", flag: "🇮🇹" },
-  { code: "+55", name: "Brasil", flag: "🇧🇷" },
-  { code: "+61", name: "Australia", flag: "🇦🇺" },
-  { code: "+81", name: "Japón", flag: "🇯🇵" },
-  { code: "+86", name: "China", flag: "🇨🇳" },
-  { code: "+91", name: "India", flag: "🇮🇳" },
-  { code: "+82", name: "Corea del Sur", flag: "🇰🇷" },
+  { code: "+52", name: "México" },
+  { code: "+1", name: "Estados Unidos" },
+  { code: "+34", name: "España" },
+  { code: "+54", name: "Argentina" },
+  { code: "+56", name: "Chile" },
+  { code: "+57", name: "Colombia" },
+  { code: "+51", name: "Perú" },
+  { code: "+58", name: "Venezuela" },
+  { code: "+502", name: "Guatemala" },
+  { code: "+503", name: "El Salvador" },
+  { code: "+504", name: "Honduras" },
+  { code: "+505", name: "Nicaragua" },
+  { code: "+506", name: "Costa Rica" },
+  { code: "+507", name: "Panamá" },
+  { code: "+591", name: "Bolivia" },
+  { code: "+593", name: "Ecuador" },
+  { code: "+595", name: "Paraguay" },
+  { code: "+598", name: "Uruguay" },
 ];
+
+function getDefaultLada() {
+  return "+52";
+}
+
+function splitPhoneWithLada(phone = "") {
+  const clean = String(phone).trim().replace(/[^\d+]/g, "");
+  if (!clean) return { lada: getDefaultLada(), number: "" };
+
+  const lada = [...PAISES_LADA]
+    .sort((a, b) => b.code.length - a.code.length)
+    .find(pais => clean.startsWith(pais.code))?.code;
+
+  if (!lada) return { lada: getDefaultLada(), number: clean.replace(/\D/g, "") };
+  return { lada, number: clean.slice(lada.length).replace(/\D/g, "") };
+}
+
+function joinPhone(lada, number) {
+  const cleanNumber = String(number || "").replace(/\D/g, "");
+  return cleanNumber ? `${lada}${cleanNumber}` : "";
+}
 
 function getInitials(name) {
   if (!name?.trim()) return "?";
@@ -82,11 +91,6 @@ function normalizeDiscapacidadOption(option) {
   };
 }
 
-// ── Función para obtener LADA por defecto (SOLO VISUAL) ──
-function getDefaultLada() {
-  return "+52"; // México por defecto
-}
-
 export default function PerfilPostulante() {
   const { obtenerPerfil, actualizarPerfil, backendUrl } = usePerfilPostulante();
   const [perfil, setPerfil] = useState({
@@ -97,10 +101,6 @@ export default function PerfilPostulante() {
     discapacidad: [], nota: "", porcentaje: "",
     portafolio: "", esfuerzo: false,
   });
-
-  // ── Estado para LADA (SOLO FRONTEND, NO SE GUARDA EN BD) ──
-  const [selectedLada, setSelectedLada] = useState("+52");
-  const [phoneNumber, setPhoneNumber] = useState("");
 
   const [open, setOpen]             = useState(false);
   const [draft, setDraft]           = useState(null);
@@ -113,6 +113,8 @@ export default function PerfilPostulante() {
   const [saveError, setSaveError]   = useState(null);
   const [fotoFile, setFotoFile]     = useState(null);
   const [fotoPreview, setFotoPreview] = useState(null);
+  const [selectedLada, setSelectedLada] = useState(getDefaultLada());
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [catalogoDiscapacidades, setCatalogoDiscapacidades] = useState([]);
 
   const editRef    = useRef(null);
@@ -141,7 +143,7 @@ export default function PerfilPostulante() {
               return found ? found.id : nombre;
             });
 
-        // El teléfono viene de la BD sin LADA (solo números)
+        // El teléfono viene de la BD con la LADA incluida.
         const telefono = data.telefono || "";
         setCatalogoDiscapacidades(catalogo);
 
@@ -151,7 +153,7 @@ export default function PerfilPostulante() {
           apellidos:   data.apellidos   || "",
           rol:         data.rol         || "",
           email:       data.correo      || "",
-          tel:         telefono, // Solo números, sin LADA
+          tel:         telefono,
           foto_perfil: data.foto_perfil ? `${backendUrl}/${data.foto_perfil}` : null,
           experiencia: data.experiencia || "",
           skills,
@@ -162,9 +164,6 @@ export default function PerfilPostulante() {
           esfuerzo:    !!data.esfuerzo_fisico_posible,
         });
 
-        // ── Inicializar LADA y número (SOLO FRONTEND) ──────
-        setSelectedLada(getDefaultLada());
-        setPhoneNumber(telefono);
         setLoading(false);
       } catch (err) {
         console.error("Error al obtener perfil:", err);
@@ -201,10 +200,15 @@ export default function PerfilPostulante() {
     setSaveError(null);
     setFotoFile(null);
     setFotoPreview(null);
-    setDraft({ ...perfil, skills: [...perfil.skills], discapacidad: [...perfil.discapacidad] });
-    // Inicializar LADA y número en el modal (SOLO FRONTEND)
-    setSelectedLada(getDefaultLada());
-    setPhoneNumber(perfil.tel || "");
+    const parsedPhone = splitPhoneWithLada(perfil.tel);
+    setSelectedLada(parsedPhone.lada);
+    setPhoneNumber(parsedPhone.number);
+    setDraft({
+      ...perfil,
+      tel: joinPhone(parsedPhone.lada, parsedPhone.number),
+      skills: [...perfil.skills],
+      discapacidad: [...perfil.discapacidad],
+    });
     setTab("info");
     setOpen(true);
   }
@@ -218,21 +222,25 @@ export default function PerfilPostulante() {
     setTimeout(() => editRef.current?.focus(), 50);
   }
 
-  // ── Manejar cambio de LADA (SOLO FRONTEND) ──────────────
   function handleLadaChange(e) {
-    setSelectedLada(e.target.value);
-    // No actualizamos draft.tel porque la LADA no se guarda en BD
+    const lada = e.target.value;
+    setSelectedLada(lada);
+    if (draft) {
+      setDraft(prev => ({
+        ...prev,
+        tel: joinPhone(lada, phoneNumber),
+      }));
+    }
   }
 
   // ── Manejar cambio de número de teléfono ────────────────
   function handlePhoneNumberChange(e) {
-    const numero = e.target.value.replace(/\D/g, ''); // Solo dígitos
+    const numero = e.target.value.replace(/\D/g, "");
     setPhoneNumber(numero);
-    // Actualizar draft.tel con SOLO el número (sin LADA)
     if (draft) {
       setDraft(prev => ({
         ...prev,
-        tel: numero // Solo el número, sin LADA
+        tel: joinPhone(selectedLada, numero),
       }));
     }
   }
@@ -247,7 +255,6 @@ export default function PerfilPostulante() {
     const fd = new FormData();
     fd.append("nombres",                nombres);
     fd.append("apellidos",              apellidos);
-    // Guardar SOLO el número sin LADA
     fd.append("telefono",               draft.tel);
     fd.append("experiencia",            draft.experiencia);
     fd.append("skills",                 JSON.stringify(draft.skills));
@@ -320,10 +327,10 @@ export default function PerfilPostulante() {
       : <span>{getInitials(perfil.nombre)}</span>;
   };
 
-  // Función para mostrar el teléfono con LADA en la vista (SOLO VISUAL)
+  // El teléfono ya viene guardado con LADA desde la BD.
   const displayPhone = () => {
     if (!perfil.tel) return "—";
-    return `${selectedLada} ${perfil.tel}`;
+    return perfil.tel;
   };
 
   const getDiscapacidadNombre = (idOrName) => {
@@ -536,7 +543,7 @@ export default function PerfilPostulante() {
                     </div>
                   </div>
 
-                  {/* Teléfono con LADA (SOLO FRONTEND) */}
+                  {/* Teléfono */}
                   <div>
                     <label htmlFor="f-telefono" style={{ fontSize:"12px", fontWeight:500, color:t.textSecondary, display:"block", marginBottom:"4px" }}>Teléfono</label>
                     <div style={{ display:"flex", gap:"8px" }}>
@@ -544,11 +551,10 @@ export default function PerfilPostulante() {
                         value={selectedLada}
                         onChange={handleLadaChange}
                         style={{
-                          width:"auto",
-                          minWidth:"80px",
+                          width:"112px",
                           border:`1px solid ${t.border}`,
                           borderRadius:"10px",
-                          padding:"8px 4px",
+                          padding:"8px 6px",
                           fontSize:"13px",
                           background:t.bgElevated,
                           color:t.textPrimary,
@@ -557,7 +563,7 @@ export default function PerfilPostulante() {
                         }}>
                         {PAISES_LADA.map(pais => (
                           <option key={pais.code} value={pais.code}>
-                            {pais.flag} {pais.code}
+                            {pais.code} · {pais.name}
                           </option>
                         ))}
                       </select>
@@ -567,6 +573,7 @@ export default function PerfilPostulante() {
                         placeholder="10 dígitos"
                         style={{
                           flex:1,
+                          minWidth:0,
                           border:`1px solid ${t.border}`,
                           borderRadius:"10px",
                           padding:"8px 12px",
@@ -582,7 +589,7 @@ export default function PerfilPostulante() {
                       />
                     </div>
                     <p style={{ fontSize:"11px", color:t.textMuted, marginTop:"4px" }}>
-                      {PAISES_LADA.find(p => p.code === selectedLada)?.name || "Selecciona"} · Solo dígitos · La LADA se muestra solo visualmente
+                      Selecciona la LADA y escribe solo tu número. Se guardará como {joinPhone(selectedLada, phoneNumber) || `${selectedLada} + número`}.
                     </p>
                   </div>
 
